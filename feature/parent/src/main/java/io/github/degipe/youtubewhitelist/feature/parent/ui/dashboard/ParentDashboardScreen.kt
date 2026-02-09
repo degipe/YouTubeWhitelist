@@ -49,7 +49,7 @@ import io.github.degipe.youtubewhitelist.core.data.model.KidProfile
 @Composable
 fun ParentDashboardScreen(
     viewModel: ParentDashboardViewModel,
-    onBackToKidMode: () -> Unit,
+    onBackToKidMode: (profileId: String) -> Unit,
     onChangePin: () -> Unit,
     onOpenWhitelistManager: (profileId: String) -> Unit,
     onOpenBrowser: (profileId: String) -> Unit
@@ -61,7 +61,10 @@ fun ParentDashboardScreen(
             TopAppBar(
                 title = { Text("Parent Dashboard") },
                 navigationIcon = {
-                    IconButton(onClick = onBackToKidMode) {
+                    IconButton(
+                        onClick = { uiState.selectedProfileId?.let { onBackToKidMode(it) } },
+                        enabled = uiState.selectedProfileId != null
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back to Kid Mode"
@@ -77,7 +80,9 @@ fun ParentDashboardScreen(
             DashboardContent(
                 uiState = uiState,
                 onProfileSelected = viewModel::selectProfile,
-                onBackToKidMode = onBackToKidMode,
+                onBackToKidMode = {
+                    uiState.selectedProfileId?.let { onBackToKidMode(it) }
+                },
                 onChangePin = onChangePin,
                 onOpenWhitelistManager = {
                     uiState.selectedProfileId?.let { onOpenWhitelistManager(it) }

@@ -1,38 +1,34 @@
-# Session 5 Starting Prompt
+# Session 6 Starting Prompt
 
-Ez az 5. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 6. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Fókusz: M2 befejezés + M3 kezdés
+**FIGYELEM**: Ez a 6. session — Session 1-et archiváld CLAUDE_ARCHIVE_1.md-be a CLAUDE.md-ből!
 
-### 1. Build verifikáció (PRIORITÁS)
+## Fókusz: M3 befejezés + M4 kezdés
 
-- **JDK 17 + Android SDK beállítás ellenőrzése**
-- Gradle build futtatás: `./gradlew assembleDebug`
-- Összes unit teszt futtatás: `./gradlew test`
-  - core:common (27 URL parser teszt + AppResult)
-  - core:network (9 DTO + 2 interceptor teszt)
-  - core:data (10 API repo + 12 whitelist repo + 7 profile repo teszt)
-  - core:auth (PIN hasher, brute force, PIN repo, account repo, auth repo tesztek)
-  - feature:parent (15 whitelist manager + 13 browser + 9 dashboard teszt)
-  - app (5 PIN entry + splash + sign-in + pin setup + pin change VM tesztek)
-- Kompilációs hibák javítása
+### 1. M3 befejezés
 
-### 2. M3 kezdés - Kid Mode UI
+- **Coil image loading** integrálása thumbnailokhoz (channel/video/playlist képek)
+  - `libs.versions.toml`-ba Coil dependency
+  - `AsyncImage` használata az összes thumbnail helyen
+- **KidSearch screen** implementálása (searchItems DAO query már kész)
+  - `KidSearchViewModel` TDD-vel
+  - `KidSearchScreen` UI
+  - `Route.KidSearch` bekötés AppNavigation-be
+- **Playlist detail screen** (opcionális)
 
-TDD-vel:
-- `KidHomeViewModel` - whitelist tartalom megjelenítés, grid layout
-- `ChannelDetailViewModel` - csatorna tartalom listázása
-- `VideoPlayerViewModel` - YouTube IFrame Player integráció
+### 2. M4 kezdés - Sleep Mode
 
-### 3. Kid Mode UI (feature:kid)
-
-- `KidHomeScreen` kibővítés - tartalom grid whitelist elemekkel
-- `ChannelDetailScreen` - csatorna videói/playlistjei
-- `VideoPlayerScreen` - YouTube lejátszó
+- `SleepTimerViewModel` TDD-vel
+- Sleep timer UI (fade-out animáció, dark theme)
+- Sleep playlist integráció (sleepPlaylistId a KidProfile-ban már van)
+- feature:sleep modul
 
 ### Megjegyzések
 
-- **FONTOS**: TDD skill használata kötelező!
+- **Build parancs**: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew test`
+- **212 teszt** van jelenleg, mind zöld
+- **TDD skill használata kötelező!**
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push
-- **FIGYELEM**: Ez az 5. session — ha lesz 6. session, az archíválás indul (CLAUDE_ARCHIVE_1.md)
 - Kommunikáció magyarul, dokumentáció angolul
+- Google Cloud Console YouTube API key **még nincs** — runtime teszteléshez szükséges

@@ -44,18 +44,16 @@ class Pbkdf2PinHasherTest {
     @Test
     fun `verify returns false for tampered hash`() {
         val encoded = hasher.hash("1234")
-        val tampered = encoded.replaceFirst("A", "B")
-        // Tampered hash may fail to decode or produce wrong result
-        // Either way, verify should not return true
+        val parts = encoded.split(":")
+        // Flip the first byte of the hash part to ensure reliable tampering
+        val hashBytes = java.util.Base64.getDecoder().decode(parts[1])
+        hashBytes[0] = (hashBytes[0].toInt() xor 0xFF).toByte()
+        val tampered = "${parts[0]}:${java.util.Base64.getEncoder().encodeToString(hashBytes)}"
         val result = try {
             hasher.verify("1234", tampered)
         } catch (_: Exception) {
             false
         }
-        // If the salt part was tampered, the hash won't match
-        // If the hash part was tampered, it also won't match
-        // The only false positive case is if the tampered character wasn't actually changed
-        // which is extremely unlikely with the replacement
         assertThat(result).isFalse()
     }
 

@@ -1,0 +1,253 @@
+package io.github.degipe.youtubewhitelist.feature.kid.ui.player
+
+import com.google.common.truth.Truth.assertThat
+import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
+import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
+import io.github.degipe.youtubewhitelist.core.data.repository.WatchHistoryRepository
+import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class VideoPlayerViewModelTest {
+
+    private lateinit var whitelistRepository: WhitelistRepository
+    private lateinit var watchHistoryRepository: WatchHistoryRepository
+    private val testDispatcher = StandardTestDispatcher()
+
+    private fun makeVideo(id: String, title: String, channelTitle: String = "Fun Channel") = WhitelistItem(
+        id = id, kidProfileId = "profile-1",
+        type = WhitelistItemType.VIDEO, youtubeId = "yt-$id",
+        title = title, thumbnailUrl = "https://img/$id.jpg",
+        channelTitle = channelTitle, addedAt = 1000L
+    )
+
+    private val currentVideo = makeVideo("current", "Current Video")
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        whitelistRepository = mockk(relaxed = true)
+        watchHistoryRepository = mockk(relaxed = true)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    private fun createViewModel(
+        profileId: String = "profile-1",
+        videoId: String = "current",
+        channelTitle: String? = "Fun Channel"
+    ): VideoPlayerViewModel {
+        return VideoPlayerViewModel(
+            whitelistRepository = whitelistRepository,
+            watchHistoryRepository = watchHistoryRepository,
+            profileId = profileId,
+            videoId = videoId,
+            channelTitle = channelTitle
+        )
+    }
+
+    @Test
+    fun `initial state has video id`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+
+        val viewModel = createViewModel()
+
+        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+    }
+
+    @Test
+    fun `loads video title from repository`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.videoTitle).isEqualTo("Current Video")
+    }
+
+    @Test
+    fun `loads sibling videos when channelTitle provided`() = runTest(testDispatcher) {
+        val siblings = listOf(
+            makeVideo("v1", "Video 1"),
+            currentVideo,
+            makeVideo("v3", "Video 3")
+        )
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.siblingVideos).hasSize(3)
+    }
+
+    @Test
+    fun `no siblings when channelTitle is null`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+
+        val viewModel = createViewModel(channelTitle = null)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.siblingVideos).isEmpty()
+    }
+
+    @Test
+    fun `current index tracks position in sibling list`() = runTest(testDispatcher) {
+        val siblings = listOf(
+            makeVideo("v1", "Video 1"),
+            currentVideo,
+            makeVideo("v3", "Video 3")
+        )
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.currentIndex).isEqualTo(1)
+    }
+
+    @Test
+    fun `hasNext is true when not last video`() = runTest(testDispatcher) {
+        val siblings = listOf(currentVideo, makeVideo("v2", "Video 2"))
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.hasNext).isTrue()
+    }
+
+    @Test
+    fun `hasNext is false when last video`() = runTest(testDispatcher) {
+        val siblings = listOf(makeVideo("v1", "Video 1"), currentVideo)
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.hasNext).isFalse()
+    }
+
+    @Test
+    fun `hasPrevious is true when not first video`() = runTest(testDispatcher) {
+        val siblings = listOf(makeVideo("v1", "Video 1"), currentVideo)
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.hasPrevious).isTrue()
+    }
+
+    @Test
+    fun `hasPrevious is false when first video`() = runTest(testDispatcher) {
+        val siblings = listOf(currentVideo, makeVideo("v2", "Video 2"))
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.hasPrevious).isFalse()
+    }
+
+    @Test
+    fun `onVideoEnded records watch history`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onVideoEnded(watchedSeconds = 120)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify {
+            watchHistoryRepository.recordWatch("profile-1", "yt-current", "Current Video", 120)
+        }
+    }
+
+    @Test
+    fun `onVideoEnded auto-next when has next`() = runTest(testDispatcher) {
+        val siblings = listOf(currentVideo, makeVideo("v2", "Next Video"))
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getItemById("v2") } returns flowOf(makeVideo("v2", "Next Video"))
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onVideoEnded(watchedSeconds = 60)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.videoId).isEqualTo("v2")
+    }
+
+    @Test
+    fun `playNext navigates to next video`() = runTest(testDispatcher) {
+        val siblings = listOf(currentVideo, makeVideo("v2", "Next Video"))
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getItemById("v2") } returns flowOf(makeVideo("v2", "Next Video"))
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.playNext()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.videoId).isEqualTo("v2")
+    }
+
+    @Test
+    fun `playPrevious navigates to previous video`() = runTest(testDispatcher) {
+        val siblings = listOf(makeVideo("v1", "Prev Video"), currentVideo)
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getItemById("v1") } returns flowOf(makeVideo("v1", "Prev Video"))
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.playPrevious()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.videoId).isEqualTo("v1")
+    }
+
+    @Test
+    fun `playNext does nothing when no next`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.playNext()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+    }
+}

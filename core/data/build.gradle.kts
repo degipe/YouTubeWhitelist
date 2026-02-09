@@ -29,6 +29,9 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:network"))
 
+    // Network (needed for retrofit2.Response used in API repository)
+    implementation(libs.retrofit)
+
     // Coroutines
     implementation(libs.coroutines.core)
 

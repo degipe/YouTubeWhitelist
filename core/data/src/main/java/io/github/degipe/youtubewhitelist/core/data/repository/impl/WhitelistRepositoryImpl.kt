@@ -144,6 +144,35 @@ class WhitelistRepositoryImpl @Inject constructor(
         }
     }
 
+    // Kid mode queries
+    override fun getChannelsByProfile(profileId: String): Flow<List<WhitelistItem>> =
+        whitelistItemDao.getChannelsByProfile(profileId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+
+    override fun getVideosByProfile(profileId: String): Flow<List<WhitelistItem>> =
+        whitelistItemDao.getVideosByProfile(profileId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+
+    override fun getPlaylistsByProfile(profileId: String): Flow<List<WhitelistItem>> =
+        whitelistItemDao.getPlaylistsByProfile(profileId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+
+    override fun getVideosByChannelTitle(profileId: String, channelTitle: String): Flow<List<WhitelistItem>> =
+        whitelistItemDao.getVideosByChannelTitle(profileId, channelTitle).map { entities ->
+            entities.map { it.toDomain() }
+        }
+
+    override fun searchItems(profileId: String, query: String): Flow<List<WhitelistItem>> =
+        whitelistItemDao.searchItems(profileId, query).map { entities ->
+            entities.map { it.toDomain() }
+        }
+
+    override fun getItemById(itemId: String): Flow<WhitelistItem?> =
+        whitelistItemDao.getItemById(itemId).map { it?.toDomain() }
+
     companion object {
         fun WhitelistItemEntity.toDomain(): WhitelistItem = WhitelistItem(
             id = id,

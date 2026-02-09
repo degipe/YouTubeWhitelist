@@ -50,6 +50,7 @@ class AuthRepositoryImplTest {
             accessToken = "access-token",
             refreshToken = "refresh-token"
         )
+        coEvery { parentAccountDao.getParentAccountOnce() } returns null
         val accountSlot = slot<ParentAccountEntity>()
         coEvery { parentAccountDao.insert(capture(accountSlot)) } returns Unit
 

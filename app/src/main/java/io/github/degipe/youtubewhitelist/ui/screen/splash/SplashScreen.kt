@@ -14,15 +14,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun SplashScreen(
     onFirstRun: () -> Unit,
-    onReturningUser: () -> Unit,
+    onReturningUser: (profileId: String) -> Unit,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState) {
-        when (uiState) {
+        when (val state = uiState) {
             SplashUiState.FirstRun -> onFirstRun()
-            SplashUiState.ReturningUser -> onReturningUser()
+            is SplashUiState.ReturningUser -> onReturningUser(state.profileId)
             SplashUiState.Loading -> { /* wait */ }
         }
     }

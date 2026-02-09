@@ -25,14 +25,15 @@ import io.github.degipe.youtubewhitelist.R
 
 @Composable
 fun ProfileCreationScreen(
-    onProfileCreated: () -> Unit,
+    onProfileCreated: (profileId: String) -> Unit,
     viewModel: ProfileCreationViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(uiState.isCreated) {
-        if (uiState.isCreated) {
-            onProfileCreated()
+    LaunchedEffect(uiState.createdProfileId) {
+        val profileId = uiState.createdProfileId
+        if (profileId != null) {
+            onProfileCreated(profileId)
         }
     }
 

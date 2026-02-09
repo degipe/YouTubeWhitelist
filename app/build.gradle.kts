@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -21,15 +30,10 @@ android {
         testInstrumentationRunner = "io.github.degipe.youtubewhitelist.HiltTestRunner"
 
         // YouTube Data API v3 key from local.properties
-        val localProperties = java.util.Properties()
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            localProperties.load(localPropertiesFile.inputStream())
-        }
         buildConfigField(
             "String",
             "YOUTUBE_API_KEY",
-            "\"${localProperties.getProperty("youtube.api.key", "")}\""
+            "\"${localProperties.getProperty("YOUTUBE_API_KEY", "")}\""
         )
     }
 

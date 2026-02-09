@@ -1,0 +1,223 @@
+package io.github.degipe.youtubewhitelist.feature.kid.ui.home
+
+import app.cash.turbine.test
+import com.google.common.truth.Truth.assertThat
+import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
+import io.github.degipe.youtubewhitelist.core.data.model.KidProfile
+import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
+import io.github.degipe.youtubewhitelist.core.data.repository.KidProfileRepository
+import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class KidHomeViewModelTest {
+
+    private lateinit var whitelistRepository: WhitelistRepository
+    private lateinit var kidProfileRepository: KidProfileRepository
+    private val testDispatcher = StandardTestDispatcher()
+
+    private val testChannel = WhitelistItem(
+        id = "wl-1", kidProfileId = "profile-1",
+        type = WhitelistItemType.CHANNEL, youtubeId = "UC123",
+        title = "Fun Channel", thumbnailUrl = "https://img/ch1.jpg",
+        channelTitle = null, addedAt = 1000L
+    )
+
+    private val testVideo = WhitelistItem(
+        id = "wl-2", kidProfileId = "profile-1",
+        type = WhitelistItemType.VIDEO, youtubeId = "vid123",
+        title = "Cool Video", thumbnailUrl = "https://img/vid1.jpg",
+        channelTitle = "Fun Channel", addedAt = 2000L
+    )
+
+    private val testPlaylist = WhitelistItem(
+        id = "wl-3", kidProfileId = "profile-1",
+        type = WhitelistItemType.PLAYLIST, youtubeId = "PL123",
+        title = "My Playlist", thumbnailUrl = "https://img/pl1.jpg",
+        channelTitle = "Fun Channel", addedAt = 3000L
+    )
+
+    private val testProfile = KidProfile(
+        id = "profile-1", parentAccountId = "account-1",
+        name = "Bence", avatarUrl = null,
+        dailyLimitMinutes = null, sleepPlaylistId = null,
+        createdAt = 1000L
+    )
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        whitelistRepository = mockk()
+        kidProfileRepository = mockk()
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    private fun createViewModel(profileId: String = "profile-1"): KidHomeViewModel {
+        return KidHomeViewModel(
+            whitelistRepository = whitelistRepository,
+            kidProfileRepository = kidProfileRepository,
+            profileId = profileId
+        )
+    }
+
+    @Test
+    fun `initial state is loading`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+
+        val viewModel = createViewModel()
+
+        assertThat(viewModel.uiState.value.isLoading).isTrue()
+    }
+
+    @Test
+    fun `loads profile name`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.profileName).isEqualTo("Bence")
+    }
+
+    @Test
+    fun `loads channels`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(listOf(testChannel))
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.channels).hasSize(1)
+        assertThat(viewModel.uiState.value.channels[0].title).isEqualTo("Fun Channel")
+    }
+
+    @Test
+    fun `loads videos`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(listOf(testVideo))
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.recentVideos).hasSize(1)
+        assertThat(viewModel.uiState.value.recentVideos[0].title).isEqualTo("Cool Video")
+    }
+
+    @Test
+    fun `loads playlists`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(listOf(testPlaylist))
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.playlists).hasSize(1)
+        assertThat(viewModel.uiState.value.playlists[0].title).isEqualTo("My Playlist")
+    }
+
+    @Test
+    fun `empty state when no content`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isEmpty).isTrue()
+        assertThat(viewModel.uiState.value.isLoading).isFalse()
+    }
+
+    @Test
+    fun `not empty when has content`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(listOf(testChannel))
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isEmpty).isFalse()
+    }
+
+    @Test
+    fun `combines all content types`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(listOf(testChannel))
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(listOf(testVideo))
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(listOf(testPlaylist))
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        with(viewModel.uiState.value) {
+            assertThat(channels).hasSize(1)
+            assertThat(recentVideos).hasSize(1)
+            assertThat(playlists).hasSize(1)
+            assertThat(isEmpty).isFalse()
+            assertThat(isLoading).isFalse()
+        }
+    }
+
+    @Test
+    fun `reacts to channel flow updates`() = runTest(testDispatcher) {
+        val channelsFlow = MutableStateFlow<List<WhitelistItem>>(emptyList())
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns channelsFlow
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.channels).isEmpty()
+
+        channelsFlow.value = listOf(testChannel)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.channels).hasSize(1)
+    }
+
+    @Test
+    fun `profile name defaults to empty when profile is null`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(null)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.profileName).isEmpty()
+    }
+}

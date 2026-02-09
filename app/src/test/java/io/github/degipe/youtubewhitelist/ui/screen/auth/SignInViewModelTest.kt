@@ -1,11 +1,13 @@
 package io.github.degipe.youtubewhitelist.ui.screen.auth
 
 import android.content.Context
+import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import io.github.degipe.youtubewhitelist.core.data.repository.AuthRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -42,14 +44,19 @@ class SignInViewModelTest {
 
     @Test
     fun `signIn sets loading then success`() = runTest(testDispatcher) {
+        val gate = CompletableDeferred<Unit>()
         val context = mockk<Context>()
-        coEvery { authRepository.signIn(context) } returns Unit
+        coEvery { authRepository.signIn(context) } coAnswers { gate.await() }
 
-        viewModel.signIn(context)
-        assertThat(viewModel.uiState.value).isEqualTo(SignInUiState.Loading)
+        viewModel.uiState.test {
+            assertThat(awaitItem()).isEqualTo(SignInUiState.Idle)
 
-        testDispatcher.scheduler.advanceUntilIdle()
-        assertThat(viewModel.uiState.value).isEqualTo(SignInUiState.Success)
+            viewModel.signIn(context)
+            assertThat(awaitItem()).isEqualTo(SignInUiState.Loading)
+
+            gate.complete(Unit)
+            assertThat(awaitItem()).isEqualTo(SignInUiState.Success)
+        }
         coVerify { authRepository.signIn(context) }
     }
 

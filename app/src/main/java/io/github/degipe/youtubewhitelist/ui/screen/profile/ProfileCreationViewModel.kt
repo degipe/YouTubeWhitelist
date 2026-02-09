@@ -3,27 +3,25 @@ package io.github.degipe.youtubewhitelist.ui.screen.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.degipe.youtubewhitelist.core.data.repository.KidProfileRepository
 import io.github.degipe.youtubewhitelist.core.data.repository.ParentAccountRepository
-import io.github.degipe.youtubewhitelist.core.database.dao.KidProfileDao
-import io.github.degipe.youtubewhitelist.core.database.entity.KidProfileEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 import javax.inject.Inject
 
 data class ProfileCreationUiState(
     val name: String = "",
     val error: String? = null,
-    val isCreated: Boolean = false
+    val createdProfileId: String? = null
 )
 
 @HiltViewModel
 class ProfileCreationViewModel @Inject constructor(
-    private val kidProfileDao: KidProfileDao,
+    private val kidProfileRepository: KidProfileRepository,
     private val parentAccountRepository: ParentAccountRepository
 ) : ViewModel() {
 
@@ -48,13 +46,12 @@ class ProfileCreationViewModel @Inject constructor(
                 return@launch
             }
 
-            val profile = KidProfileEntity(
-                id = UUID.randomUUID().toString(),
-                parentAccountId = account.id,
-                name = name
+            val profile = kidProfileRepository.createProfile(
+                parentId = account.id,
+                name = name,
+                avatarUrl = null
             )
-            kidProfileDao.insert(profile)
-            _uiState.update { it.copy(isCreated = true) }
+            _uiState.update { it.copy(createdProfileId = profile.id) }
         }
     }
 }

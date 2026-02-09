@@ -38,4 +38,23 @@ interface WhitelistItemDao {
 
     @Query("DELETE FROM whitelist_items WHERE kidProfileId = :profileId")
     suspend fun deleteAllByProfile(profileId: String)
+
+    // Kid mode queries
+    @Query("SELECT * FROM whitelist_items WHERE kidProfileId = :profileId AND type = 'CHANNEL' ORDER BY title ASC")
+    fun getChannelsByProfile(profileId: String): Flow<List<WhitelistItemEntity>>
+
+    @Query("SELECT * FROM whitelist_items WHERE kidProfileId = :profileId AND type = 'VIDEO' ORDER BY addedAt DESC")
+    fun getVideosByProfile(profileId: String): Flow<List<WhitelistItemEntity>>
+
+    @Query("SELECT * FROM whitelist_items WHERE kidProfileId = :profileId AND type = 'PLAYLIST' ORDER BY title ASC")
+    fun getPlaylistsByProfile(profileId: String): Flow<List<WhitelistItemEntity>>
+
+    @Query("SELECT * FROM whitelist_items WHERE kidProfileId = :profileId AND type = 'VIDEO' AND channelTitle = :channelTitle ORDER BY addedAt DESC")
+    fun getVideosByChannelTitle(profileId: String, channelTitle: String): Flow<List<WhitelistItemEntity>>
+
+    @Query("SELECT * FROM whitelist_items WHERE kidProfileId = :profileId AND title LIKE '%' || :query || '%' ORDER BY type ASC, title ASC")
+    fun searchItems(profileId: String, query: String): Flow<List<WhitelistItemEntity>>
+
+    @Query("SELECT * FROM whitelist_items WHERE id = :itemId LIMIT 1")
+    fun getItemById(itemId: String): Flow<WhitelistItemEntity?>
 }

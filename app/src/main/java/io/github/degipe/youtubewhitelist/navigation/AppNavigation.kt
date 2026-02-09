@@ -7,6 +7,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import io.github.degipe.youtubewhitelist.feature.kid.ui.channel.ChannelDetailScreen
+import io.github.degipe.youtubewhitelist.feature.kid.ui.channel.ChannelDetailViewModel
+import io.github.degipe.youtubewhitelist.feature.kid.ui.home.KidHomeScreen
+import io.github.degipe.youtubewhitelist.feature.kid.ui.home.KidHomeViewModel
+import io.github.degipe.youtubewhitelist.feature.kid.ui.player.VideoPlayerScreen
+import io.github.degipe.youtubewhitelist.feature.kid.ui.player.VideoPlayerViewModel
 import io.github.degipe.youtubewhitelist.feature.parent.ui.browser.WebViewBrowserScreen
 import io.github.degipe.youtubewhitelist.feature.parent.ui.browser.WebViewBrowserViewModel
 import io.github.degipe.youtubewhitelist.feature.parent.ui.dashboard.ParentDashboardScreen
@@ -14,7 +20,6 @@ import io.github.degipe.youtubewhitelist.feature.parent.ui.dashboard.ParentDashb
 import io.github.degipe.youtubewhitelist.feature.parent.ui.whitelist.WhitelistManagerScreen
 import io.github.degipe.youtubewhitelist.feature.parent.ui.whitelist.WhitelistManagerViewModel
 import io.github.degipe.youtubewhitelist.ui.screen.auth.SignInScreen
-import io.github.degipe.youtubewhitelist.ui.screen.kid.KidHomeScreen
 import io.github.degipe.youtubewhitelist.ui.screen.pin.PinChangeScreen
 import io.github.degipe.youtubewhitelist.ui.screen.pin.PinEntryScreen
 import io.github.degipe.youtubewhitelist.ui.screen.pin.PinSetupScreen
@@ -36,8 +41,8 @@ fun AppNavigation(
                         popUpTo<Route.Splash> { inclusive = true }
                     }
                 },
-                onReturningUser = {
-                    navController.navigate(Route.KidHome) {
+                onReturningUser = { profileId ->
+                    navController.navigate(Route.KidHome(profileId)) {
                         popUpTo<Route.Splash> { inclusive = true }
                     }
                 }
@@ -90,18 +95,68 @@ fun AppNavigation(
 
         composable<Route.ProfileCreation> {
             ProfileCreationScreen(
-                onProfileCreated = {
-                    navController.navigate(Route.KidHome) {
+                onProfileCreated = { profileId ->
+                    navController.navigate(Route.KidHome(profileId)) {
                         popUpTo<Route.ProfileCreation> { inclusive = true }
                     }
                 }
             )
         }
 
-        composable<Route.KidHome> {
+        composable<Route.KidHome> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.KidHome>()
+            val viewModel: KidHomeViewModel =
+                hiltViewModel<KidHomeViewModel, KidHomeViewModel.Factory> { factory ->
+                    factory.create(route.profileId)
+                }
             KidHomeScreen(
+                viewModel = viewModel,
                 onParentAccess = {
                     navController.navigate(Route.PinEntry)
+                },
+                onChannelClick = { channelTitle, thumbnailUrl ->
+                    navController.navigate(
+                        Route.ChannelDetail(route.profileId, channelTitle, thumbnailUrl)
+                    )
+                },
+                onVideoClick = { videoId, channelTitle ->
+                    navController.navigate(
+                        Route.VideoPlayer(route.profileId, videoId, channelTitle)
+                    )
+                },
+                onPlaylistClick = { /* Playlist detail deferred */ }
+            )
+        }
+
+        composable<Route.ChannelDetail> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.ChannelDetail>()
+            val viewModel: ChannelDetailViewModel =
+                hiltViewModel<ChannelDetailViewModel, ChannelDetailViewModel.Factory> { factory ->
+                    factory.create(route.profileId, route.channelTitle)
+                }
+            ChannelDetailScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onVideoClick = { videoId, channelTitle ->
+                    navController.navigate(
+                        Route.VideoPlayer(route.profileId, videoId, channelTitle)
+                    )
+                }
+            )
+        }
+
+        composable<Route.VideoPlayer> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.VideoPlayer>()
+            val viewModel: VideoPlayerViewModel =
+                hiltViewModel<VideoPlayerViewModel, VideoPlayerViewModel.Factory> { factory ->
+                    factory.create(route.profileId, route.videoId, route.channelTitle)
+                }
+            VideoPlayerScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -110,8 +165,8 @@ fun AppNavigation(
             val viewModel: ParentDashboardViewModel = hiltViewModel()
             ParentDashboardScreen(
                 viewModel = viewModel,
-                onBackToKidMode = {
-                    navController.navigate(Route.KidHome) {
+                onBackToKidMode = { profileId ->
+                    navController.navigate(Route.KidHome(profileId)) {
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
                 },

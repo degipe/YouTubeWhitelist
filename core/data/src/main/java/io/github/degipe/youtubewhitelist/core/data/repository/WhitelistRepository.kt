@@ -12,4 +12,12 @@ interface WhitelistRepository {
     suspend fun removeItem(item: WhitelistItem)
     suspend fun isAlreadyWhitelisted(profileId: String, youtubeId: String): Boolean
     suspend fun getItemCount(profileId: String): Int
+
+    // Kid mode queries
+    fun getChannelsByProfile(profileId: String): Flow<List<WhitelistItem>>
+    fun getVideosByProfile(profileId: String): Flow<List<WhitelistItem>>
+    fun getPlaylistsByProfile(profileId: String): Flow<List<WhitelistItem>>
+    fun getVideosByChannelTitle(profileId: String, channelTitle: String): Flow<List<WhitelistItem>>
+    fun searchItems(profileId: String, query: String): Flow<List<WhitelistItem>>
+    fun getItemById(itemId: String): Flow<WhitelistItem?>
 }
