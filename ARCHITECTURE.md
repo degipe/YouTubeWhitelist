@@ -7,6 +7,7 @@ This file tracks where session logs are stored across CLAUDE.md and archive file
 | Session | Date       | File       | Summary |
 |---------|------------|------------|---------|
 | 1       | 2026-02-09 | CLAUDE.md  | Project initialization, multi-module setup, database entities |
+| 2       | 2026-02-09 | CLAUDE.md  | PIN management, auth infrastructure, navigation graph |
 
 ## Archive Files
 

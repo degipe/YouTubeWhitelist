@@ -1,29 +1,31 @@
-# Session 2 Starting Prompt
+# Session 3 Starting Prompt
 
-Ez a 2. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző session összefoglalójához.
+Ez a 3. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Fókusz: M1 Infrastruktúra - Autentikáció és Navigáció
+## Fókusz: M1 befejezés + M2 kezdése
 
-A PRD M1 milestone-ja alapján a következő feladatokat kell elvégezni ebben a sessionben:
+### 1. Build verifikáció és teszt futtatás
 
-### 1. PIN kezelés implementálása
-- PIN beállítás képernyő (első indításkor)
-- PIN bevitel képernyő (szülői módba váltáskor)
-- bcrypt hash-elés a PIN tárolásához
-- Brute-force védelem (SEC-05): 5 hibás kísérlet → 30mp várakozás, progresszív
-- PIN módosítás a szülői beállításokban
+- Gradle build ellenőrzés (ha elérhető JDK 17 + Android SDK)
+- Unit tesztek futtatása: core:auth és app modul tesztek
+- Kompilációs hibák javítása ha szükséges
 
-### 2. Alapvető navigáció
-- Szülői mód / Gyerek mód közötti váltás PIN-nel védve
-- Navigation graph felépítése (Compose Navigation)
-- Első indítás flow: Google bejelentkezés → PIN beállítás → Profil létrehozás → Gyerek mód
+### 2. M2 kezdés: Parent Mode - WebView böngésző
 
-### 3. Google OAuth 2.0 bejelentkezés (előkészítés)
-- Google Sign-In SDK integráció a :core:auth modulba
-- Token tárolás Android Keystore-ban (SEC-02)
-- Alapvető bejelentkezési flow UI
+A PRD M2 milestone-ja alapján:
+- WebView alapú YouTube böngésző a :feature:parent modulban
+- URL parsing: YouTube video/channel/playlist URL-ek felismerése
+- Whitelist CRUD: videó/csatorna/playlist hozzáadása a whitelist-hez
+- YouTube Data API v3 kliens a :core:network modulban
+
+### 3. YouTube API integráció
+
+- Retrofit service a YouTube Data API v3-hoz
+- Video/channel/playlist metadata lekérdezés
+- Thumbnail URL-ek kezelése
 
 ### Megjegyzések
-- Test-driven fejlesztés: tesztek először, implementáció utána
+
+- **FONTOS**: TDD skill használata kötelező! Test-driven development: tesztek először, implementáció utána
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push
 - Kommunikáció magyarul, dokumentáció angolul

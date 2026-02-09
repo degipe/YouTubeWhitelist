@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.degipe.youtubewhitelist.navigation.AppNavigation
 import io.github.degipe.youtubewhitelist.ui.theme.YouTubeWhitelistTheme
 
 @AndroidEntryPoint
@@ -14,7 +15,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             YouTubeWhitelistTheme {
-                // Navigation will be set up in Session 2
+                AppNavigation()
             }
         }
     }

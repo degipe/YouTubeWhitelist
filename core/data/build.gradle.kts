@@ -29,6 +29,9 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:network"))
 
+    // Coroutines
+    implementation(libs.coroutines.core)
+
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

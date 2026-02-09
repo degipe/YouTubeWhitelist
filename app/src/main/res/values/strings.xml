@@ -1,4 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">YouTubeWhitelist</string>
+
+    <!-- Common -->
+    <string name="cancel">Cancel</string>
+
+    <!-- Sign In -->
+    <string name="sign_in_title">Welcome to YouTubeWhitelist</string>
+    <string name="sign_in_subtitle">Sign in with your Google account to get started</string>
+    <string name="sign_in_button">Sign in with Google</string>
+
+    <!-- PIN Setup -->
+    <string name="pin_setup_title">Set Parent PIN</string>
+    <string name="pin_setup_subtitle">Create a 4–6 digit PIN to protect parent mode</string>
+    <string name="pin_confirm_title">Confirm PIN</string>
+    <string name="pin_confirm_subtitle">Enter your PIN again to confirm</string>
+
+    <!-- PIN Entry -->
+    <string name="pin_entry_title">Enter Parent PIN</string>
+    <string name="pin_entry_subtitle">Enter your PIN to access parent mode</string>
+
+    <!-- PIN Change -->
+    <string name="pin_change_title">Change PIN</string>
+    <string name="pin_change_verify_subtitle">Enter your current PIN</string>
+    <string name="pin_change_new_subtitle">Enter your new PIN</string>
+
+    <!-- Profile Creation -->
+    <string name="profile_create_title">Create Kid Profile</string>
+    <string name="profile_create_subtitle">Set up a profile for your child</string>
+    <string name="profile_name_label">Profile name</string>
+    <string name="profile_create_button">Create Profile</string>
+
+    <!-- Kid Home -->
+    <string name="kid_home_title">My Videos</string>
+    <string name="kid_home_empty">No whitelisted content yet. Ask a parent to add videos!</string>
+    <string name="parent_access_button">Parent Mode</string>
+
+    <!-- Parent Dashboard -->
+    <string name="parent_dashboard_title">Parent Dashboard</string>
+    <string name="parent_dashboard_placeholder">Whitelist management and browsing features coming in future sessions.</string>
+    <string name="change_pin_button">Change PIN</string>
+    <string name="back_to_kid_mode">Back to Kid Mode</string>
 </resources>

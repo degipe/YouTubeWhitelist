@@ -40,12 +40,14 @@ credential = "1.5.0-rc01"
 securityCrypto = "1.1.0-alpha06"
 biometric = "1.2.0-alpha05"
 
+# Coroutines
+coroutines = "1.9.0"
+
 # Testing
 junit = "4.13.2"
 junitExt = "1.2.1"
 espresso = "3.6.1"
 mockk = "1.13.13"
-coroutinesTest = "1.9.0"
 turbine = "1.2.0"
 truth = "1.4.4"
 archCoreTesting = "2.2.0"
@@ -92,6 +94,10 @@ okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor",
 # Serialization
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
+# Coroutines
+coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
 # WorkManager
 work-runtime = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
 work-testing = { group = "androidx.work", name = "work-testing", version.ref = "workManager" }
@@ -111,7 +117,7 @@ junit-ext = { group = "androidx.test.ext", name = "junit", version.ref = "junitE
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 mockk-android = { group = "io.mockk", name = "mockk-android", version.ref = "mockk" }
-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
 arch-core-testing = { group = "androidx.arch.core", name = "core-testing", version.ref = "archCoreTesting" }
