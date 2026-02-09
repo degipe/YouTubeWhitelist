@@ -36,4 +36,5 @@ sealed interface Route {
         val playlistTitle: String,
         val playlistThumbnailUrl: String
     ) : Route
+    @Serializable data object About : Route
 }

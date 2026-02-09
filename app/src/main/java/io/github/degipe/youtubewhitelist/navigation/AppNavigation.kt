@@ -33,6 +33,7 @@ import io.github.degipe.youtubewhitelist.feature.parent.ui.profile.ProfileEditVi
 import io.github.degipe.youtubewhitelist.feature.parent.ui.stats.WatchStatsScreen
 import io.github.degipe.youtubewhitelist.feature.parent.ui.stats.WatchStatsViewModel
 import io.github.degipe.youtubewhitelist.feature.parent.ui.whitelist.WhitelistManagerScreen
+import io.github.degipe.youtubewhitelist.feature.parent.ui.about.AboutScreen
 import io.github.degipe.youtubewhitelist.feature.parent.ui.whitelist.WhitelistManagerViewModel
 import io.github.degipe.youtubewhitelist.ui.screen.profile.ProfileSelectorScreen
 import io.github.degipe.youtubewhitelist.ui.screen.profile.ProfileSelectorViewModel
@@ -292,6 +293,17 @@ fun AppNavigation(
                 },
                 onCreateProfile = {
                     navController.navigate(Route.ProfileCreation)
+                },
+                onAbout = {
+                    navController.navigate(Route.About)
+                }
+            )
+        }
+
+        composable<Route.About> {
+            AboutScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }

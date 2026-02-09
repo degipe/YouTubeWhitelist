@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
@@ -62,7 +63,8 @@ fun ParentDashboardScreen(
     onEditProfile: (profileId: String) -> Unit,
     onWatchStats: (profileId: String) -> Unit,
     onExportImport: (parentAccountId: String) -> Unit,
-    onCreateProfile: () -> Unit
+    onCreateProfile: () -> Unit,
+    onAbout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -113,6 +115,7 @@ fun ParentDashboardScreen(
                     uiState.parentAccountId?.let { onExportImport(it) }
                 },
                 onCreateProfile = onCreateProfile,
+                onAbout = onAbout,
                 modifier = Modifier.padding(padding)
             )
         }
@@ -143,6 +146,7 @@ private fun DashboardContent(
     onWatchStats: () -> Unit,
     onExportImport: () -> Unit,
     onCreateProfile: () -> Unit,
+    onAbout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -241,6 +245,14 @@ private fun DashboardContent(
             title = "Change PIN",
             subtitle = "Update your parent access PIN",
             onClick = onChangePin,
+            enabled = true
+        )
+
+        ActionCard(
+            icon = Icons.Default.Info,
+            title = "About",
+            subtitle = "App info, license, and support",
+            onClick = onAbout,
             enabled = true
         )
 
