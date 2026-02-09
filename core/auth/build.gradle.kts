@@ -29,11 +29,6 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:database"))
 
-    // Google Auth
-    implementation(libs.google.auth)
-    implementation(libs.credentials)
-    implementation(libs.credentials.play)
-
     // Security
     implementation(libs.security.crypto)
     implementation(libs.biometric)

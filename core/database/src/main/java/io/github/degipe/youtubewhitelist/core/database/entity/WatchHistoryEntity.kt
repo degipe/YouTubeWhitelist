@@ -15,7 +15,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("kidProfileId"), Index("watchedAt")]
+    indices = [
+        Index("kidProfileId"),
+        Index(value = ["kidProfileId", "watchedAt"])
+    ]
 )
 data class WatchHistoryEntity(
     @PrimaryKey

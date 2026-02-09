@@ -26,6 +26,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.auth.OAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.YouTubeWhitelist" />
+
     </application>
 
 </manifest>

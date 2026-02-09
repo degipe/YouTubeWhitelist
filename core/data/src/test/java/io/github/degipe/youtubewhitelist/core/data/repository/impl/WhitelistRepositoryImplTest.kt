@@ -290,4 +290,57 @@ class WhitelistRepositoryImplTest {
         val count = repository.getItemCount("profile1")
         assertThat(count).isEqualTo(5)
     }
+
+    // === Edge cases ===
+
+    @Test
+    fun `addItemFromUrl returns error for empty url`() = runTest(testDispatcher) {
+        val result = repository.addItemFromUrl("profile1", "")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+    }
+
+    @Test
+    fun `addItemFromUrl returns error for whitespace-only url`() = runTest(testDispatcher) {
+        val result = repository.addItemFromUrl("profile1", "   ")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+    }
+
+    @Test
+    fun `addItemFromUrl returns error for non-youtube url`() = runTest(testDispatcher) {
+        val result = repository.addItemFromUrl("profile1", "https://www.vimeo.com/12345")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        assertThat((result as AppResult.Error).message).contains("Invalid YouTube URL")
+    }
+
+    @Test
+    fun `addItemFromUrl duplicate check after handle resolution`() = runTest(testDispatcher) {
+        coEvery { youTubeApiRepository.getChannelByHandle("TestChannel") } returns AppResult.Success(
+            YouTubeMetadata.Channel(
+                youtubeId = "UC_resolved",
+                title = "Test Channel",
+                thumbnailUrl = "https://img/thumb.jpg",
+                description = "",
+                subscriberCount = null,
+                videoCount = null,
+                uploadsPlaylistId = null
+            )
+        )
+        coEvery { whitelistItemDao.findByYoutubeId("profile1", "UC_resolved") } returns
+            WhitelistItemEntity(
+                id = "existing",
+                kidProfileId = "profile1",
+                type = WhitelistItemType.CHANNEL,
+                youtubeId = "UC_resolved",
+                title = "Test Channel",
+                thumbnailUrl = "https://img/thumb.jpg"
+            )
+
+        val result = repository.addItemFromUrl("profile1", "https://www.youtube.com/@TestChannel")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        assertThat((result as AppResult.Error).message).contains("Already whitelisted")
+    }
 }

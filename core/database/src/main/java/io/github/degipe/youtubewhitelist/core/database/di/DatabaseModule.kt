@@ -25,7 +25,8 @@ object DatabaseModule {
             context,
             YouTubeWhitelistDatabase::class.java,
             "youtubewhitelist.db"
-        ).build()
+        ).fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

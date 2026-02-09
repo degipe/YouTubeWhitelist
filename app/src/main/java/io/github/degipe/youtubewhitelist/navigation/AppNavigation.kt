@@ -1,6 +1,9 @@
 package io.github.degipe.youtubewhitelist.navigation
 
+import android.app.Activity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -13,6 +16,8 @@ import io.github.degipe.youtubewhitelist.feature.kid.ui.home.KidHomeScreen
 import io.github.degipe.youtubewhitelist.feature.kid.ui.home.KidHomeViewModel
 import io.github.degipe.youtubewhitelist.feature.kid.ui.player.VideoPlayerScreen
 import io.github.degipe.youtubewhitelist.feature.kid.ui.player.VideoPlayerViewModel
+import io.github.degipe.youtubewhitelist.feature.kid.ui.playlist.PlaylistDetailScreen
+import io.github.degipe.youtubewhitelist.feature.kid.ui.playlist.PlaylistDetailViewModel
 import io.github.degipe.youtubewhitelist.feature.kid.ui.search.KidSearchScreen
 import io.github.degipe.youtubewhitelist.feature.kid.ui.search.KidSearchViewModel
 import io.github.degipe.youtubewhitelist.feature.sleep.ui.SleepModeScreen
@@ -87,8 +92,15 @@ fun AppNavigation(
         }
 
         composable<Route.PinEntry> {
+            val pinContext = LocalContext.current
             PinEntryScreen(
                 onPinVerified = {
+                    // Stop screen pinning when parent accesses parent mode
+                    try {
+                        (pinContext as? Activity)?.stopLockTask()
+                    } catch (_: Exception) {
+                        // Screen pinning was not active
+                    }
                     navController.navigate(Route.ParentDashboard) {
                         popUpTo<Route.PinEntry> { inclusive = true }
                     }
@@ -122,10 +134,21 @@ fun AppNavigation(
 
         composable<Route.KidHome> { backStackEntry ->
             val route = backStackEntry.toRoute<Route.KidHome>()
+            val context = LocalContext.current
             val viewModel: KidHomeViewModel =
                 hiltViewModel<KidHomeViewModel, KidHomeViewModel.Factory> { factory ->
                     factory.create(route.profileId)
                 }
+
+            // Start screen pinning when entering kid mode
+            LaunchedEffect(Unit) {
+                try {
+                    (context as? Activity)?.startLockTask()
+                } catch (_: Exception) {
+                    // Screen pinning not available or already active
+                }
+            }
+
             KidHomeScreen(
                 viewModel = viewModel,
                 onParentAccess = {
@@ -144,7 +167,11 @@ fun AppNavigation(
                         Route.VideoPlayer(route.profileId, videoId, channelTitle)
                     )
                 },
-                onPlaylistClick = { /* Playlist detail deferred */ }
+                onPlaylistClick = { youtubeId, title, thumbnailUrl ->
+                    navController.navigate(
+                        Route.PlaylistDetail(route.profileId, youtubeId, title, thumbnailUrl)
+                    )
+                }
             )
         }
 
@@ -205,7 +232,31 @@ fun AppNavigation(
                         Route.ChannelDetail(route.profileId, channelTitle, thumbnailUrl)
                     )
                 },
-                onPlaylistClick = { /* Playlist detail deferred */ }
+                onPlaylistClick = { youtubeId, title, thumbnailUrl ->
+                    navController.navigate(
+                        Route.PlaylistDetail(route.profileId, youtubeId, title, thumbnailUrl)
+                    )
+                }
+            )
+        }
+
+        composable<Route.PlaylistDetail> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.PlaylistDetail>()
+            val viewModel: PlaylistDetailViewModel =
+                hiltViewModel<PlaylistDetailViewModel, PlaylistDetailViewModel.Factory> { factory ->
+                    factory.create(route.profileId, route.playlistId)
+                }
+            PlaylistDetailScreen(
+                viewModel = viewModel,
+                playlistTitle = route.playlistTitle,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onVideoClick = { videoId, channelTitle ->
+                    navController.navigate(
+                        Route.VideoPlayer(route.profileId, videoId, channelTitle)
+                    )
+                }
             )
         }
 

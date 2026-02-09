@@ -16,7 +16,11 @@ import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("kidProfileId"), Index("youtubeId")]
+    indices = [
+        Index("kidProfileId"),
+        Index(value = ["kidProfileId", "type"]),
+        Index(value = ["kidProfileId", "youtubeId"], unique = true)
+    ]
 )
 data class WhitelistItemEntity(
     @PrimaryKey

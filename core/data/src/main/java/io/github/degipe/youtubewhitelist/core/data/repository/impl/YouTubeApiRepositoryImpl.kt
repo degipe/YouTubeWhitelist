@@ -2,6 +2,7 @@ package io.github.degipe.youtubewhitelist.core.data.repository.impl
 
 import io.github.degipe.youtubewhitelist.core.common.di.IoDispatcher
 import io.github.degipe.youtubewhitelist.core.common.result.AppResult
+import io.github.degipe.youtubewhitelist.core.data.model.PlaylistVideo
 import io.github.degipe.youtubewhitelist.core.data.model.YouTubeMetadata
 import io.github.degipe.youtubewhitelist.core.data.repository.YouTubeApiRepository
 import io.github.degipe.youtubewhitelist.core.network.api.YouTubeApiService
@@ -68,6 +69,29 @@ class YouTubeApiRepositoryImpl @Inject constructor(
                 val playlist = response.body()?.items?.firstOrNull()
                     ?: return@safeApiCall AppResult.Error("Playlist not found")
                 AppResult.Success(playlist.toDomain())
+            }
+        }
+
+    override suspend fun getPlaylistItems(playlistId: String): AppResult<List<PlaylistVideo>> =
+        withContext(ioDispatcher) {
+            safeApiCall {
+                val response = youTubeApiService.getPlaylistItems(playlistId = playlistId)
+                if (!response.isSuccessful) {
+                    return@safeApiCall AppResult.Error("API error: ${response.code()}")
+                }
+                val items = response.body()?.items.orEmpty()
+                val videos = items.mapNotNull { item ->
+                    val snippet = item.snippet ?: return@mapNotNull null
+                    val videoId = snippet.resourceId?.videoId ?: return@mapNotNull null
+                    PlaylistVideo(
+                        videoId = videoId,
+                        title = snippet.title,
+                        thumbnailUrl = snippet.thumbnails.bestUrl(),
+                        channelTitle = snippet.channelTitle,
+                        position = snippet.position
+                    )
+                }
+                AppResult.Success(videos)
             }
         }
 

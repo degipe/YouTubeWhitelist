@@ -55,7 +55,7 @@ fun KidSearchScreen(
     onNavigateBack: () -> Unit,
     onVideoClick: (videoId: String, channelTitle: String?) -> Unit,
     onChannelClick: (channelTitle: String, thumbnailUrl: String) -> Unit,
-    onPlaylistClick: (playlistId: String) -> Unit
+    onPlaylistClick: (youtubeId: String, title: String, thumbnailUrl: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusRequester = remember { FocusRequester() }
@@ -157,7 +157,7 @@ fun KidSearchScreen(
                                 when (item.type) {
                                     WhitelistItemType.VIDEO -> onVideoClick(item.youtubeId, item.channelTitle)
                                     WhitelistItemType.CHANNEL -> onChannelClick(item.title, item.thumbnailUrl)
-                                    WhitelistItemType.PLAYLIST -> onPlaylistClick(item.youtubeId)
+                                    WhitelistItemType.PLAYLIST -> onPlaylistClick(item.youtubeId, item.title, item.thumbnailUrl)
                                 }
                             }
                         )

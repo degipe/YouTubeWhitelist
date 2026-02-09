@@ -35,6 +35,13 @@ android {
             "YOUTUBE_API_KEY",
             "\"${localProperties.getProperty("YOUTUBE_API_KEY", "")}\""
         )
+
+        // Google OAuth 2.0 Client ID from local.properties
+        buildConfigField(
+            "String",
+            "GOOGLE_CLIENT_ID",
+            "\"${localProperties.getProperty("GOOGLE_CLIENT_ID", "")}\""
+        )
     }
 
     buildTypes {
@@ -98,6 +105,9 @@ dependencies {
 
     // Serialization (required for type-safe navigation routes)
     implementation(libs.kotlinx.serialization.json)
+
+    // Image loading
+    implementation(libs.coil.compose)
 
     // Hilt
     implementation(libs.hilt.android)

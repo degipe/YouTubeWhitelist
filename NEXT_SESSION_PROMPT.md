@@ -1,43 +1,46 @@
-# Session 8 Starting Prompt
+# Session 9 Starting Prompt
 
-Ez a 8. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 9. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Fókusz: M6 - Testing, Bugfix, Optimization + hiányzó feature-ök
+## Fókusz: M7 - Publication Preparation
 
-### 1. Kiosk Mode (M3 hiány)
-- Kid mode-ból ne lehessen kilépni az alkalmazásból
-- Android kiosk/lock task mode integráció
-- Csak a Parent PIN-nel lehet kilépni
+### 1. ProGuard / R8 Finalization
+- ProGuard rules review (WebView JavaScript bridges, Serialization, Room, Hilt)
+- Release build tesztelés: `./gradlew assembleRelease`
+- APK méret ellenőrzés és optimalizáció
 
-### 2. Playlist Detail Screen (M3 hiány)
-- Playlist tartalomlistázás (playlist items lekérdezés YouTube API-ból)
-- Videó lejátszás playlist-ből
-- Placeholder click handler cseréje valódi navigációra
+### 2. Signing Config
+- Release signing keystore generálás
+- `signingConfigs` blokk a `build.gradle.kts`-ben
+- Keystore path/password a `local.properties`-ben
 
-### 3. Google Sign-In valódi integráció
-- Google Cloud Console projekt + OAuth client ID beállítás
-- YouTube Data API v3 engedélyezés
-- Mock GoogleSignInManager cseréje valódi implementációra
-- Runtime tesztelés valódi API kulccsal
+### 3. App Metadata
+- Play Store listing szövegek (title, short/full description, screenshots)
+- F-Droid metadata (`fastlane/metadata/android/` struktúra)
+- Feature graphic, screenshots generálás
 
-### 4. Testing + Bugfix
-- Instrumented tesztek (Compose UI testing, Espresso)
-- End-to-end flow tesztek
-- ProGuard/R8 tesztelés release build-en
-- Edge case-ek tesztelése (üres adatok, hálózati hibák, offline működés)
+### 4. F-Droid Specifikus
+- `fdroid/` metadata dir (Repomaker / Triple-T format)
+- Build recipe (`build:` section in metadata)
+- Anti-features: `NonFreeNet` (YouTube API)
+- Verify no non-FOSS dependencies (Google Auth SDK already removed)
 
-### 5. Optimization
-- Room query optimalizáció (EXPLAIN QUERY PLAN)
-- Image caching stratégia (Coil disk cache beállítás)
-- Memory profiling (WebView, bitmap-ek)
-- Cold start idő optimalizáció
+### 5. GitHub Release
+- Version bump (versionCode, versionName)
+- CHANGELOG.md írás
+- GitHub Release draft + APK attachment
+
+### 6. Final Device Testing
+- Google Cloud Console OAuth + YouTube API key beállítás (GOOGLE_SETUP.md alapján)
+- Valódi eszközön tesztelés (sign-in, whitelist, kid mode, kiosk, sleep, export/import)
+- Edge case-ek kézi tesztelés (offline, time limit, playlist detail)
 
 ### Megjegyzések
 
 - **Build parancs**: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew test`
-- **316 teszt** van jelenleg, mind zöld
+- **355 teszt** van jelenleg, mind zöld
 - **TDD skill használata kötelező!**
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push
 - Kommunikáció magyarul, dokumentáció angolul
-- Google Cloud Console YouTube API key **még nincs** — runtime teszteléshez szükséges
-- M1-M5 milestone-ok elkészültek, M6-M7 hátra van
+- M1-M6 milestone-ok elkészültek, M7 hátra van
+- Google Cloud Console API key/OAuth client ID **még nincs** — runtime teszteléshez szükséges (lásd GOOGLE_SETUP.md)

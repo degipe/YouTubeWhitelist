@@ -18,7 +18,7 @@ import io.github.degipe.youtubewhitelist.core.database.entity.WhitelistItemEntit
         WhitelistItemEntity::class,
         WatchHistoryEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class YouTubeWhitelistDatabase : RoomDatabase() {

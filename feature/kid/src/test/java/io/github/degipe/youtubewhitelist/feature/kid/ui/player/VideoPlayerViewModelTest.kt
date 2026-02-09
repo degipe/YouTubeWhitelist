@@ -338,4 +338,84 @@ class VideoPlayerViewModelTest {
 
         assertThat(viewModel.uiState.value.remainingTimeFormatted).isEqualTo("10m")
     }
+
+    // === Edge cases ===
+
+    @Test
+    fun `playPrevious does nothing on single video`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
+        setupDefaultTimeLimit()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.playPrevious()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+        assertThat(viewModel.uiState.value.hasPrevious).isFalse()
+        assertThat(viewModel.uiState.value.hasNext).isFalse()
+    }
+
+    @Test
+    fun `onVideoEnded stays on last video when no next`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
+        setupDefaultTimeLimit()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onVideoEnded(watchedSeconds = 60)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+        coVerify { watchHistoryRepository.recordWatch("profile-1", "yt-current", "Current Video", 60) }
+    }
+
+    @Test
+    fun `playVideoAt ignores out of bounds index`() = runTest(testDispatcher) {
+        val siblings = listOf(currentVideo, makeVideo("v2", "Video 2"))
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+        setupDefaultTimeLimit()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.playVideoAt(5)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+    }
+
+    @Test
+    fun `playVideoAt ignores negative index`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
+        setupDefaultTimeLimit()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.playVideoAt(-1)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+    }
+
+    @Test
+    fun `formats 1 hour remaining correctly`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+        every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
+            TimeLimitStatus(dailyLimitMinutes = 120, watchedTodaySeconds = 3600, remainingSeconds = 3600, isLimitReached = false)
+        )
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.remainingTimeFormatted).isEqualTo("1h 0m")
+    }
 }

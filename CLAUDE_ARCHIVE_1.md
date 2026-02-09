@@ -71,3 +71,43 @@
 - Build verification still pending (no JDK 17 / ANDROID_HOME on dev machine)
 
 **Next Session Focus**: M1 completion - Build verification, potential test fixes, then start M2 (WebView browser, URL parsing).
+
+### Session 3 - 2026-02-09: M2 - YouTube API, URL Parsing, Whitelist CRUD
+
+**Objectives**: Begin M2 milestone: YouTube Data API v3 integration, URL parsing, whitelist repository layer. TDD discipline enforced.
+
+**Completed**:
+- **core:common**: Created `AppResult<T>` sealed interface (Success/Error) with map/onSuccess/onError/getOrNull extensions for clean error handling
+- **core:common**: Moved `WhitelistItemType` enum from core:database to core:common/model/ (shared across modules, avoids duplication)
+- **core:common**: Created `YouTubeUrlParser` object (pure Kotlin, java.net.URI-based) with `ParsedYouTubeUrl` and `YouTubeContentType` enum — handles video (/watch, youtu.be, /shorts, /embed, /live, mobile), channel (/channel/, /@handle, /c/), playlist URLs, URL-decoded query params
+- **core:common**: YouTubeUrlParser test suite (27 test cases covering all URL types + edge cases)
+- **core:network**: Created YouTube Data API v3 DTOs: `YouTubeListResponse<T>`, `ChannelDto`, `VideoDto`, `PlaylistDto`, `PlaylistItemDto`, `SearchResultDto`, `ThumbnailSet` — all `@Serializable` with proper defaults
+- **core:network**: DTO deserialization test suite (9 tests: channel, video, playlist, playlistItem, search, missing fields, empty items, unknown keys, thumbnails)
+- **core:network**: Created `YouTubeApiService` Retrofit interface (channels, videos, playlists, playlistItems, search endpoints with Response<T>)
+- **core:network**: Created `ApiKeyInterceptor` OkHttp interceptor + tests (2 tests)
+- **core:network**: Created `@YouTubeApiKey` qualifier annotation
+- **core:network**: Created `NetworkModule` Hilt DI (Json, OkHttpClient, Retrofit, YouTubeApiService) with debug-only HTTP logging
+- **core:data**: Created domain models: `WhitelistItem`, `YouTubeMetadata` (sealed: Channel/Video/Playlist), `KidProfile` (with sleepPlaylistId)
+- **core:data**: Created repository interfaces: `YouTubeApiRepository`, `WhitelistRepository`, `KidProfileRepository`
+- **core:data**: `YouTubeApiRepositoryImpl` + tests (10 tests: success mapping, not found, network/HTTP errors, thumbnail fallback chain high>medium>default)
+- **core:data**: `WhitelistRepositoryImpl` + tests (12 tests: entity mapping, video/channel/playlist/handle/custom URL flows, early duplicate check optimization, API error propagation)
+- **core:data**: `KidProfileRepositoryImpl` + tests (7 tests: CRUD mapping, UUID generation, null handling)
+- **core:data**: Created `DataModule` Hilt DI (@Binds for all 3 repositories)
+- **app**: Created `ApiKeyModule` (provides @YouTubeApiKey from BuildConfig)
+- **app**: Updated `build.gradle.kts` with `buildConfigField` for YouTube API key from `local.properties`
+- **core:network**: Added `buildFeatures { buildConfig = true }` for debug flag access
+- **Code review fixes**: HTTP logging debug-only (security), early duplicate check before API call (quota optimization), CHANNEL_CUSTOM documented limitation, KidProfile sleepPlaylistId preservation, URL-decode query params, isLenient removed from JSON config, getOrNull() added to AppResult
+
+**Decisions Made**:
+- `AppResult<T>` sealed interface for network errors (not bare exceptions)
+- Three-layer mapping: API DTOs (core:network) → Domain models (core:data) → Room entities (core:database)
+- `WhitelistItemType` lives in core:common (shared by database + data modules)
+- `YouTubeContentType` separate from `WhitelistItemType` (URL parsing vs storage concerns)
+- YouTube API key via BuildConfig from local.properties, injected through Hilt qualifier
+- Early duplicate check for known IDs (video/channel/playlist) saves API quota; handles need resolution first
+- CHANNEL_CUSTOM (/c/name) falls through to forHandle API — modern YouTube maps these to @handles
+- HTTP logging only in debug builds (API key in query params)
+
+**Test Stats**: 67 test cases total this session (27 URL parser + 9 DTO + 2 interceptor + 10 API repo + 12 whitelist repo + 7 profile repo)
+
+**Next Session Focus**: M2 continuation - Parent mode UI (WebView browser, whitelist manager screens, ViewModels), navigation route additions, build verification if environment is ready.

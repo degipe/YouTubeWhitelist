@@ -11,7 +11,7 @@ Whitelist-based YouTube client for kids. Android app (Kotlin + Jetpack Compose) 
 - **Database**: Room (SQLite)
 - **Network**: Retrofit + OkHttp (YouTube Data API v3)
 - **Video**: YouTube IFrame Player API
-- **Auth**: Google Sign-In SDK (OAuth 2.0)
+- **Auth**: WebView OAuth 2.0 (F-Droid compatible, no Google Play Services SDK)
 - **Serialization**: Kotlinx Serialization
 - **Background**: WorkManager
 - **Testing**: JUnit, MockK, Truth, Turbine, Espresso, Compose Testing, Robolectric
@@ -66,52 +66,6 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 ---
 
 ## Session Logs
-
-### Session 3 - 2026-02-09: M2 - YouTube API, URL Parsing, Whitelist CRUD
-
-**Objectives**: Begin M2 milestone: YouTube Data API v3 integration, URL parsing, whitelist repository layer. TDD discipline enforced.
-
-**Completed**:
-- **core:common**: Created `AppResult<T>` sealed interface (Success/Error) with map/onSuccess/onError/getOrNull extensions for clean error handling
-- **core:common**: Moved `WhitelistItemType` enum from core:database to core:common/model/ (shared across modules, avoids duplication)
-- **core:common**: Created `YouTubeUrlParser` object (pure Kotlin, java.net.URI-based) with `ParsedYouTubeUrl` and `YouTubeContentType` enum — handles video (/watch, youtu.be, /shorts, /embed, /live, mobile), channel (/channel/, /@handle, /c/), playlist URLs, URL-decoded query params
-- **core:common**: YouTubeUrlParser test suite (27 test cases covering all URL types + edge cases)
-- **core:network**: Created YouTube Data API v3 DTOs: `YouTubeListResponse<T>`, `ChannelDto`, `VideoDto`, `PlaylistDto`, `PlaylistItemDto`, `SearchResultDto`, `ThumbnailSet` — all `@Serializable` with proper defaults
-- **core:network**: DTO deserialization test suite (9 tests: channel, video, playlist, playlistItem, search, missing fields, empty items, unknown keys, thumbnails)
-- **core:network**: Created `YouTubeApiService` Retrofit interface (channels, videos, playlists, playlistItems, search endpoints with Response<T>)
-- **core:network**: Created `ApiKeyInterceptor` OkHttp interceptor + tests (2 tests)
-- **core:network**: Created `@YouTubeApiKey` qualifier annotation
-- **core:network**: Created `NetworkModule` Hilt DI (Json, OkHttpClient, Retrofit, YouTubeApiService) with debug-only HTTP logging
-- **core:data**: Created domain models: `WhitelistItem`, `YouTubeMetadata` (sealed: Channel/Video/Playlist), `KidProfile` (with sleepPlaylistId)
-- **core:data**: Created repository interfaces: `YouTubeApiRepository`, `WhitelistRepository`, `KidProfileRepository`
-- **core:data**: `YouTubeApiRepositoryImpl` + tests (10 tests: success mapping, not found, network/HTTP errors, thumbnail fallback chain high>medium>default)
-- **core:data**: `WhitelistRepositoryImpl` + tests (12 tests: entity mapping, video/channel/playlist/handle/custom URL flows, early duplicate check optimization, API error propagation)
-- **core:data**: `KidProfileRepositoryImpl` + tests (7 tests: CRUD mapping, UUID generation, null handling)
-- **core:data**: Created `DataModule` Hilt DI (@Binds for all 3 repositories)
-- **app**: Created `ApiKeyModule` (provides @YouTubeApiKey from BuildConfig)
-- **app**: Updated `build.gradle.kts` with `buildConfigField` for YouTube API key from `local.properties`
-- **core:network**: Added `buildFeatures { buildConfig = true }` for debug flag access
-- **Code review fixes**: HTTP logging debug-only (security), early duplicate check before API call (quota optimization), CHANNEL_CUSTOM documented limitation, KidProfile sleepPlaylistId preservation, URL-decode query params, isLenient removed from JSON config, getOrNull() added to AppResult
-
-**Decisions Made**:
-- `AppResult<T>` sealed interface for network errors (not bare exceptions)
-- Three-layer mapping: API DTOs (core:network) → Domain models (core:data) → Room entities (core:database)
-- `WhitelistItemType` lives in core:common (shared by database + data modules)
-- `YouTubeContentType` separate from `WhitelistItemType` (URL parsing vs storage concerns)
-- YouTube API key via BuildConfig from local.properties, injected through Hilt qualifier
-- Early duplicate check for known IDs (video/channel/playlist) saves API quota; handles need resolution first
-- CHANNEL_CUSTOM (/c/name) falls through to forHandle API — modern YouTube maps these to @handles
-- HTTP logging only in debug builds (API key in query params)
-
-**Test Stats**: 67 test cases total this session (27 URL parser + 9 DTO + 2 interceptor + 10 API repo + 12 whitelist repo + 7 profile repo)
-
-**Notes**:
-- Build environment still not set up (no JDK 17, no Android SDK) — all code is uncompiled, tests are designed for JVM
-- Google Cloud Console YouTube API key not yet created — needs setup before runtime testing
-- WebView browser UI (feature:parent) deferred to next session
-- Parent mode ViewModels deferred to next session
-
-**Next Session Focus**: M2 continuation - Parent mode UI (WebView browser, whitelist manager screens, ViewModels), navigation route additions, build verification if environment is ready.
 
 ### Session 4 - 2026-02-09: M2 - Parent Mode UI, ViewModels, Navigation
 
@@ -378,3 +332,73 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 - Google Cloud Console YouTube API key still not created
 
 **Next Session Focus**: M6 - Testing, bugfix, optimization. Or M3 kiosk mode, playlist detail screen.
+
+### Session 8 - 2026-02-09: M6 - Missing Features, Edge Case Tests, Optimization
+
+**Objectives**: Complete deferred M3 features (Playlist Detail Screen, Kiosk Mode), replace mock Google Sign-In with F-Droid-compatible WebView OAuth, edge case tests, optimization.
+
+**Completed**:
+- **Phase 1: Playlist Detail Screen (TDD)**:
+  - `PlaylistVideo` domain model in core:data
+  - `getPlaylistItems(playlistId)` added to `YouTubeApiRepository` interface + impl (PlaylistItemDto → PlaylistVideo mapping, null videoId filtering, thumbnail fallback)
+  - 5 new tests in `YouTubeApiRepositoryImplTest` (success, empty, API error, filters invalid items, network failure)
+  - `Route.PlaylistDetail(profileId, playlistId, playlistTitle, playlistThumbnailUrl)` navigation route
+  - `PlaylistDetailViewModelTest` — 8 TDD tests (loading, items loaded, empty, error, retry, loading on retry, correct playlistId, sorted by position)
+  - `PlaylistDetailViewModel` — one-shot API call pattern (MutableStateFlow + viewModelScope.launch), AssistedInject, retry(), sorts by position
+  - `PlaylistDetailScreen` — TopAppBar, LazyColumn of PlaylistVideoCard, loading/error/empty states, retry button
+  - Updated `KidHomeScreen` + `KidSearchScreen` onPlaylistClick callback signature to `(youtubeId, title, thumbnailUrl)`
+  - Full `AppNavigation.kt` wiring with AssistedInject
+
+- **Phase 2: Kiosk Mode (Screen Pinning + BackHandler)**:
+  - `BackHandler` added to `KidHomeScreen` (blocks back exit in kid mode)
+  - `startLockTask()` via `LaunchedEffect` in AppNavigation KidHome composable
+  - `stopLockTask()` in PinEntry `onPinVerified` callback
+  - Activity access via `LocalContext.current as? Activity` pattern
+
+- **Phase 3: WebView OAuth 2.0 (F-Droid compatible)**:
+  - Removed Google Auth SDK deps from libs.versions.toml and core:auth build.gradle.kts
+  - `OAuthConfig` — pure Java URL builder (java.net.URLEncoder, no android.net.Uri), auth/token endpoints, redirect URI, scopes
+  - `OAuthTokenExchanger` — HTTP POST via HttpURLConnection to Google token endpoint, JWT id_token parsing via java.util.Base64 + org.json.JSONObject, returns GoogleUserInfo
+  - `OAuthActivity` — WebView showing Google OAuth consent screen, intercepts localhost/callback redirect, calls static onOAuthResult()
+  - `GoogleSignInManagerImpl` rewritten — WebView OAuth flow with CompletableDeferred bridge between Activity and Manager, @GoogleClientId injection
+  - `@GoogleClientId` qualifier annotation in core:auth
+  - `ApiKeyModule` updated with `provideGoogleClientId()` from BuildConfig
+  - `GOOGLE_CLIENT_ID` BuildConfig field in app/build.gradle.kts from local.properties
+  - OAuthActivity registered in AndroidManifest
+  - `OAuthConfigTest` — 2 tests (URL parameters, endpoint)
+  - `OAuthTokenExchangerTest` — 6 tests with @RunWith(RobolectricTestRunner::class) (JWT parsing valid/null name/invalid, onOAuthResult success/cancelled/error)
+  - `GOOGLE_SETUP.md` — step-by-step Google Cloud Console setup guide
+
+- **Phase 4: Edge Case Tests + Bugfix**:
+  - `YouTubeApiRepositoryImplTest` +6 tests: SocketTimeoutException, UnknownHostException, HTTP 429 rate limit, unexpected RuntimeException, blank thumbnail URLs (all blank → empty, blank high → uses medium)
+  - `WhitelistRepositoryImplTest` +4 tests: empty URL, whitespace URL, non-YouTube URL, duplicate check after handle resolution
+  - `KidHomeViewModelTest` +3 tests: formats 1h exactly ("1h 0m"), formats <1min ("0m"), reactive content→empty transition
+  - `VideoPlayerViewModelTest` +5 tests: playPrevious noop on single video, onVideoEnded stays on last, playVideoAt out of bounds, negative index, formats 1h remaining
+
+- **Phase 5: Optimization**:
+  - `YouTubeWhitelistApp` now implements `ImageLoaderFactory` — Coil with 25% memory cache + 50MB disk cache + crossfade
+  - Room composite indices: `(kidProfileId, type)` on whitelist_items, `(kidProfileId, youtubeId)` unique on whitelist_items, `(kidProfileId, watchedAt)` on watch_history
+  - DB version bumped to 2 with `fallbackToDestructiveMigration()` (pre-release, no deployed data)
+
+**Decisions Made**:
+- WebView OAuth 2.0 instead of Google Sign-In SDK — F-Droid main repo compatible (no non-FOSS compiled deps)
+- "Web application" OAuth client type (not Android) — required for Authorization Code flow with WebView
+- CompletableDeferred as bridge between OAuthActivity and GoogleSignInManagerImpl
+- org.json.JSONObject for JWT parsing — requires Robolectric in unit tests
+- java.net.URLEncoder (not android.net.Uri) for OAuth URL building — JVM test compatible
+- PlaylistDetailViewModel uses one-shot API call (not Flow/stateIn) since data comes from API, not local DB
+- Coil 50MB disk cache — thumbnails are primary bandwidth consumers
+- Unique composite index on (kidProfileId, youtubeId) — enforces DB-level uniqueness for duplicate prevention
+
+**Test Stats**: 355 total tests (316 existing + 13 playlist + 8 OAuth + 18 edge cases), all green
+
+**New tests breakdown**: YouTubeApiRepo +5 playlist +6 edge = 11, WhitelistRepo +4 edge, PlaylistDetailVM 8, OAuthConfig 2, OAuthTokenExchanger 6, KidHomeVM +3 edge, VideoPlayerVM +5 edge
+
+**Notes**:
+- android.net.Uri throws RuntimeException in JVM tests — always use java.net alternatives
+- org.json.JSONObject requires Robolectric (Android SDK class)
+- F-Droid: app will get NonFreeNet anti-feature tag (YouTube API) but can be in main repo
+- Google Cloud Console OAuth + YouTube API key still needs manual setup (see GOOGLE_SETUP.md)
+- All M1-M6 milestones now complete, M7 (Publication) remaining
+
+**Next Session Focus**: M7 - Publication preparation (ProGuard rules, signing config, Play Store listing, F-Droid metadata, GitHub Release, final testing on real device).

@@ -1,5 +1,6 @@
 package io.github.degipe.youtubewhitelist.feature.kid.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,9 +55,12 @@ fun KidHomeScreen(
     onSearchClick: () -> Unit,
     onChannelClick: (channelTitle: String, thumbnailUrl: String) -> Unit,
     onVideoClick: (videoId: String, channelTitle: String?) -> Unit,
-    onPlaylistClick: (playlistId: String) -> Unit
+    onPlaylistClick: (youtubeId: String, title: String, thumbnailUrl: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Block back button in kid mode — only parent can exit via PIN
+    BackHandler { /* Intentionally empty — prevents exiting kid mode */ }
 
     Scaffold(
         floatingActionButton = {
@@ -168,7 +172,7 @@ private fun KidHomeContent(
     onSearchClick: () -> Unit,
     onChannelClick: (channelTitle: String, thumbnailUrl: String) -> Unit,
     onVideoClick: (videoId: String, channelTitle: String?) -> Unit,
-    onPlaylistClick: (playlistId: String) -> Unit,
+    onPlaylistClick: (youtubeId: String, title: String, thumbnailUrl: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -269,7 +273,7 @@ private fun KidHomeContent(
                 items(uiState.playlists, key = { it.id }) { playlist ->
                     VideoCard(
                         video = playlist,
-                        onClick = { onPlaylistClick(playlist.id) }
+                        onClick = { onPlaylistClick(playlist.youtubeId, playlist.title, playlist.thumbnailUrl) }
                     )
                 }
             }

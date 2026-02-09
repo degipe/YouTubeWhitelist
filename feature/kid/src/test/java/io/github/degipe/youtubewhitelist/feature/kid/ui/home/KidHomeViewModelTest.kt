@@ -295,4 +295,58 @@ class KidHomeViewModelTest {
         assertThat(viewModel.uiState.value.remainingTimeFormatted).isNull()
         assertThat(viewModel.uiState.value.isTimeLimitReached).isFalse()
     }
+
+    // === Time Format Edge Cases ===
+
+    @Test
+    fun `formats exactly 1 hour remaining`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
+            TimeLimitStatus(dailyLimitMinutes = 120, watchedTodaySeconds = 3600, remainingSeconds = 3600, isLimitReached = false)
+        )
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.remainingTimeFormatted).isEqualTo("1h 0m")
+    }
+
+    @Test
+    fun `formats less than 1 minute remaining as 0m`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
+            TimeLimitStatus(dailyLimitMinutes = 60, watchedTodaySeconds = 3570, remainingSeconds = 30, isLimitReached = false)
+        )
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.remainingTimeFormatted).isEqualTo("0m")
+    }
+
+    @Test
+    fun `reactive update from content to empty`() = runTest(testDispatcher) {
+        val channelsFlow = MutableStateFlow(listOf(testChannel))
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns channelsFlow
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isEmpty).isFalse()
+
+        channelsFlow.value = emptyList()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isEmpty).isTrue()
+    }
 }
