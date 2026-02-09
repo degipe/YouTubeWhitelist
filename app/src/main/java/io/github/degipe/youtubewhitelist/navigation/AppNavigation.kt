@@ -21,8 +21,16 @@ import io.github.degipe.youtubewhitelist.feature.parent.ui.browser.WebViewBrowse
 import io.github.degipe.youtubewhitelist.feature.parent.ui.browser.WebViewBrowserViewModel
 import io.github.degipe.youtubewhitelist.feature.parent.ui.dashboard.ParentDashboardScreen
 import io.github.degipe.youtubewhitelist.feature.parent.ui.dashboard.ParentDashboardViewModel
+import io.github.degipe.youtubewhitelist.feature.parent.ui.exportimport.ExportImportScreen
+import io.github.degipe.youtubewhitelist.feature.parent.ui.exportimport.ExportImportViewModel
+import io.github.degipe.youtubewhitelist.feature.parent.ui.profile.ProfileEditScreen
+import io.github.degipe.youtubewhitelist.feature.parent.ui.profile.ProfileEditViewModel
+import io.github.degipe.youtubewhitelist.feature.parent.ui.stats.WatchStatsScreen
+import io.github.degipe.youtubewhitelist.feature.parent.ui.stats.WatchStatsViewModel
 import io.github.degipe.youtubewhitelist.feature.parent.ui.whitelist.WhitelistManagerScreen
 import io.github.degipe.youtubewhitelist.feature.parent.ui.whitelist.WhitelistManagerViewModel
+import io.github.degipe.youtubewhitelist.ui.screen.profile.ProfileSelectorScreen
+import io.github.degipe.youtubewhitelist.ui.screen.profile.ProfileSelectorViewModel
 import io.github.degipe.youtubewhitelist.ui.screen.auth.SignInScreen
 import io.github.degipe.youtubewhitelist.ui.screen.pin.PinChangeScreen
 import io.github.degipe.youtubewhitelist.ui.screen.pin.PinEntryScreen
@@ -47,6 +55,11 @@ fun AppNavigation(
                 },
                 onReturningUser = { profileId ->
                     navController.navigate(Route.KidHome(profileId)) {
+                        popUpTo<Route.Splash> { inclusive = true }
+                    }
+                },
+                onMultipleProfiles = {
+                    navController.navigate(Route.ProfileSelector) {
                         popUpTo<Route.Splash> { inclusive = true }
                     }
                 }
@@ -164,6 +177,9 @@ fun AppNavigation(
                 viewModel = viewModel,
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onParentAccess = {
+                    navController.navigate(Route.PinEntry)
                 }
             )
         }
@@ -213,6 +229,18 @@ fun AppNavigation(
                 },
                 onOpenSleepMode = { profileId ->
                     navController.navigate(Route.SleepMode(profileId))
+                },
+                onEditProfile = { profileId ->
+                    navController.navigate(Route.ProfileEdit(profileId))
+                },
+                onWatchStats = { profileId ->
+                    navController.navigate(Route.WatchStats(profileId))
+                },
+                onExportImport = { parentAccountId ->
+                    navController.navigate(Route.ExportImport(parentAccountId))
+                },
+                onCreateProfile = {
+                    navController.navigate(Route.ProfileCreation)
                 }
             )
         }
@@ -250,6 +278,66 @@ fun AppNavigation(
                     factory.create(route.profileId)
                 }
             SleepModeScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable<Route.ProfileSelector> {
+            val viewModel: ProfileSelectorViewModel = hiltViewModel()
+            ProfileSelectorScreen(
+                viewModel = viewModel,
+                onProfileSelected = { profileId ->
+                    navController.navigate(Route.KidHome(profileId)) {
+                        popUpTo<Route.ProfileSelector> { inclusive = true }
+                    }
+                },
+                onParentAccess = {
+                    navController.navigate(Route.PinEntry)
+                }
+            )
+        }
+
+        composable<Route.ProfileEdit> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.ProfileEdit>()
+            val viewModel: ProfileEditViewModel =
+                hiltViewModel<ProfileEditViewModel, ProfileEditViewModel.Factory> { factory ->
+                    factory.create(route.profileId)
+                }
+            ProfileEditScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onProfileDeleted = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable<Route.WatchStats> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.WatchStats>()
+            val viewModel: WatchStatsViewModel =
+                hiltViewModel<WatchStatsViewModel, WatchStatsViewModel.Factory> { factory ->
+                    factory.create(route.profileId)
+                }
+            WatchStatsScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable<Route.ExportImport> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.ExportImport>()
+            val viewModel: ExportImportViewModel =
+                hiltViewModel<ExportImportViewModel, ExportImportViewModel.Factory> { factory ->
+                    factory.create(route.parentAccountId)
+                }
+            ExportImportScreen(
                 viewModel = viewModel,
                 onNavigateBack = {
                     navController.popBackStack()

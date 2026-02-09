@@ -26,4 +26,8 @@ sealed interface Route {
     ) : Route
     @Serializable data class KidSearch(val profileId: String) : Route
     @Serializable data class SleepMode(val profileId: String) : Route
+    @Serializable data object ProfileSelector : Route
+    @Serializable data class ProfileEdit(val profileId: String) : Route
+    @Serializable data class WatchStats(val profileId: String) : Route
+    @Serializable data class ExportImport(val parentAccountId: String) : Route
 }

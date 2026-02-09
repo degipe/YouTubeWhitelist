@@ -71,32 +71,68 @@ fun KidHomeScreen(
             }
         }
     ) { padding ->
-        when {
-            uiState.isLoading -> {
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                uiState.isEmpty -> {
+                    EmptyContent(
+                        profileName = uiState.profileName,
+                        modifier = Modifier.padding(padding)
+                    )
+                }
+                else -> {
+                    KidHomeContent(
+                        uiState = uiState,
+                        onSearchClick = onSearchClick,
+                        onChannelClick = onChannelClick,
+                        onVideoClick = onVideoClick,
+                        onPlaylistClick = onPlaylistClick,
+                        modifier = Modifier.padding(padding)
+                    )
+                }
+            }
+
+            // Time's Up overlay
+            if (uiState.isTimeLimitReached) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Time's Up!",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = "Your daily screen time is over.\nAsk a parent to continue.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        FloatingActionButton(
+                            onClick = onParentAccess,
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Icon(Icons.Default.Lock, contentDescription = "Parent Mode")
+                        }
+                    }
                 }
-            }
-            uiState.isEmpty -> {
-                EmptyContent(
-                    profileName = uiState.profileName,
-                    modifier = Modifier.padding(padding)
-                )
-            }
-            else -> {
-                KidHomeContent(
-                    uiState = uiState,
-                    onSearchClick = onSearchClick,
-                    onChannelClick = onChannelClick,
-                    onVideoClick = onVideoClick,
-                    onPlaylistClick = onPlaylistClick,
-                    modifier = Modifier.padding(padding)
-                )
             }
         }
     }
@@ -156,6 +192,23 @@ private fun KidHomeContent(
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search"
+                )
+            }
+        }
+
+        // Remaining time chip
+        uiState.remainingTimeFormatted?.let { remaining ->
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Time remaining: $remaining",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    textAlign = TextAlign.Center
                 )
             }
         }

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -19,6 +20,7 @@ import javax.inject.Inject
 data class ParentDashboardUiState(
     val profiles: List<KidProfile> = emptyList(),
     val selectedProfileId: String? = null,
+    val parentAccountId: String? = null,
     val isLoading: Boolean = true
 )
 
@@ -41,12 +43,15 @@ class ParentDashboardViewModel @Inject constructor(
             parentAccountRepository.getAccount()
                 .flatMapLatest { account ->
                     if (account == null) {
-                        flowOf(emptyList())
+                        flowOf(Pair<String?, List<KidProfile>>(null, emptyList()))
                     } else {
                         kidProfileRepository.getProfilesByParent(account.id)
+                            .map { profiles ->
+                                Pair<String?, List<KidProfile>>(account.id, profiles)
+                            }
                     }
                 }
-                .collect { profiles ->
+                .collect { (accountId, profiles) ->
                     _uiState.update { state ->
                         val selectedId = when {
                             state.selectedProfileId != null &&
@@ -58,6 +63,7 @@ class ParentDashboardViewModel @Inject constructor(
                         state.copy(
                             profiles = profiles,
                             selectedProfileId = selectedId,
+                            parentAccountId = accountId,
                             isLoading = false
                         )
                     }

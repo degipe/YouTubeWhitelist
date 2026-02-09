@@ -1,39 +1,43 @@
-# Session 7 Starting Prompt
+# Session 8 Starting Prompt
 
-Ez a 7. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 8. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Fókusz: M5 - Multi-profile, Time Limits, Stats, Export/Import
+## Fókusz: M6 - Testing, Bugfix, Optimization + hiányzó feature-ök
 
-### 1. Multi-profile támogatás
-- Profil váltás a Kid mode-ban (jelenleg csak az első profilt használjuk)
-- Profil szerkesztés (név, avatar módosítás)
-- Profil törlés (cascade delete a whitelist items-re)
+### 1. Kiosk Mode (M3 hiány)
+- Kid mode-ból ne lehessen kilépni az alkalmazásból
+- Android kiosk/lock task mode integráció
+- Csak a Parent PIN-nel lehet kilépni
 
-### 2. Time Limits (napi idő korlát)
-- `DailyTimeLimitEntity` hozzáadása a Room DB-hez
-- `TimeLimitRepository` TDD-vel
-- Napi használat tracking (WatchHistory alapján)
-- Időkorlát elérése → visszanavigálás a szülői módba
+### 2. Playlist Detail Screen (M3 hiány)
+- Playlist tartalomlistázás (playlist items lekérdezés YouTube API-ból)
+- Videó lejátszás playlist-ből
+- Placeholder click handler cseréje valódi navigációra
 
-### 3. Watch Stats
-- Nézési statisztikák összesítése profilonként
-- Statisztika screen a parent dashboard-on
-- Napi/heti/havi bontás
+### 3. Google Sign-In valódi integráció
+- Google Cloud Console projekt + OAuth client ID beállítás
+- YouTube Data API v3 engedélyezés
+- Mock GoogleSignInManager cseréje valódi implementációra
+- Runtime tesztelés valódi API kulccsal
 
-### 4. Export/Import (core:export modul)
-- JSON export (whitelist items + profiles)
-- JSON import (merge/overwrite opció)
-- File picker integráció
+### 4. Testing + Bugfix
+- Instrumented tesztek (Compose UI testing, Espresso)
+- End-to-end flow tesztek
+- ProGuard/R8 tesztelés release build-en
+- Edge case-ek tesztelése (üres adatok, hálózati hibák, offline működés)
 
-### Opcionális
-- Kiosk mode (kid mode-ból nem tud kilépni az alkalmazásból)
-- Playlist detail screen (tartalom listázás)
+### 5. Optimization
+- Room query optimalizáció (EXPLAIN QUERY PLAN)
+- Image caching stratégia (Coil disk cache beállítás)
+- Memory profiling (WebView, bitmap-ek)
+- Cold start idő optimalizáció
 
 ### Megjegyzések
 
 - **Build parancs**: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew test`
-- **237 teszt** van jelenleg, mind zöld
+- **316 teszt** van jelenleg, mind zöld
 - **TDD skill használata kötelező!**
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push
 - Kommunikáció magyarul, dokumentáció angolul
 - Google Cloud Console YouTube API key **még nincs** — runtime teszteléshez szükséges
+- M1-M5 milestone-ok elkészültek, M6-M7 hátra van

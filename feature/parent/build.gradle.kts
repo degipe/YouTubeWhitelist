@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:data"))
     implementation(project(":core:auth"))
+    implementation(project(":core:export"))
 
     // Compose
     implementation(platform(libs.compose.bom))

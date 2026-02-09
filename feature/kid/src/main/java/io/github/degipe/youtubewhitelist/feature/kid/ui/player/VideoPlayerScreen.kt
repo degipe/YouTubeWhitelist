@@ -6,6 +6,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.Keep
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,11 +24,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,7 +57,8 @@ import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 @Composable
 fun VideoPlayerScreen(
     viewModel: VideoPlayerViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onParentAccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -80,100 +84,149 @@ fun VideoPlayerScreen(
             )
         }
     ) { padding ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                // YouTube Player WebView
-                YouTubePlayer(
-                    youtubeId = uiState.youtubeId,
-                    onVideoEnded = { watchedSeconds ->
-                        viewModel.onVideoEnded(watchedSeconds)
-                    },
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (uiState.isLoading) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
-                )
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                ) {
+                    // Remaining time badge
+                    uiState.remainingTimeFormatted?.let { remaining ->
+                        Text(
+                            text = "Time remaining: $remaining",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
 
-                // Video info + controls
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = uiState.videoTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                    // YouTube Player WebView
+                    YouTubePlayer(
+                        youtubeId = uiState.youtubeId,
+                        onVideoEnded = { watchedSeconds ->
+                            viewModel.onVideoEnded(watchedSeconds)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    // Video info + controls
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = uiState.videoTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
 
-                    // Next/Previous controls
-                    if (uiState.siblingVideos.size > 1) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = { viewModel.playPrevious() },
-                                enabled = uiState.hasPrevious
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Next/Previous controls
+                        if (uiState.siblingVideos.size > 1) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.SkipPrevious,
-                                    contentDescription = "Previous",
-                                    modifier = Modifier.size(32.dp)
+                                IconButton(
+                                    onClick = { viewModel.playPrevious() },
+                                    enabled = uiState.hasPrevious
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.SkipPrevious,
+                                        contentDescription = "Previous",
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "${uiState.currentIndex + 1} / ${uiState.siblingVideos.size}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
                                 )
+                                IconButton(
+                                    onClick = { viewModel.playNext() },
+                                    enabled = uiState.hasNext
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.SkipNext,
+                                        contentDescription = "Next",
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
                             }
-                            Text(
-                                text = "${uiState.currentIndex + 1} / ${uiState.siblingVideos.size}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                            IconButton(
-                                onClick = { viewModel.playNext() },
-                                enabled = uiState.hasNext
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.SkipNext,
-                                    contentDescription = "Next",
-                                    modifier = Modifier.size(32.dp)
+                        }
+                    }
+
+                    // Up next list
+                    if (uiState.siblingVideos.size > 1) {
+                        Text(
+                            text = "Up Next",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)
+                        ) {
+                            val filteredSiblings = uiState.siblingVideos
+                                .mapIndexed { index, item -> index to item }
+                                .filterNot { it.second.id == uiState.videoId }
+                            items(filteredSiblings, key = { it.second.id }) { (index, video) ->
+                                UpNextCard(
+                                    video = video,
+                                    onClick = { viewModel.playVideoAt(index) }
                                 )
                             }
                         }
                     }
                 }
+            }
 
-                // Up next list
-                if (uiState.siblingVideos.size > 1) {
-                    Text(
-                        text = "Up Next",
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)
+            // Time's Up overlay
+            if (uiState.isTimeLimitReached) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        val filteredSiblings = uiState.siblingVideos
-                            .mapIndexed { index, item -> index to item }
-                            .filterNot { it.second.id == uiState.videoId }
-                        items(filteredSiblings, key = { it.second.id }) { (index, video) ->
-                            UpNextCard(
-                                video = video,
-                                onClick = { viewModel.playVideoAt(index) }
-                            )
+                        Text(
+                            text = "Time's Up!",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = "Your daily screen time is over.\nAsk a parent to continue.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        FloatingActionButton(
+                            onClick = onParentAccess,
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Icon(Icons.Default.Lock, contentDescription = "Parent Mode")
                         }
                     }
                 }

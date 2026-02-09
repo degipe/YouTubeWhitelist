@@ -5,6 +5,8 @@ import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 import io.github.degipe.youtubewhitelist.core.data.repository.WatchHistoryRepository
 import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
+import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
+import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitStatus
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -25,7 +27,15 @@ class VideoPlayerViewModelTest {
 
     private lateinit var whitelistRepository: WhitelistRepository
     private lateinit var watchHistoryRepository: WatchHistoryRepository
+    private lateinit var timeLimitChecker: TimeLimitChecker
     private val testDispatcher = StandardTestDispatcher()
+
+    private val noLimitStatus = TimeLimitStatus(
+        dailyLimitMinutes = null,
+        watchedTodaySeconds = 0,
+        remainingSeconds = null,
+        isLimitReached = false
+    )
 
     private fun makeVideo(id: String, title: String, channelTitle: String = "Fun Channel") = WhitelistItem(
         id = id, kidProfileId = "profile-1",
@@ -41,11 +51,16 @@ class VideoPlayerViewModelTest {
         Dispatchers.setMain(testDispatcher)
         whitelistRepository = mockk(relaxed = true)
         watchHistoryRepository = mockk(relaxed = true)
+        timeLimitChecker = mockk()
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    private fun setupDefaultTimeLimit() {
+        every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(noLimitStatus)
     }
 
     private fun createViewModel(
@@ -56,6 +71,7 @@ class VideoPlayerViewModelTest {
         return VideoPlayerViewModel(
             whitelistRepository = whitelistRepository,
             watchHistoryRepository = watchHistoryRepository,
+            timeLimitChecker = timeLimitChecker,
             profileId = profileId,
             videoId = videoId,
             channelTitle = channelTitle
@@ -66,6 +82,7 @@ class VideoPlayerViewModelTest {
     fun `initial state has video id`() = runTest(testDispatcher) {
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
 
@@ -76,6 +93,7 @@ class VideoPlayerViewModelTest {
     fun `loads video title from repository`() = runTest(testDispatcher) {
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -92,6 +110,7 @@ class VideoPlayerViewModelTest {
         )
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -102,6 +121,7 @@ class VideoPlayerViewModelTest {
     @Test
     fun `no siblings when channelTitle is null`() = runTest(testDispatcher) {
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel(channelTitle = null)
         testDispatcher.scheduler.advanceUntilIdle()
@@ -118,6 +138,7 @@ class VideoPlayerViewModelTest {
         )
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -130,6 +151,7 @@ class VideoPlayerViewModelTest {
         val siblings = listOf(currentVideo, makeVideo("v2", "Video 2"))
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -142,6 +164,7 @@ class VideoPlayerViewModelTest {
         val siblings = listOf(makeVideo("v1", "Video 1"), currentVideo)
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -154,6 +177,7 @@ class VideoPlayerViewModelTest {
         val siblings = listOf(makeVideo("v1", "Video 1"), currentVideo)
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -166,6 +190,7 @@ class VideoPlayerViewModelTest {
         val siblings = listOf(currentVideo, makeVideo("v2", "Video 2"))
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -177,6 +202,7 @@ class VideoPlayerViewModelTest {
     fun `onVideoEnded records watch history`() = runTest(testDispatcher) {
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -195,6 +221,7 @@ class VideoPlayerViewModelTest {
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getItemById("v2") } returns flowOf(makeVideo("v2", "Next Video"))
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -211,6 +238,7 @@ class VideoPlayerViewModelTest {
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getItemById("v2") } returns flowOf(makeVideo("v2", "Next Video"))
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -227,6 +255,7 @@ class VideoPlayerViewModelTest {
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getItemById("v1") } returns flowOf(makeVideo("v1", "Prev Video"))
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -241,6 +270,7 @@ class VideoPlayerViewModelTest {
     fun `playNext does nothing when no next`() = runTest(testDispatcher) {
         every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
+        setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -249,5 +279,63 @@ class VideoPlayerViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+    }
+
+    // === Time Limit Tests ===
+
+    @Test
+    fun `displays remaining time when limit set`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+        every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
+            TimeLimitStatus(dailyLimitMinutes = 60, watchedTodaySeconds = 1800, remainingSeconds = 1800, isLimitReached = false)
+        )
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.remainingTimeFormatted).isEqualTo("30m")
+        assertThat(viewModel.uiState.value.isTimeLimitReached).isFalse()
+    }
+
+    @Test
+    fun `time limit reached sets flag`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+        every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
+            TimeLimitStatus(dailyLimitMinutes = 60, watchedTodaySeconds = 3600, remainingSeconds = 0, isLimitReached = true)
+        )
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isTimeLimitReached).isTrue()
+    }
+
+    @Test
+    fun `no limit set shows no remaining time`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+        setupDefaultTimeLimit()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.remainingTimeFormatted).isNull()
+        assertThat(viewModel.uiState.value.isTimeLimitReached).isFalse()
+    }
+
+    @Test
+    fun `remaining time updates reactively`() = runTest(testDispatcher) {
+        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+        every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
+            TimeLimitStatus(dailyLimitMinutes = 60, watchedTodaySeconds = 3000, remainingSeconds = 600, isLimitReached = false)
+        )
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.remainingTimeFormatted).isEqualTo("10m")
     }
 }

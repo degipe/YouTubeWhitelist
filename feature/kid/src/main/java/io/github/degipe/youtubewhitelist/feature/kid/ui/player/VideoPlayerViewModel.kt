@@ -9,11 +9,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 import io.github.degipe.youtubewhitelist.core.data.repository.WatchHistoryRepository
 import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
+import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class VideoPlayerUiState(
@@ -25,13 +25,16 @@ data class VideoPlayerUiState(
     val hasNext: Boolean = false,
     val hasPrevious: Boolean = false,
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val remainingTimeFormatted: String? = null,
+    val isTimeLimitReached: Boolean = false
 )
 
 @HiltViewModel(assistedFactory = VideoPlayerViewModel.Factory::class)
 class VideoPlayerViewModel @AssistedInject constructor(
     private val whitelistRepository: WhitelistRepository,
     private val watchHistoryRepository: WatchHistoryRepository,
+    private val timeLimitChecker: TimeLimitChecker,
     @Assisted("profileId") private val profileId: String,
     @Assisted("videoId") private val videoId: String,
     @Assisted("channelTitle") private val channelTitle: String?
@@ -54,6 +57,7 @@ class VideoPlayerViewModel @AssistedInject constructor(
     init {
         loadVideo()
         loadSiblings()
+        observeTimeLimit()
     }
 
     private fun loadVideo() {
@@ -86,6 +90,17 @@ class VideoPlayerViewModel @AssistedInject constructor(
                         hasPrevious = currentIdx > 0
                     )
                 }
+        }
+    }
+
+    private fun observeTimeLimit() {
+        viewModelScope.launch {
+            timeLimitChecker.getTimeLimitStatus(profileId).collect { status ->
+                _uiState.value = _uiState.value.copy(
+                    remainingTimeFormatted = status.remainingSeconds?.let { formatRemaining(it) },
+                    isTimeLimitReached = status.isLimitReached
+                )
+            }
         }
     }
 
@@ -136,5 +151,11 @@ class VideoPlayerViewModel @AssistedInject constructor(
             hasNext = index < siblings.size - 1,
             hasPrevious = index > 0
         )
+    }
+
+    private fun formatRemaining(seconds: Int): String {
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
     }
 }

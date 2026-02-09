@@ -16,6 +16,7 @@ sealed interface SplashUiState {
     data object Loading : SplashUiState
     data object FirstRun : SplashUiState
     data class ReturningUser(val profileId: String) : SplashUiState
+    data object MultipleProfiles : SplashUiState
 }
 
 @HiltViewModel
@@ -51,7 +52,11 @@ class SplashViewModel @Inject constructor(
                 return@launch
             }
 
-            _uiState.value = SplashUiState.ReturningUser(profileId = profiles.first().id)
+            if (profiles.size > 1) {
+                _uiState.value = SplashUiState.MultipleProfiles
+            } else {
+                _uiState.value = SplashUiState.ReturningUser(profileId = profiles.first().id)
+            }
         }
     }
 }

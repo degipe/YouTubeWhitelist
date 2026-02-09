@@ -104,7 +104,19 @@ class SplashViewModelTest {
     }
 
     @Test
-    fun `returning user picks first profile id`() = runTest(testDispatcher) {
+    fun `returning user picks first profile id when single profile`() = runTest(testDispatcher) {
+        coEvery { parentAccountRepository.hasAccount() } returns true
+        every { parentAccountRepository.getAccount() } returns flowOf(testAccount)
+        every { kidProfileRepository.getProfilesByParent("account-1") } returns flowOf(listOf(testProfile))
+
+        val viewModel = SplashViewModel(parentAccountRepository, kidProfileRepository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value).isEqualTo(SplashUiState.ReturningUser("profile-1"))
+    }
+
+    @Test
+    fun `multiple profiles navigates to profile selector`() = runTest(testDispatcher) {
         val profiles = listOf(
             testProfile,
             testProfile.copy(id = "profile-2", name = "Kid 2")
@@ -116,7 +128,7 @@ class SplashViewModelTest {
         val viewModel = SplashViewModel(parentAccountRepository, kidProfileRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value).isEqualTo(SplashUiState.ReturningUser("profile-1"))
+        assertThat(viewModel.uiState.value).isEqualTo(SplashUiState.MultipleProfiles)
     }
 
     @Test

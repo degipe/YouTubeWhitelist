@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 import io.github.degipe.youtubewhitelist.core.data.repository.KidProfileRepository
 import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
+import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -20,13 +21,16 @@ data class KidHomeUiState(
     val recentVideos: List<WhitelistItem> = emptyList(),
     val playlists: List<WhitelistItem> = emptyList(),
     val isLoading: Boolean = true,
-    val isEmpty: Boolean = false
+    val isEmpty: Boolean = false,
+    val remainingTimeFormatted: String? = null,
+    val isTimeLimitReached: Boolean = false
 )
 
 @HiltViewModel(assistedFactory = KidHomeViewModel.Factory::class)
 class KidHomeViewModel @AssistedInject constructor(
     whitelistRepository: WhitelistRepository,
     kidProfileRepository: KidProfileRepository,
+    timeLimitChecker: TimeLimitChecker,
     @Assisted private val profileId: String
 ) : ViewModel() {
 
@@ -39,19 +43,28 @@ class KidHomeViewModel @AssistedInject constructor(
         kidProfileRepository.getProfileById(profileId),
         whitelistRepository.getChannelsByProfile(profileId),
         whitelistRepository.getVideosByProfile(profileId),
-        whitelistRepository.getPlaylistsByProfile(profileId)
-    ) { profile, channels, videos, playlists ->
+        whitelistRepository.getPlaylistsByProfile(profileId),
+        timeLimitChecker.getTimeLimitStatus(profileId)
+    ) { profile, channels, videos, playlists, timeLimitStatus ->
         KidHomeUiState(
             profileName = profile?.name ?: "",
             channels = channels,
             recentVideos = videos,
             playlists = playlists,
             isLoading = false,
-            isEmpty = channels.isEmpty() && videos.isEmpty() && playlists.isEmpty()
+            isEmpty = channels.isEmpty() && videos.isEmpty() && playlists.isEmpty(),
+            remainingTimeFormatted = timeLimitStatus.remainingSeconds?.let { formatRemaining(it) },
+            isTimeLimitReached = timeLimitStatus.isLimitReached
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = KidHomeUiState()
     )
+
+    private fun formatRemaining(seconds: Int): String {
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+    }
 }

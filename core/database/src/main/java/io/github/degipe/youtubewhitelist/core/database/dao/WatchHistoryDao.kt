@@ -26,4 +26,20 @@ interface WatchHistoryDao {
 
     @Query("DELETE FROM watch_history WHERE watchedAt < :beforeTimestamp")
     suspend fun deleteOlderThan(beforeTimestamp: Long)
+
+    @Query("SELECT COUNT(DISTINCT videoId) FROM watch_history WHERE kidProfileId = :profileId AND watchedAt >= :sinceTimestamp")
+    suspend fun getVideosWatchedCount(profileId: String, sinceTimestamp: Long): Int
+
+    @Query("""
+        SELECT (watchedAt / 86400000) * 86400000 AS dayTimestamp,
+               SUM(watchedSeconds) AS totalSeconds
+        FROM watch_history
+        WHERE kidProfileId = :profileId AND watchedAt >= :sinceTimestamp
+        GROUP BY dayTimestamp
+        ORDER BY dayTimestamp ASC
+    """)
+    suspend fun getDailyWatchTime(profileId: String, sinceTimestamp: Long): List<DailyWatchAggregate>
+
+    @Query("SELECT COALESCE(SUM(watchedSeconds), 0) FROM watch_history WHERE kidProfileId = :profileId AND watchedAt >= :sinceTimestamp")
+    fun getTotalWatchedSecondsFlow(profileId: String, sinceTimestamp: Long): Flow<Int>
 }

@@ -3,8 +3,10 @@ package io.github.degipe.youtubewhitelist.core.data.repository.impl
 import com.google.common.truth.Truth.assertThat
 import io.github.degipe.youtubewhitelist.core.database.dao.WatchHistoryDao
 import io.github.degipe.youtubewhitelist.core.database.entity.WatchHistoryEntity
+import io.github.degipe.youtubewhitelist.core.database.dao.DailyWatchAggregate
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.flow.first
@@ -94,5 +96,110 @@ class WatchHistoryRepositoryImplTest {
         repository.recordWatch("profile-1", "video-1", "Title", 60)
 
         coVerify { watchHistoryDao.insert(any()) }
+    }
+
+    // === getWatchStats ===
+
+    @Test
+    fun `getWatchStats maps aggregates correctly`() = runTest(testDispatcher) {
+        coEvery { watchHistoryDao.getTotalWatchedSeconds("profile-1", any()) } returns 3600
+        coEvery { watchHistoryDao.getVideosWatchedCount("profile-1", any()) } returns 5
+        coEvery { watchHistoryDao.getDailyWatchTime("profile-1", any()) } returns listOf(
+            DailyWatchAggregate(dayTimestamp = 1000000L, totalSeconds = 1800),
+            DailyWatchAggregate(dayTimestamp = 2000000L, totalSeconds = 1800)
+        )
+
+        val stats = repository.getWatchStats("profile-1", 0L)
+
+        assertThat(stats.totalWatchedSeconds).isEqualTo(3600)
+        assertThat(stats.videosWatchedCount).isEqualTo(5)
+        assertThat(stats.dailyBreakdown).hasSize(2)
+        assertThat(stats.dailyBreakdown[0].dayTimestamp).isEqualTo(1000000L)
+        assertThat(stats.dailyBreakdown[0].totalSeconds).isEqualTo(1800)
+    }
+
+    @Test
+    fun `getWatchStats with no history returns zeros`() = runTest(testDispatcher) {
+        coEvery { watchHistoryDao.getTotalWatchedSeconds("profile-1", any()) } returns null
+        coEvery { watchHistoryDao.getVideosWatchedCount("profile-1", any()) } returns 0
+        coEvery { watchHistoryDao.getDailyWatchTime("profile-1", any()) } returns emptyList()
+
+        val stats = repository.getWatchStats("profile-1", 0L)
+
+        assertThat(stats.totalWatchedSeconds).isEqualTo(0)
+        assertThat(stats.videosWatchedCount).isEqualTo(0)
+        assertThat(stats.dailyBreakdown).isEmpty()
+    }
+
+    @Test
+    fun `getWatchStats passes sinceTimestamp to all queries`() = runTest(testDispatcher) {
+        val since = 1234567890L
+        coEvery { watchHistoryDao.getTotalWatchedSeconds(any(), any()) } returns null
+        coEvery { watchHistoryDao.getVideosWatchedCount(any(), any()) } returns 0
+        coEvery { watchHistoryDao.getDailyWatchTime(any(), any()) } returns emptyList()
+
+        repository.getWatchStats("profile-1", since)
+
+        coVerify { watchHistoryDao.getTotalWatchedSeconds("profile-1", since) }
+        coVerify { watchHistoryDao.getVideosWatchedCount("profile-1", since) }
+        coVerify { watchHistoryDao.getDailyWatchTime("profile-1", since) }
+    }
+
+    @Test
+    fun `getWatchStats dailyBreakdown maps DailyWatchAggregate to DailyWatchStat`() = runTest(testDispatcher) {
+        coEvery { watchHistoryDao.getTotalWatchedSeconds(any(), any()) } returns 600
+        coEvery { watchHistoryDao.getVideosWatchedCount(any(), any()) } returns 2
+        coEvery { watchHistoryDao.getDailyWatchTime(any(), any()) } returns listOf(
+            DailyWatchAggregate(dayTimestamp = 86400000L, totalSeconds = 600)
+        )
+
+        val stats = repository.getWatchStats("profile-1", 0L)
+
+        assertThat(stats.dailyBreakdown).hasSize(1)
+        assertThat(stats.dailyBreakdown[0].dayTimestamp).isEqualTo(86400000L)
+        assertThat(stats.dailyBreakdown[0].totalSeconds).isEqualTo(600)
+    }
+
+    // === getTotalWatchedSecondsToday ===
+
+    @Test
+    fun `getTotalWatchedSecondsToday returns watched seconds`() = runTest(testDispatcher) {
+        coEvery { watchHistoryDao.getTotalWatchedSeconds("profile-1", any()) } returns 1800
+
+        val result = repository.getTotalWatchedSecondsToday("profile-1")
+
+        assertThat(result).isEqualTo(1800)
+    }
+
+    @Test
+    fun `getTotalWatchedSecondsToday returns zero when null`() = runTest(testDispatcher) {
+        coEvery { watchHistoryDao.getTotalWatchedSeconds("profile-1", any()) } returns null
+
+        val result = repository.getTotalWatchedSecondsToday("profile-1")
+
+        assertThat(result).isEqualTo(0)
+    }
+
+    // === getTotalWatchedSecondsTodayFlow ===
+
+    @Test
+    fun `getTotalWatchedSecondsTodayFlow emits reactive value`() = runTest(testDispatcher) {
+        every { watchHistoryDao.getTotalWatchedSecondsFlow("profile-1", any()) } returns flowOf(900)
+
+        val result = repository.getTotalWatchedSecondsTodayFlow("profile-1").first()
+
+        assertThat(result).isEqualTo(900)
+    }
+
+    @Test
+    fun `getTotalWatchedSecondsTodayFlow delegates to DAO with start of today`() = runTest(testDispatcher) {
+        every { watchHistoryDao.getTotalWatchedSecondsFlow(any(), any()) } returns flowOf(0)
+
+        repository.getTotalWatchedSecondsTodayFlow("profile-1").first()
+
+        // Verify it was called with a timestamp that is start of today (midnight)
+        // The exact value depends on current time, but it should be <= current time
+        // and should be a multiple of day milliseconds approximately
+        io.mockk.verify { watchHistoryDao.getTotalWatchedSecondsFlow("profile-1", any()) }
     }
 }

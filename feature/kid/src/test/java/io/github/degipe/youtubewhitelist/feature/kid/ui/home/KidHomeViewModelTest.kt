@@ -1,12 +1,13 @@
 package io.github.degipe.youtubewhitelist.feature.kid.ui.home
 
-import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
 import io.github.degipe.youtubewhitelist.core.data.model.KidProfile
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 import io.github.degipe.youtubewhitelist.core.data.repository.KidProfileRepository
 import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
+import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
+import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitStatus
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +27,15 @@ class KidHomeViewModelTest {
 
     private lateinit var whitelistRepository: WhitelistRepository
     private lateinit var kidProfileRepository: KidProfileRepository
+    private lateinit var timeLimitChecker: TimeLimitChecker
     private val testDispatcher = StandardTestDispatcher()
+
+    private val noLimitStatus = TimeLimitStatus(
+        dailyLimitMinutes = null,
+        watchedTodaySeconds = 0,
+        remainingSeconds = null,
+        isLimitReached = false
+    )
 
     private val testChannel = WhitelistItem(
         id = "wl-1", kidProfileId = "profile-1",
@@ -61,6 +70,7 @@ class KidHomeViewModelTest {
         Dispatchers.setMain(testDispatcher)
         whitelistRepository = mockk()
         kidProfileRepository = mockk()
+        timeLimitChecker = mockk()
     }
 
     @After
@@ -68,10 +78,15 @@ class KidHomeViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun setupDefaultTimeLimitChecker() {
+        every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(noLimitStatus)
+    }
+
     private fun createViewModel(profileId: String = "profile-1"): KidHomeViewModel {
         return KidHomeViewModel(
             whitelistRepository = whitelistRepository,
             kidProfileRepository = kidProfileRepository,
+            timeLimitChecker = timeLimitChecker,
             profileId = profileId
         )
     }
@@ -82,6 +97,7 @@ class KidHomeViewModelTest {
         every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
 
         val viewModel = createViewModel()
 
@@ -94,6 +110,7 @@ class KidHomeViewModelTest {
         every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -107,6 +124,7 @@ class KidHomeViewModelTest {
         every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(listOf(testChannel))
         every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -121,6 +139,7 @@ class KidHomeViewModelTest {
         every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(listOf(testVideo))
         every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -135,6 +154,7 @@ class KidHomeViewModelTest {
         every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(listOf(testPlaylist))
+        setupDefaultTimeLimitChecker()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -149,6 +169,7 @@ class KidHomeViewModelTest {
         every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -163,6 +184,7 @@ class KidHomeViewModelTest {
         every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(listOf(testChannel))
         every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -176,6 +198,7 @@ class KidHomeViewModelTest {
         every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(listOf(testChannel))
         every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(listOf(testVideo))
         every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(listOf(testPlaylist))
+        setupDefaultTimeLimitChecker()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -196,6 +219,7 @@ class KidHomeViewModelTest {
         every { whitelistRepository.getChannelsByProfile("profile-1") } returns channelsFlow
         every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -214,10 +238,61 @@ class KidHomeViewModelTest {
         every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
         every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.profileName).isEmpty()
+    }
+
+    // === Time Limit Tests ===
+
+    @Test
+    fun `shows remaining time when limit set`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
+            TimeLimitStatus(dailyLimitMinutes = 60, watchedTodaySeconds = 1800, remainingSeconds = 1800, isLimitReached = false)
+        )
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.remainingTimeFormatted).isEqualTo("30m")
+        assertThat(viewModel.uiState.value.isTimeLimitReached).isFalse()
+    }
+
+    @Test
+    fun `shows time limit reached`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
+            TimeLimitStatus(dailyLimitMinutes = 60, watchedTodaySeconds = 3600, remainingSeconds = 0, isLimitReached = true)
+        )
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isTimeLimitReached).isTrue()
+    }
+
+    @Test
+    fun `no limit shows no remaining time`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.remainingTimeFormatted).isNull()
+        assertThat(viewModel.uiState.value.isTimeLimitReached).isFalse()
     }
 }

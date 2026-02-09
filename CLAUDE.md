@@ -67,40 +67,6 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 
 ## Session Logs
 
-### Session 2 - 2026-02-09: PIN Management, Auth Infrastructure, Navigation
-
-**Objectives**: Implement M1 milestone infrastructure: PIN-based parent/kid mode switching, Google OAuth preparation, and complete navigation graph.
-
-**Completed**:
-- **core:common**: Added Hilt DI + coroutines deps, created DispatcherQualifiers (@IoDispatcher, @DefaultDispatcher, @MainDispatcher) and DispatcherModule
-- **core:data**: Created domain models (ParentAccount, AuthState, PinVerificationResult) and repository interfaces (PinRepository, AuthRepository, ParentAccountRepository)
-- **core:auth PIN system**: PinHasher interface + Pbkdf2PinHasher (PBKDF2WithHmacSHA256, 120k iterations, 16-byte salt, java.util.Base64), BruteForceProtection (SharedPreferences-backed exponential backoff: 5 fails=30s, 10=60s, 15=120s), PinRepositoryImpl
-- **core:auth Auth system**: TokenManager + EncryptedTokenManager (Android Keystore-backed EncryptedSharedPreferences), GoogleSignInManager interface + mock implementation, ParentAccountRepositoryImpl, AuthRepositoryImpl (reuses existing account on re-sign-in to prevent cascade deletion)
-- **core:auth DI**: AuthModule with @Binds for all repository/manager interfaces
-- **Navigation**: Type-safe @Serializable Route sealed interface, full NavHost with 8 destinations (Splash, SignIn, PinSetup, PinEntry, PinChange, ProfileCreation, KidHome, ParentDashboard)
-- **ViewModels**: SplashViewModel, SignInViewModel, PinSetupViewModel, PinEntryViewModel, PinChangeViewModel, ProfileCreationViewModel
-- **UI Screens**: All 8 screen composables + reusable PinDots and PinKeypad components
-- **Tests (TDD)**: Pbkdf2PinHasherTest, BruteForceProtectionTest, PinRepositoryImplTest, ParentAccountRepositoryImplTest, AuthRepositoryImplTest, SplashViewModelTest, SignInViewModelTest, PinSetupViewModelTest, PinEntryViewModelTest, PinChangeViewModelTest
-- **Code review + 8 bug fixes**: android.util.Base64→java.util.Base64, added kotlinx-serialization-json to app, added coroutines-core/android to version catalog + core:common/core:data, fixed BruteForceProtection.reset() to use remove() instead of clear(), eliminated THRESHOLD duplication, fixed navigation back-stack, prevented duplicate account creation
-
-**Decisions Made**:
-- PIN hash format: `base64(salt):base64(hash)` stored in existing `pinHash` field (no schema migration)
-- PBKDF2WithHmacSHA256 instead of bcrypt (native Android, no extra dependency)
-- java.util.Base64 (not android.util.Base64) for JVM test compatibility
-- BruteForceProtection in regular SharedPreferences (not encrypted, not sensitive)
-- Mock Google Sign-In (real integration needs Google Cloud Console setup)
-- 3 separate PIN ViewModels (Setup, Entry, Change) instead of one shared
-- Domain interfaces in core:data, implementations in core:auth
-- Coroutines as `api` dependency in core:common for transitive availability
-
-**Notes**:
-- TDD process should be improved: need to use the TDD skill for more disciplined test-first workflow
-- Google Sign-In is fully mocked - real integration requires Cloud Console OAuth client setup
-- All tests are unit tests (JVM) - no instrumented/Robolectric tests yet
-- Build verification still pending (no JDK 17 / ANDROID_HOME on dev machine)
-
-**Next Session Focus**: M1 completion - Build verification, potential test fixes, then start M2 (WebView browser, URL parsing).
-
 ### Session 3 - 2026-02-09: M2 - YouTube API, URL Parsing, Whitelist CRUD
 
 **Objectives**: Begin M2 milestone: YouTube Data API v3 integration, URL parsing, whitelist repository layer. TDD discipline enforced.
@@ -331,3 +297,84 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 - Google Cloud Console YouTube API key still not created
 
 **Next Session Focus**: M5 - Multi-profile support, time limits, watch stats, export/import. Or M3 kiosk mode if prioritized.
+
+### Session 7 - 2026-02-09: M5 - Multi-profile, Time Limits, Watch Stats, Export/Import
+
+**Objectives**: Complete M5 milestone in one session: multi-profile support, daily time limits, watch statistics, and JSON export/import.
+
+**Completed**:
+- **Phase 1: Watch Stats (data layer)**:
+  - `DailyWatchAggregate` Room POJO for aggregated daily watch time
+  - `WatchStats` + `DailyWatchStat` domain models
+  - 3 new `WatchHistoryDao` queries (getVideosWatchedCount, getDailyWatchTime, getTotalWatchedSecondsFlow)
+  - 3 new `WatchHistoryRepository` methods (getWatchStats, getTotalWatchedSecondsToday, getTotalWatchedSecondsTodayFlow)
+  - `WatchHistoryRepositoryImpl` with `startOfToday()` helper using `java.time.LocalDate`
+  - 8 new tests in `WatchHistoryRepositoryImplTest`
+
+- **Phase 1: WatchStatsViewModel + Screen**:
+  - `WatchStatsViewModel` (AssistedInject, StatsPeriod enum DAY/WEEK/MONTH, DailyStatItem, formatWatchTime)
+  - `WatchStatsScreen` (period FilterChips, summary cards, daily breakdown bar chart)
+  - 11 tests in `WatchStatsViewModelTest`
+
+- **Phase 2: Time Limits**:
+  - `TimeLimitChecker` interface + `TimeLimitCheckerImpl` (combines profile + watch history flows via `combine()`)
+  - `TimeLimitStatus` data class (dailyLimitMinutes, watchedTodaySeconds, remainingSeconds, isLimitReached)
+  - DI binding in `DataModule`
+  - `KidHomeViewModel` extended: 5-flow combine, remainingTimeFormatted, isTimeLimitReached
+  - `VideoPlayerViewModel` extended: observeTimeLimit(), remainingTimeFormatted, isTimeLimitReached
+  - `KidHomeScreen` updated: remaining time Card + "Time's Up" full-screen overlay
+  - `VideoPlayerScreen` updated: remaining time badge + "Time's Up" overlay + onParentAccess
+  - 8 tests in `TimeLimitCheckerImplTest`, +3 in KidHomeVM, +4 in VideoPlayerVM
+
+- **Phase 3: Multi-profile**:
+  - `SplashViewModel` extended: `MultipleProfiles` state (profiles.size > 1)
+  - `SplashScreen` updated: onMultipleProfiles callback
+  - `ProfileSelectorViewModel` (flatMapLatest account→profiles) + 6 tests
+  - `ProfileSelectorScreen` (2-column grid of ProfileCards, Parent Mode button)
+  - `ProfileEditViewModel` (AssistedInject, save/delete profile, daily limit editing) + 14 tests
+  - `ProfileEditScreen` (name, avatar URL, daily limit slider 15-180 min, Save/Delete)
+  - +2 SplashViewModel tests
+
+- **Phase 4: Export/Import**:
+  - `ExportData` @Serializable DTOs (ExportData, ExportProfile, ExportWhitelistItem) in core:export
+  - `ExportImportService` interface + `ExportImportServiceImpl` (DAOs directly, UUID generation)
+  - `ExportModule` Hilt DI (@Binds)
+  - `ExportImportViewModel` (AssistedInject, export/import/dismiss) + 10 tests
+  - `ExportImportScreen` (SAF CreateDocument/OpenDocument launchers, Merge/Overwrite dialog)
+  - 14 tests in `ExportImportServiceImplTest`
+
+- **Phase 5: Navigation wiring + Dashboard**:
+  - 4 new routes: ProfileSelector, ProfileEdit(profileId), WatchStats(profileId), ExportImport(parentAccountId)
+  - `AppNavigation.kt` updated with all new composable destinations + AssistedInject wiring
+  - `ParentDashboardViewModel` extended: parentAccountId in UiState
+  - `ParentDashboardScreen` updated: 4 new action cards (Edit Profile, Watch Stats, Export/Import, Create Profile)
+  - `feature:parent/build.gradle.kts`: added core:export dependency
+
+- **Phase 6: Build verification**:
+  - Fix: `AppResult` import path `core.common.result.AppResult` (not `core.common.AppResult`)
+  - Fix: Relaxed MockK mock returns non-null for nullable types — explicit `coEvery { findByYoutubeId } returns null`
+  - **316 tests, all green**
+
+**Decisions Made**:
+- `TimeLimitChecker` as separate class — combines profile + watch history flows (SoC)
+- core:export uses DAOs directly — avoids circular deps with core:data
+- Import generates new UUIDs — prevents PK conflicts
+- Export version field — future-proofing for format changes
+- Full Kid mode blocking when time limit reached — overlay on KidHome + VideoPlayer
+- ProfileSelector at app level (not feature:parent) — shown before mode selection
+- getTotalWatchedSecondsTodayFlow as Flow — reactive time limit updates without polling
+- No watch history in export — only profiles + whitelist items
+- ParentDashboardUiState includes parentAccountId for Export/Import route
+
+**Test Stats**: 316 total tests (237 existing + 79 new), all green
+
+**New tests breakdown**: WatchHistoryRepo +8, TimeLimitChecker 8, WatchStatsVM 11, KidHomeVM +3, VideoPlayerVM +4, SplashVM +2, ProfileSelectorVM 6, ProfileEditVM 14, ExportImportService 14, ExportImportVM 10
+
+**Notes**:
+- Relaxed MockK mocks return non-null objects for nullable types — always explicit mock for null returns
+- `AppResult` is in `core.common.result` package (not `core.common`)
+- Playlist detail screen still not implemented
+- Kiosk mode deferred to later session
+- Google Cloud Console YouTube API key still not created
+
+**Next Session Focus**: M6 - Testing, bugfix, optimization. Or M3 kiosk mode, playlist detail screen.

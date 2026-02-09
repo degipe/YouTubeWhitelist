@@ -12,6 +12,8 @@ import io.github.degipe.youtubewhitelist.core.data.repository.impl.KidProfileRep
 import io.github.degipe.youtubewhitelist.core.data.repository.impl.WatchHistoryRepositoryImpl
 import io.github.degipe.youtubewhitelist.core.data.repository.impl.WhitelistRepositoryImpl
 import io.github.degipe.youtubewhitelist.core.data.repository.impl.YouTubeApiRepositoryImpl
+import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
+import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitCheckerImpl
 import javax.inject.Singleton
 
 @Module
@@ -33,4 +35,8 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindWatchHistoryRepository(impl: WatchHistoryRepositoryImpl): WatchHistoryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTimeLimitChecker(impl: TimeLimitCheckerImpl): TimeLimitChecker
 }

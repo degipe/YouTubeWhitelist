@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun SplashScreen(
     onFirstRun: () -> Unit,
     onReturningUser: (profileId: String) -> Unit,
+    onMultipleProfiles: () -> Unit,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -23,6 +24,7 @@ fun SplashScreen(
         when (val state = uiState) {
             SplashUiState.FirstRun -> onFirstRun()
             is SplashUiState.ReturningUser -> onReturningUser(state.profileId)
+            SplashUiState.MultipleProfiles -> onMultipleProfiles()
             SplashUiState.Loading -> { /* wait */ }
         }
     }

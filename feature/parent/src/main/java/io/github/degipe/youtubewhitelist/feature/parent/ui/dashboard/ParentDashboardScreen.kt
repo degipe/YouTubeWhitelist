@@ -23,7 +23,11 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,7 +58,11 @@ fun ParentDashboardScreen(
     onChangePin: () -> Unit,
     onOpenWhitelistManager: (profileId: String) -> Unit,
     onOpenBrowser: (profileId: String) -> Unit,
-    onOpenSleepMode: (profileId: String) -> Unit
+    onOpenSleepMode: (profileId: String) -> Unit,
+    onEditProfile: (profileId: String) -> Unit,
+    onWatchStats: (profileId: String) -> Unit,
+    onExportImport: (parentAccountId: String) -> Unit,
+    onCreateProfile: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -95,6 +103,16 @@ fun ParentDashboardScreen(
                 onOpenSleepMode = {
                     uiState.selectedProfileId?.let { onOpenSleepMode(it) }
                 },
+                onEditProfile = {
+                    uiState.selectedProfileId?.let { onEditProfile(it) }
+                },
+                onWatchStats = {
+                    uiState.selectedProfileId?.let { onWatchStats(it) }
+                },
+                onExportImport = {
+                    uiState.parentAccountId?.let { onExportImport(it) }
+                },
+                onCreateProfile = onCreateProfile,
                 modifier = Modifier.padding(padding)
             )
         }
@@ -121,6 +139,10 @@ private fun DashboardContent(
     onOpenWhitelistManager: () -> Unit,
     onOpenBrowser: () -> Unit,
     onOpenSleepMode: () -> Unit,
+    onEditProfile: () -> Unit,
+    onWatchStats: () -> Unit,
+    onExportImport: () -> Unit,
+    onCreateProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -180,6 +202,38 @@ private fun DashboardContent(
             subtitle = "Set a sleep timer with calming videos",
             onClick = onOpenSleepMode,
             enabled = uiState.selectedProfileId != null
+        )
+
+        ActionCard(
+            icon = Icons.Default.Settings,
+            title = "Edit Profile",
+            subtitle = "Change name, avatar, and daily time limit",
+            onClick = onEditProfile,
+            enabled = uiState.selectedProfileId != null
+        )
+
+        ActionCard(
+            icon = Icons.Default.QueryStats,
+            title = "Watch Stats",
+            subtitle = "View watch time statistics for the selected profile",
+            onClick = onWatchStats,
+            enabled = uiState.selectedProfileId != null
+        )
+
+        ActionCard(
+            icon = Icons.Default.SwapHoriz,
+            title = "Export / Import",
+            subtitle = "Backup or restore profiles and whitelisted content",
+            onClick = onExportImport,
+            enabled = uiState.parentAccountId != null
+        )
+
+        ActionCard(
+            icon = Icons.Default.PersonAdd,
+            title = "Create Profile",
+            subtitle = "Add a new kid profile",
+            onClick = onCreateProfile,
+            enabled = true
         )
 
         ActionCard(
