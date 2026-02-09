@@ -233,3 +233,19 @@
 - Google Cloud Console YouTube API key still not created — needs setup before runtime testing
 
 **Next Session Focus**: M3 completion — Add Coil image loading for thumbnails, KidSearch screen, then M4 Sleep mode or M3 kiosk mode.
+
+### Session 6 - 2026-02-09: M3 Completion (Coil, KidSearch) + M4 Sleep Mode
+
+**Objectives**: Complete M3 milestone (Coil image loading, KidSearch screen), begin and complete M4 milestone (Sleep Mode with timer, fade-out, dark UI).
+
+**Completed**:
+- **Archive**: Session 1 archived to CLAUDE_ARCHIVE_1.md, removed from CLAUDE.md, ARCHITECTURE.md updated
+- **Coil Image Loading (M3 completion)**: Added Coil 2.7.0, replaced all placeholder Icons with `AsyncImage` composables in KidHome, ChannelDetail, VideoPlayer, WhitelistManager screens
+- **KidSearch Screen (TDD, M3 completion)**: KidSearchViewModel (debounce(300) + flatMapLatest + stateIn(Eagerly), AssistedInject), KidSearchScreen, 10 tests
+- **Sleep Mode (M4 complete)**: SleepModeViewModel (TimerState enum, delay(1000) loop timer, volume fade-out over last 120s), SleepModeScreen (dark theme, 4 states), SleepYouTubePlayer (WebView), 15 tests
+- **Build Verification & Test Fixes**: advanceUntilIdle() issues, boundary-exclusive advanceTimeBy fix
+- **Code Review Fixes**: WebView memory leak fix (mutableStateOf instead of mutableListOf)
+
+**Test Stats**: 237 total tests, all green
+
+**Next Session Focus**: M5 - Multi-profile support, time limits, watch stats, export/import.

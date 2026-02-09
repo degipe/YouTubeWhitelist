@@ -67,69 +67,6 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 
 ## Session Logs
 
-### Session 6 - 2026-02-09: M3 Completion (Coil, KidSearch) + M4 Sleep Mode
-
-**Objectives**: Complete M3 milestone (Coil image loading, KidSearch screen), begin and complete M4 milestone (Sleep Mode with timer, fade-out, dark UI).
-
-**Completed**:
-- **Archive**: Session 1 archived to CLAUDE_ARCHIVE_1.md, removed from CLAUDE.md, ARCHITECTURE.md updated
-
-- **Coil Image Loading (M3 completion)**:
-  - Added Coil 2.7.0 to `libs.versions.toml` (version + `coil-compose` library entry)
-  - Added `implementation(libs.coil.compose)` to feature:kid and feature:parent build.gradle.kts
-  - Replaced all placeholder Icons with `AsyncImage` composables:
-    - `KidHomeScreen`: ChannelCard (circle, 80dp) + VideoCard (16:9 aspect ratio)
-    - `ChannelDetailScreen`: ChannelVideoCard (160dp, 16:9)
-    - `VideoPlayerScreen`: UpNextCard (120dp, 16:9)
-    - `WhitelistManagerScreen`: WhitelistItemCard (64dp, rounded corners)
-
-- **KidSearch Screen (TDD, M3 completion)**:
-  - `KidSearchViewModelTest` — 10 test cases (initial state, debounce triggering, no trigger before debounce, rapid typing, empty/blank query, clear query, mixed content types, no matches, correct profileId)
-  - `KidSearchViewModel` — `debounce(300)` + `flatMapLatest` + `stateIn(Eagerly)`, AssistedInject
-  - `KidSearchScreen` — search bar with auto-focus, clear button, results list with SearchResultCard (circle thumbnails for channels, 16:9 for videos/playlists), empty state hints
-  - Added search icon button to `KidHomeScreen`
-  - Wired `Route.KidSearch` into `AppNavigation.kt`
-
-- **Sleep Mode (M4 complete)**:
-  - `SleepModeViewModelTest` — 15 test cases (initial state, load videos, selectDuration, startTimer transition, countdown, timer expiry, fadeVolume at 3 levels, stopTimer reset, onVideoEnded advance/wrap/expired, currentVideo, empty videos)
-  - `SleepModeViewModel` — `TimerState` enum (SELECTING/RUNNING/EXPIRED), timer with `delay(1000)` loop, volume fade-out (linear decrease over last 120 seconds), video cycling with modulo wrap-around, `onCleared()` cleanup
-  - `SleepModeScreen` — custom `darkColorScheme`, 4 states: loading → empty → timer selection (15/30/45/60 min FilterChips) → playback (countdown display + WebView player) → expired ("Good night!")
-  - `SleepYouTubePlayer` — WebView with same security hardening as VideoPlayerScreen, `@Keep` SleepVideoEndedBridge, `SleepPlayerHtml` HTML generator (dark background, no controls, autoplay)
-  - Added `Route.SleepMode(profileId)` to navigation
-  - Added Sleep Mode action card to `ParentDashboardScreen`
-  - Wired into `AppNavigation.kt`
-
-- **Build Verification & Test Fixes**:
-  - Initial run: 7 failures
-  - KidSearchViewModelTest: `advanceUntilIdle()` after `advanceTimeBy(100)` was advancing past debounce — removed unnecessary `advanceUntilIdle()`
-  - SleepModeViewModelTest: 6 failures — `advanceUntilIdle()` after `startTimer()` ran entire timer to EXPIRED — removed, use only `advanceTimeBy()` for specific time advancement
-  - Off-by-one: `advanceTimeBy(5_000)` boundary-exclusive — changed to `advanceTimeBy(5_001)`
-  - **All 237 tests green after fixes**
-
-- **Code Review Fixes**:
-  - CRITICAL: WebView memory leak in VideoPlayerScreen — `mutableListOf<WebView?>()` → `mutableStateOf<WebView?>(null)`
-  - CRITICAL: WebView memory leak in SleepModeScreen — same fix applied
-  - Timer cleanup verified: `onCleared()` cancels timerJob, `startTimer()` cancels existing job before new one
-
-**Decisions Made**:
-- Coil 2.7.0 for image loading (stable, Compose-first API)
-- KidSearchViewModel: `debounce(300) + flatMapLatest + stateIn(Eagerly)` — clean reactive pattern
-- SleepModeViewModel: `delay(1000)` loop timer (simple, testable with `advanceTimeBy`)
-- Volume fade: linear decrease over last 120 seconds (`FADE_DURATION_SECONDS`)
-- Sleep mode dark theme: custom `darkColorScheme()` independent of app theme
-- `mutableStateOf<WebView?>` (not `mutableListOf`) for WebView reference tracking
-
-**Test Stats**: 237 total tests (212 existing + 10 KidSearch + 15 SleepMode), all green
-
-**Notes**:
-- `advanceUntilIdle()` processes ALL pending delays including future debounces/timers — use sparingly, prefer `advanceTimeBy()` for time-sensitive tests
-- `advanceTimeBy(N)` is boundary-exclusive — add +1ms for inclusive boundary
-- Playlist detail screen still not implemented (placeholder click handler)
-- Kiosk mode deferred to later session
-- Google Cloud Console YouTube API key still not created
-
-**Next Session Focus**: M5 - Multi-profile support, time limits, watch stats, export/import. Or M3 kiosk mode if prioritized.
-
 ### Session 7 - 2026-02-09: M5 - Multi-profile, Time Limits, Watch Stats, Export/Import
 
 **Objectives**: Complete M5 milestone in one session: multi-profile support, daily time limits, watch statistics, and JSON export/import.
@@ -404,3 +341,47 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 - Play Store screenshots + feature graphic still needed before store submission
 
 **Next Session Focus**: Real device testing with actual Google API credentials, Play Store screenshots, GitHub Release creation, F-Droid submission preparation.
+
+### Session 11 - 2026-02-09: M7 - Google Cloud Setup + AAB Build
+
+**Objectives**: Set up Google Cloud Console credentials for runtime use, build AAB for Play Store, prepare for device testing.
+
+**Completed**:
+- **Google Cloud Console Setup (via browser automation)**:
+  - Created new GCP project: `YouTubeWhitelist` (ID: `youtubewhitelist-486917`)
+  - Enabled YouTube Data API v3
+  - Created API Key (unrestricted — restrict later for production)
+  - Configured OAuth consent screen (External, Testing mode)
+  - Created OAuth 2.0 Client ID (Web application type, redirect URI: `http://localhost/callback`)
+  - Added `degi.peter@gmail.com` as test user
+  - Updated `local.properties` with real API key and OAuth client ID
+
+- **AAB Build for Play Store**:
+  - Verified `bundleRelease` task works out of the box (Android Gradle Plugin)
+  - Built both APK (2.4 MB) and AAB (5.2 MB) with real API credentials
+  - APK for F-Droid + GitHub Release, AAB for Google Play Store
+
+- **Sideloading Tutorial**:
+  - Step-by-step guide for USB debugging + adb install from macOS
+  - WiFi ADB alternative for Android 11+
+  - adb path: `/opt/homebrew/share/android-commandlinetools/platform-tools/adb`
+
+- **Archive**: Session 6 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-6)
+
+**Decisions Made**:
+- Both APK and AAB in release pipeline (APK for F-Droid/GitHub, AAB for Play Store)
+- API Key created without restrictions initially — add Android app restriction after testing
+- OAuth consent screen in Testing mode — publish for production later
+
+**Files Modified**:
+- `local.properties` (real YOUTUBE_API_KEY + GOOGLE_CLIENT_ID)
+
+**Test Stats**: 355 tests, all green (no new tests — infrastructure session)
+
+**Notes**:
+- GCP Project ID: `youtubewhitelist-486917`
+- OAuth consent screen is in Testing mode — only test users can sign in
+- API Key should be restricted to YouTube Data API v3 + Android app after device testing confirms it works
+- Release builds: `app/build/outputs/apk/release/app-release.apk` (2.4 MB), `app/build/outputs/bundle/release/app-release.aab` (5.2 MB)
+
+**Next Session Focus**: Real device testing (sideload APK, test full user flow), bug fixes if needed, Play Store screenshots, GitHub Release + tag, F-Droid submission, Privacy Policy page.
