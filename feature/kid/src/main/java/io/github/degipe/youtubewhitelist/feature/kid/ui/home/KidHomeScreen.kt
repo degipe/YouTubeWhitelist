@@ -1,10 +1,12 @@
 package io.github.degipe.youtubewhitelist.feature.kid.ui.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,11 +25,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,12 +44,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 
 @Composable
 fun KidHomeScreen(
     viewModel: KidHomeViewModel,
     onParentAccess: () -> Unit,
+    onSearchClick: () -> Unit,
     onChannelClick: (channelTitle: String, thumbnailUrl: String) -> Unit,
     onVideoClick: (videoId: String, channelTitle: String?) -> Unit,
     onPlaylistClick: (playlistId: String) -> Unit
@@ -86,6 +91,7 @@ fun KidHomeScreen(
             else -> {
                 KidHomeContent(
                     uiState = uiState,
+                    onSearchClick = onSearchClick,
                     onChannelClick = onChannelClick,
                     onVideoClick = onVideoClick,
                     onPlaylistClick = onPlaylistClick,
@@ -123,6 +129,7 @@ private fun EmptyContent(profileName: String, modifier: Modifier = Modifier) {
 @Composable
 private fun KidHomeContent(
     uiState: KidHomeUiState,
+    onSearchClick: () -> Unit,
     onChannelClick: (channelTitle: String, thumbnailUrl: String) -> Unit,
     onVideoClick: (videoId: String, channelTitle: String?) -> Unit,
     onPlaylistClick: (playlistId: String) -> Unit,
@@ -135,11 +142,23 @@ private fun KidHomeContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Greeting
-        Text(
-            text = if (uiState.profileName.isNotEmpty()) "Hi ${uiState.profileName}!" else "My Videos",
-            style = MaterialTheme.typography.headlineMedium
-        )
+        // Greeting + Search
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = if (uiState.profileName.isNotEmpty()) "Hi ${uiState.profileName}!" else "My Videos",
+                style = MaterialTheme.typography.headlineMedium
+            )
+            IconButton(onClick = onSearchClick) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search"
+                )
+            }
+        }
 
         // Channels section
         if (uiState.channels.isNotEmpty()) {
@@ -223,19 +242,14 @@ private fun ChannelCard(
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
+            AsyncImage(
+                model = channel.thumbnailUrl,
+                contentDescription = channel.title,
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+                contentScale = ContentScale.Crop
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = channel.title,
@@ -259,19 +273,14 @@ private fun VideoCard(
             .clickable(onClick = onClick)
     ) {
         Column {
-            Box(
+            AsyncImage(
+                model = video.thumbnailUrl,
+                contentDescription = video.title,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+                contentScale = ContentScale.Crop
+            )
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(
                     text = video.title,

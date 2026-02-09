@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.AsyncImage
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
@@ -197,17 +198,14 @@ private fun WhitelistItemCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            AsyncImage(
+                model = item.thumbnailUrl,
+                contentDescription = item.title,
                 modifier = Modifier
                     .size(64.dp)
                     .clip(RoundedCornerShape(8.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = item.type.icon(),
-                    style = MaterialTheme.typography.headlineMedium
-                )
-            }
+                contentScale = ContentScale.Crop
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -327,8 +325,3 @@ private fun WhitelistItemType.displayName(): String = when (this) {
     WhitelistItemType.PLAYLIST -> "Playlists"
 }
 
-private fun WhitelistItemType.icon(): String = when (this) {
-    WhitelistItemType.CHANNEL -> "\uD83D\uDCFA"  // TV emoji
-    WhitelistItemType.VIDEO -> "\uD83C\uDFAC"     // Clapper emoji
-    WhitelistItemType.PLAYLIST -> "\uD83D\uDCCB"  // Clipboard emoji
-}

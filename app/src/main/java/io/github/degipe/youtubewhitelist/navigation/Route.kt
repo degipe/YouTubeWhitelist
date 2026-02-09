@@ -25,4 +25,5 @@ sealed interface Route {
         val channelTitle: String? = null
     ) : Route
     @Serializable data class KidSearch(val profileId: String) : Route
+    @Serializable data class SleepMode(val profileId: String) : Route
 }

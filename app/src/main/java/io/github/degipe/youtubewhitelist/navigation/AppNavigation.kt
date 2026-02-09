@@ -13,6 +13,10 @@ import io.github.degipe.youtubewhitelist.feature.kid.ui.home.KidHomeScreen
 import io.github.degipe.youtubewhitelist.feature.kid.ui.home.KidHomeViewModel
 import io.github.degipe.youtubewhitelist.feature.kid.ui.player.VideoPlayerScreen
 import io.github.degipe.youtubewhitelist.feature.kid.ui.player.VideoPlayerViewModel
+import io.github.degipe.youtubewhitelist.feature.kid.ui.search.KidSearchScreen
+import io.github.degipe.youtubewhitelist.feature.kid.ui.search.KidSearchViewModel
+import io.github.degipe.youtubewhitelist.feature.sleep.ui.SleepModeScreen
+import io.github.degipe.youtubewhitelist.feature.sleep.ui.SleepModeViewModel
 import io.github.degipe.youtubewhitelist.feature.parent.ui.browser.WebViewBrowserScreen
 import io.github.degipe.youtubewhitelist.feature.parent.ui.browser.WebViewBrowserViewModel
 import io.github.degipe.youtubewhitelist.feature.parent.ui.dashboard.ParentDashboardScreen
@@ -114,6 +118,9 @@ fun AppNavigation(
                 onParentAccess = {
                     navController.navigate(Route.PinEntry)
                 },
+                onSearchClick = {
+                    navController.navigate(Route.KidSearch(route.profileId))
+                },
                 onChannelClick = { channelTitle, thumbnailUrl ->
                     navController.navigate(
                         Route.ChannelDetail(route.profileId, channelTitle, thumbnailUrl)
@@ -161,6 +168,31 @@ fun AppNavigation(
             )
         }
 
+        composable<Route.KidSearch> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.KidSearch>()
+            val viewModel: KidSearchViewModel =
+                hiltViewModel<KidSearchViewModel, KidSearchViewModel.Factory> { factory ->
+                    factory.create(route.profileId)
+                }
+            KidSearchScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onVideoClick = { videoId, channelTitle ->
+                    navController.navigate(
+                        Route.VideoPlayer(route.profileId, videoId, channelTitle)
+                    )
+                },
+                onChannelClick = { channelTitle, thumbnailUrl ->
+                    navController.navigate(
+                        Route.ChannelDetail(route.profileId, channelTitle, thumbnailUrl)
+                    )
+                },
+                onPlaylistClick = { /* Playlist detail deferred */ }
+            )
+        }
+
         composable<Route.ParentDashboard> {
             val viewModel: ParentDashboardViewModel = hiltViewModel()
             ParentDashboardScreen(
@@ -178,6 +210,9 @@ fun AppNavigation(
                 },
                 onOpenBrowser = { profileId ->
                     navController.navigate(Route.WebViewBrowser(profileId))
+                },
+                onOpenSleepMode = { profileId ->
+                    navController.navigate(Route.SleepMode(profileId))
                 }
             )
         }
@@ -202,6 +237,20 @@ fun AppNavigation(
             WebViewBrowserScreen(
                 viewModel = viewModel,
                 profileId = route.profileId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable<Route.SleepMode> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.SleepMode>()
+            val viewModel: SleepModeViewModel =
+                hiltViewModel<SleepModeViewModel, SleepModeViewModel.Factory> { factory ->
+                    factory.create(route.profileId)
+                }
+            SleepModeScreen(
+                viewModel = viewModel,
                 onNavigateBack = {
                     navController.popBackStack()
                 }

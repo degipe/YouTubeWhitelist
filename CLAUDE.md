@@ -67,44 +67,6 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 
 ## Session Logs
 
-### Session 1 - 2026-02-09: Project Initialization
-
-**Objectives**: Initialize project from PRD, set up multi-module Android/Kotlin/Compose project, push to GitHub.
-
-**Completed**:
-- Read and analyzed full PRD (YouTubeWhitelist_PRD_v1.1.docx)
-- Initialized git repository with `main` branch
-- Created comprehensive `.gitignore` for Android/Kotlin
-- Set up multi-module Gradle project with version catalog (`libs.versions.toml`)
-- Created all 10 modules: `:app`, `:feature:parent`, `:feature:kid`, `:feature:sleep`, `:core:common`, `:core:data`, `:core:database`, `:core:network`, `:core:auth`, `:core:export`
-- Configured dependencies: Compose BOM, Hilt, Room, Retrofit, OkHttp, KotlinX Serialization, WorkManager, Google Auth, etc.
-- Created Room database entities matching PRD data model: `ParentAccountEntity`, `KidProfileEntity`, `WhitelistItemEntity`, `WatchHistoryEntity`
-- Created Room DAOs with Flow-based reactive queries
-- Created `YouTubeWhitelistDatabase` with all DAOs
-- Created Hilt `DatabaseModule` for dependency injection
-- Created `YouTubeWhitelistApp` (Application class with @HiltAndroidApp)
-- Created `MainActivity` with Compose setup
-- Created `YouTubeWhitelistTheme` with Material 3 + dynamic colors
-- Created `HiltTestRunner` for instrumented tests
-- Created basic `AppNavigation` skeleton
-- Added GPLv3 LICENSE file
-- Created CLAUDE.md, ARCHITECTURE.md, NEXT_SESSION_PROMPT.md
-- Initial commit and push to GitHub
-
-**Decisions Made**:
-- Package name: `io.github.degipe.youtubewhitelist`
-- Using Gradle version catalog for dependency management
-- compileSdk/targetSdk = 35, minSdk = 26 (per PRD)
-- Using KSP (not kapt) for annotation processing
-- Kotlin 2.1.0 with integrated Compose compiler
-
-**Notes**:
-- JDK 8 is on the machine, but JDK 17+ needed for Android build. User will need to set up Android Studio / JDK 17.
-- No `ANDROID_HOME` or `JAVA_HOME` environment variables set - Android Studio will configure these.
-- Gradle wrapper jar downloaded, but full build verification will happen in Android Studio.
-
-**Next Session Focus**: M1 infrastructure - PIN management, Google OAuth integration, basic parent/kid mode navigation with PIN switching.
-
 ### Session 2 - 2026-02-09: PIN Management, Auth Infrastructure, Navigation
 
 **Objectives**: Implement M1 milestone infrastructure: PIN-based parent/kid mode switching, Google OAuth preparation, and complete navigation graph.
@@ -306,3 +268,66 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 - Google Cloud Console YouTube API key still not created — needs setup before runtime testing
 
 **Next Session Focus**: M3 completion — Add Coil image loading for thumbnails, KidSearch screen, then M4 Sleep mode or M3 kiosk mode.
+
+### Session 6 - 2026-02-09: M3 Completion (Coil, KidSearch) + M4 Sleep Mode
+
+**Objectives**: Complete M3 milestone (Coil image loading, KidSearch screen), begin and complete M4 milestone (Sleep Mode with timer, fade-out, dark UI).
+
+**Completed**:
+- **Archive**: Session 1 archived to CLAUDE_ARCHIVE_1.md, removed from CLAUDE.md, ARCHITECTURE.md updated
+
+- **Coil Image Loading (M3 completion)**:
+  - Added Coil 2.7.0 to `libs.versions.toml` (version + `coil-compose` library entry)
+  - Added `implementation(libs.coil.compose)` to feature:kid and feature:parent build.gradle.kts
+  - Replaced all placeholder Icons with `AsyncImage` composables:
+    - `KidHomeScreen`: ChannelCard (circle, 80dp) + VideoCard (16:9 aspect ratio)
+    - `ChannelDetailScreen`: ChannelVideoCard (160dp, 16:9)
+    - `VideoPlayerScreen`: UpNextCard (120dp, 16:9)
+    - `WhitelistManagerScreen`: WhitelistItemCard (64dp, rounded corners)
+
+- **KidSearch Screen (TDD, M3 completion)**:
+  - `KidSearchViewModelTest` — 10 test cases (initial state, debounce triggering, no trigger before debounce, rapid typing, empty/blank query, clear query, mixed content types, no matches, correct profileId)
+  - `KidSearchViewModel` — `debounce(300)` + `flatMapLatest` + `stateIn(Eagerly)`, AssistedInject
+  - `KidSearchScreen` — search bar with auto-focus, clear button, results list with SearchResultCard (circle thumbnails for channels, 16:9 for videos/playlists), empty state hints
+  - Added search icon button to `KidHomeScreen`
+  - Wired `Route.KidSearch` into `AppNavigation.kt`
+
+- **Sleep Mode (M4 complete)**:
+  - `SleepModeViewModelTest` — 15 test cases (initial state, load videos, selectDuration, startTimer transition, countdown, timer expiry, fadeVolume at 3 levels, stopTimer reset, onVideoEnded advance/wrap/expired, currentVideo, empty videos)
+  - `SleepModeViewModel` — `TimerState` enum (SELECTING/RUNNING/EXPIRED), timer with `delay(1000)` loop, volume fade-out (linear decrease over last 120 seconds), video cycling with modulo wrap-around, `onCleared()` cleanup
+  - `SleepModeScreen` — custom `darkColorScheme`, 4 states: loading → empty → timer selection (15/30/45/60 min FilterChips) → playback (countdown display + WebView player) → expired ("Good night!")
+  - `SleepYouTubePlayer` — WebView with same security hardening as VideoPlayerScreen, `@Keep` SleepVideoEndedBridge, `SleepPlayerHtml` HTML generator (dark background, no controls, autoplay)
+  - Added `Route.SleepMode(profileId)` to navigation
+  - Added Sleep Mode action card to `ParentDashboardScreen`
+  - Wired into `AppNavigation.kt`
+
+- **Build Verification & Test Fixes**:
+  - Initial run: 7 failures
+  - KidSearchViewModelTest: `advanceUntilIdle()` after `advanceTimeBy(100)` was advancing past debounce — removed unnecessary `advanceUntilIdle()`
+  - SleepModeViewModelTest: 6 failures — `advanceUntilIdle()` after `startTimer()` ran entire timer to EXPIRED — removed, use only `advanceTimeBy()` for specific time advancement
+  - Off-by-one: `advanceTimeBy(5_000)` boundary-exclusive — changed to `advanceTimeBy(5_001)`
+  - **All 237 tests green after fixes**
+
+- **Code Review Fixes**:
+  - CRITICAL: WebView memory leak in VideoPlayerScreen — `mutableListOf<WebView?>()` → `mutableStateOf<WebView?>(null)`
+  - CRITICAL: WebView memory leak in SleepModeScreen — same fix applied
+  - Timer cleanup verified: `onCleared()` cancels timerJob, `startTimer()` cancels existing job before new one
+
+**Decisions Made**:
+- Coil 2.7.0 for image loading (stable, Compose-first API)
+- KidSearchViewModel: `debounce(300) + flatMapLatest + stateIn(Eagerly)` — clean reactive pattern
+- SleepModeViewModel: `delay(1000)` loop timer (simple, testable with `advanceTimeBy`)
+- Volume fade: linear decrease over last 120 seconds (`FADE_DURATION_SECONDS`)
+- Sleep mode dark theme: custom `darkColorScheme()` independent of app theme
+- `mutableStateOf<WebView?>` (not `mutableListOf`) for WebView reference tracking
+
+**Test Stats**: 237 total tests (212 existing + 10 KidSearch + 15 SleepMode), all green
+
+**Notes**:
+- `advanceUntilIdle()` processes ALL pending delays including future debounces/timers — use sparingly, prefer `advanceTimeBy()` for time-sensitive tests
+- `advanceTimeBy(N)` is boundary-exclusive — add +1ms for inclusive boundary
+- Playlist detail screen still not implemented (placeholder click handler)
+- Kiosk mode deferred to later session
+- Google Cloud Console YouTube API key still not created
+
+**Next Session Focus**: M5 - Multi-profile support, time limits, watch stats, export/import. Or M3 kiosk mode if prioritized.

@@ -1,33 +1,38 @@
-# Session 6 Starting Prompt
+# Session 7 Starting Prompt
 
-Ez a 6. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 7. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-**FIGYELEM**: Ez a 6. session — Session 1-et archiváld CLAUDE_ARCHIVE_1.md-be a CLAUDE.md-ből!
+## Fókusz: M5 - Multi-profile, Time Limits, Stats, Export/Import
 
-## Fókusz: M3 befejezés + M4 kezdés
+### 1. Multi-profile támogatás
+- Profil váltás a Kid mode-ban (jelenleg csak az első profilt használjuk)
+- Profil szerkesztés (név, avatar módosítás)
+- Profil törlés (cascade delete a whitelist items-re)
 
-### 1. M3 befejezés
+### 2. Time Limits (napi idő korlát)
+- `DailyTimeLimitEntity` hozzáadása a Room DB-hez
+- `TimeLimitRepository` TDD-vel
+- Napi használat tracking (WatchHistory alapján)
+- Időkorlát elérése → visszanavigálás a szülői módba
 
-- **Coil image loading** integrálása thumbnailokhoz (channel/video/playlist képek)
-  - `libs.versions.toml`-ba Coil dependency
-  - `AsyncImage` használata az összes thumbnail helyen
-- **KidSearch screen** implementálása (searchItems DAO query már kész)
-  - `KidSearchViewModel` TDD-vel
-  - `KidSearchScreen` UI
-  - `Route.KidSearch` bekötés AppNavigation-be
-- **Playlist detail screen** (opcionális)
+### 3. Watch Stats
+- Nézési statisztikák összesítése profilonként
+- Statisztika screen a parent dashboard-on
+- Napi/heti/havi bontás
 
-### 2. M4 kezdés - Sleep Mode
+### 4. Export/Import (core:export modul)
+- JSON export (whitelist items + profiles)
+- JSON import (merge/overwrite opció)
+- File picker integráció
 
-- `SleepTimerViewModel` TDD-vel
-- Sleep timer UI (fade-out animáció, dark theme)
-- Sleep playlist integráció (sleepPlaylistId a KidProfile-ban már van)
-- feature:sleep modul
+### Opcionális
+- Kiosk mode (kid mode-ból nem tud kilépni az alkalmazásból)
+- Playlist detail screen (tartalom listázás)
 
 ### Megjegyzések
 
 - **Build parancs**: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew test`
-- **212 teszt** van jelenleg, mind zöld
+- **237 teszt** van jelenleg, mind zöld
 - **TDD skill használata kötelező!**
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push
 - Kommunikáció magyarul, dokumentáció angolul

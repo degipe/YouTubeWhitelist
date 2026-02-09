@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -52,7 +53,8 @@ fun ParentDashboardScreen(
     onBackToKidMode: (profileId: String) -> Unit,
     onChangePin: () -> Unit,
     onOpenWhitelistManager: (profileId: String) -> Unit,
-    onOpenBrowser: (profileId: String) -> Unit
+    onOpenBrowser: (profileId: String) -> Unit,
+    onOpenSleepMode: (profileId: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -90,6 +92,9 @@ fun ParentDashboardScreen(
                 onOpenBrowser = {
                     uiState.selectedProfileId?.let { onOpenBrowser(it) }
                 },
+                onOpenSleepMode = {
+                    uiState.selectedProfileId?.let { onOpenSleepMode(it) }
+                },
                 modifier = Modifier.padding(padding)
             )
         }
@@ -115,6 +120,7 @@ private fun DashboardContent(
     onChangePin: () -> Unit,
     onOpenWhitelistManager: () -> Unit,
     onOpenBrowser: () -> Unit,
+    onOpenSleepMode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -165,6 +171,14 @@ private fun DashboardContent(
             title = "Browse YouTube",
             subtitle = "Browse YouTube and add content to the whitelist",
             onClick = onOpenBrowser,
+            enabled = uiState.selectedProfileId != null
+        )
+
+        ActionCard(
+            icon = Icons.Default.Bedtime,
+            title = "Sleep Mode",
+            subtitle = "Set a sleep timer with calming videos",
+            onClick = onOpenSleepMode,
             enabled = uiState.selectedProfileId != null
         )
 
