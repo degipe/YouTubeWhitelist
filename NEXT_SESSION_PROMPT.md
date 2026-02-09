@@ -1,43 +1,59 @@
-# Session 10 Starting Prompt
+# Session 11 Starting Prompt
 
-Ez a 10. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 11. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Fókusz: M7 - Publication Preparation (folytatás)
+## Fókusz: M7 Completion - Device Testing + Store Submission
 
-### 1. ProGuard / R8 Finalization
-- ProGuard rules review (WebView JavaScript bridges, Serialization, Room, Hilt)
-- Release build tesztelés: `./gradlew assembleRelease`
-- APK méret ellenőrzés és optimalizáció
+### 1. Google Cloud Console Setup
 
-### 2. Signing Config
-- Release signing keystore generálás
-- `signingConfigs` blokk a `build.gradle.kts`-ben
-- Keystore path/password a `local.properties`-ben
+- YouTube Data API v3 key létrehozása
+- OAuth 2.0 "Web application" client ID létrehozása
+- `local.properties` frissítése valódi kulcsokkal
+- Teszt: sign-in flow, API calls
 
-### 3. F-Droid Metadata
-- `fastlane/metadata/android/` struktúra (Triple-T format)
-- `en-US/full_description.txt`, `short_description.txt`, `title.txt`
-- `hu-HU/` magyar fordítás
-- Anti-features: `NonFreeNet` (YouTube API)
-- Verify no non-FOSS dependencies
+### 2. Real Device Testing
 
-### 4. GitHub Release
-- Version bump (versionCode, versionName)
-- CHANGELOG.md írás
-- GitHub Release draft + APK attachment
+- Install release APK valódi eszközre
+- Teljes user flow tesztelés:
+  - Sign-in (WebView OAuth)
+  - PIN setup + entry
+  - Profile creation
+  - YouTube browsing + whitelist management
+  - Kid mode (grid, channel detail, video player)
+  - Search within whitelisted content
+  - Playlist detail
+  - Sleep mode (timer, volume fade)
+  - Time limits
+  - Export/Import
+  - Kiosk mode (screen pinning)
+  - About screen + Ko-fi link
 
-### 5. Final Device Testing
-- Google Cloud Console OAuth + YouTube API key beállítás (GOOGLE_SETUP.md alapján)
-- Valódi eszközön tesztelés (sign-in, whitelist, kid mode, kiosk, sleep, export/import)
-- Edge case-ek kézi tesztelés (offline, time limit, playlist detail)
+### 3. Play Store Submission Prep
+
+- Screenshots (phone + tablet if applicable)
+- Feature graphic (1024x500)
+- App icon (512x512)
+- Content rating questionnaire
+- Privacy policy URL (GitHub Pages or README link)
+
+### 4. F-Droid Submission
+
+- Verify reproducible builds
+- Submit to F-Droid via GitLab merge request or RFP issue
+- Verify AntiFeatures: NonFreeNet
+
+### 5. GitHub Release
+
+- `git tag v1.0.0`
+- GitHub Release with CHANGELOG content
+- Attach signed APK
 
 ### Megjegyzések
 
-- **Build parancs**: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew test`
-- **355 teszt** van jelenleg, mind zöld
-- **TDD skill használata kötelező!**
+- **Build parancs**: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew assembleRelease`
+- **355 teszt** van, mind zöld
+- **Release APK**: 2.4 MB, R8 minified, signed
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push
 - Kommunikáció magyarul, dokumentáció angolul
-- M1-M6 milestone-ok elkészültek, M7 van hátra
-- Ko-fi donation integráció kész (About screen, README, STORE_LISTING.md)
-- Google Cloud Console API key/OAuth client ID **még nincs** — runtime teszteléshez szükséges (lásd GOOGLE_SETUP.md)
+- M1-M7 milestone-ok lényegében elkészültek
+- Google Cloud Console API key/OAuth client ID **szükséges** — runtime teszteléshez (lásd GOOGLE_SETUP.md)

@@ -1,0 +1,27 @@
+A YouTubeWhitelist egy ingyenes, nyílt forráskódú Android alkalmazás, amellyel a szülők teljes mértékben kontrollálhatják, milyen YouTube tartalmakat nézhetnek gyermekeik.
+
+A szülők böngészik a YouTube-ot, és engedélyezési listára teszik a kiválasztott csatornákat, videókat és lejátszási listákat. A gyerekek csak a jóváhagyott tartalmakat látják — semmi mást. Nincs algoritmus, nincs ajánlás, nincs meglepetés.
+
+Funkciók:
+* Szülői mód: teljes YouTube böngészés és engedélyezési lista kezelés
+* Gyerek mód: tiszta, zavarmentes felület csak jóváhagyott tartalommal
+* PIN kóddal védett szülői hozzáférés
+* Több gyerekprofil külön engedélyezési listával
+* Napi időkorlát profilonként
+* Alvó mód: időzítő és fokozatos hangerő-csökkentés
+* Nézési statisztikák (napi, heti, havi)
+* Kiosk mód (képernyő rögzítés)
+* JSON export/import mentéshez és visszaállításhoz
+* Keresés az engedélyezett tartalmak között
+* Teljes lejátszási lista támogatás
+
+Adatvédelem:
+* Minden adat helyben tárolódik az eszközön
+* Nincs reklám, nincs követés, nincs analitika
+* Nincs háttérszerver
+
+Anti-funkciók:
+* NonFreeNet — YouTube Data API v3-at használ (Google hálózati szolgáltatás)
+
+Ha hasznosnak találod az alkalmazást, támogasd a fejlesztést:
+https://ko-fi.com/peterdegi

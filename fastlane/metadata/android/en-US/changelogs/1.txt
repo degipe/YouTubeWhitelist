@@ -1,0 +1,13 @@
+Initial release v1.0.0
+
+- Parent mode with YouTube browsing and whitelist management
+- Kid mode with distraction-free interface
+- PIN-protected parent access
+- Multiple kid profiles with separate whitelists
+- Daily watch time limits
+- Sleep mode with timer and volume fade-out
+- Watch statistics
+- Kiosk mode (screen pinning)
+- JSON export/import
+- Search within whitelisted content
+- Playlist support

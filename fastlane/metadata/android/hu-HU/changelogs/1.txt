@@ -1,0 +1,13 @@
+Első kiadás v1.0.0
+
+- Szülői mód YouTube böngészéssel és engedélyezési lista kezeléssel
+- Gyerek mód zavarmentes felülettel
+- PIN kóddal védett szülői hozzáférés
+- Több gyerekprofil külön engedélyezési listákkal
+- Napi időkorlátok
+- Alvó mód időzítővel és hangerő-csökkentéssel
+- Nézési statisztikák
+- Kiosk mód (képernyő rögzítés)
+- JSON export/import
+- Keresés az engedélyezett tartalmak között
+- Lejátszási lista támogatás

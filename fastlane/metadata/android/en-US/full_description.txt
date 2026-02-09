@@ -1,0 +1,27 @@
+YouTubeWhitelist is a free, open-source Android app that gives parents full control over what YouTube content their kids can watch.
+
+Parents browse YouTube and whitelist specific channels, videos, and playlists. Kids only see approved content — nothing else. No algorithm, no recommendations, no surprises.
+
+Features:
+* Parent mode with full YouTube browsing and whitelist management
+* Kid mode with clean, distraction-free interface showing only approved content
+* PIN-protected parent access
+* Multiple kid profiles with separate whitelists
+* Daily watch time limits per profile
+* Sleep mode with timer and gradual volume fade-out
+* Watch statistics (daily, weekly, monthly)
+* Kiosk mode (screen pinning)
+* JSON export/import for backup and restore
+* In-app search within whitelisted content
+* Full playlist support
+
+Privacy:
+* All data stored locally on device
+* No ads, no tracking, no analytics
+* No backend server
+
+Anti-features:
+* NonFreeNet — uses YouTube Data API v3 (Google network service)
+
+If you find this app useful, consider supporting development:
+https://ko-fi.com/peterdegi

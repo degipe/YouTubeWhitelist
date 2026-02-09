@@ -20,12 +20,24 @@ android {
     namespace = "io.github.degipe.youtubewhitelist"
     compileSdk = 35
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = localProperties.getProperty("RELEASE_KEYSTORE_PATH", "")
+            if (keystorePath.isNotEmpty()) {
+                storeFile = rootProject.file(keystorePath)
+                storePassword = localProperties.getProperty("RELEASE_KEYSTORE_PASSWORD", "")
+                keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS", "")
+                keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD", "")
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "io.github.degipe.youtubewhitelist"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "io.github.degipe.youtubewhitelist.HiltTestRunner"
 
@@ -48,6 +60,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -158,3 +158,78 @@
 - Emojis used in WhitelistItemCard type icons — may need replacement with proper vector icons later
 
 **Next Session Focus**: M2 completion — Build verification (JDK 17 + Android SDK setup), compile and run all tests, fix any compilation issues. Then start M3 (Kid mode: content grid, channel view, video player).
+
+### Session 5 - 2026-02-09: Build Verification + M3 Kid Mode
+
+**Objectives**: Build environment setup, full compilation and test verification, M3 Kid Mode implementation (data layer, navigation, ViewModels with TDD, UI screens).
+
+**Completed**:
+- **Build Environment Setup**:
+  - Installed JDK 17 via Homebrew (`brew install openjdk@17`)
+  - Installed Android SDK CLI tools + platform-tools, build-tools 35, platforms android-35
+  - Created `local.properties` with SDK path and dummy YouTube API key
+  - Fixed `settings.gradle.kts` (`dependencyResolution` → `dependencyResolutionManagement`)
+  - Fixed `app/build.gradle.kts` properties loading (import + use{} for stream cleanup)
+  - Created adaptive launcher icons (foreground/background XML + mipmap wrappers)
+  - Added missing `retrofit` dependency to core:data
+  - **All 174 existing tests passing, assembleDebug successful**
+
+- **Test Fixes (3 failures)**:
+  - `Pbkdf2PinHasherTest`: replaceFirst flaky → Base64 decode + XOR byte tampering
+  - `AuthRepositoryImplTest`: MockK slot not captured → explicit coEvery for getParentAccountOnce()
+  - `SignInViewModelTest`: StandardTestDispatcher timing → Turbine + CompletableDeferred gate
+
+- **M3 Phase 1: Data Layer**:
+  - Added 6 kid mode queries to `WhitelistItemDao` (channels, videos, playlists by profile, videos by channel, search, item by ID)
+  - Created `WatchHistory` domain model + `WatchHistoryRepository` interface + `WatchHistoryRepositoryImpl` (TDD: 5 tests)
+  - Extended `WhitelistRepository` interface + impl with 6 new kid mode methods
+  - Updated `DataModule` with WatchHistoryRepository binding
+
+- **M3 Phase 2: Navigation**:
+  - `Route.KidHome` changed from `data object` to `data class(profileId)`
+  - Added `Route.ChannelDetail(profileId, channelTitle, channelThumbnailUrl)`, `Route.VideoPlayer(profileId, videoId, channelTitle?)`, `Route.KidSearch(profileId)`
+  - `SplashUiState.ReturningUser` → `data class(profileId)` — SplashVM now loads first profile via KidProfileRepository
+  - `ProfileCreationUiState` → `createdProfileId: String?` — returns created profile ID
+  - `ParentDashboardScreen.onBackToKidMode` → passes `selectedProfileId`
+  - Updated `AppNavigation.kt` with all profileId-based navigations
+  - Updated SplashViewModelTest (6 tests, from 3 — added profile loading scenarios)
+
+- **M3 Phase 3: ViewModels (TDD)**:
+  - `KidHomeViewModel` — combine() 4 flows (profile + channels + videos + playlists), stateIn(Eagerly), AssistedInject. **11 tests**
+  - `ChannelDetailViewModel` — videos by channelTitle, stateIn(Eagerly), AssistedInject with @Assisted("id"). **6 tests**
+  - `VideoPlayerViewModel` — video loading, sibling navigation, auto-next, watch history recording, playNext/playPrevious/playVideoAt. **15 tests**
+  - Fixed `@Assisted` duplicate String types: `@Assisted("profileId")`, `@Assisted("channelTitle")`, `@Assisted("videoId")`
+
+- **M3 Phase 4: UI Screens**:
+  - `KidHomeScreen` (feature:kid) — greeting, channel grid (2-col LazyVerticalGrid), video LazyRow, playlist LazyRow, parent access FAB, empty state
+  - `ChannelDetailScreen` — TopAppBar + LazyColumn of video cards (thumbnail + title + channel)
+  - `VideoPlayerScreen` — YouTube IFrame Player via WebView, next/prev controls, "Up Next" list with clickable cards
+  - `YouTubePlayerHtml` — IFrame API HTML generator (autoplay, controls, rel=0, modestbranding, no annotations)
+  - Deleted old placeholder `KidHomeScreen` from app module
+  - Full `AppNavigation.kt` wiring with AssistedInject for KidHome, ChannelDetail, VideoPlayer
+
+- **Code Review Fixes (7 issues found, all fixed)**:
+  - CRITICAL: JavaScript bridge `@Keep` annotation — extracted `VideoEndedBridge` class to survive R8
+  - CRITICAL: WebView memory leak — `DisposableEffect(youtubeId)` instead of `Unit`, + `webViewRef.clear()`
+  - CRITICAL: Coroutine leak in KidHomeVM/ChannelDetailVM — `stateIn(Eagerly)` instead of `launch{collect}`
+  - HIGH: UpNextCard clickability — added `playVideoAt(index)` public method + onClick callback
+  - HIGH: ProfileCreationViewModel architecture violation — replaced direct DAO usage with KidProfileRepository
+
+**Decisions Made**:
+- `stateIn(Eagerly)` for KidHome/ChannelDetail VMs (always active when screen shown, avoids test complexity)
+- `@Assisted("identifier")` for disambiguating multiple String params in Hilt AssistedInject
+- `VideoEndedBridge` with `@Keep` for R8-safe JavaScript bridge
+- `WebView` DisposableEffect keyed on `youtubeId` for proper cleanup on video navigation
+- Channel thumbnails passed as route params (not re-fetched from DB)
+
+**Test Stats**: 212 total tests (174 existing + 38 new: 5 WatchHistory + 3 SplashVM new + 11 KidHome + 6 ChannelDetail + 15 VideoPlayer — some existing tests adjusted)
+
+**Notes**:
+- `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home` required for all Gradle commands
+- Android SDK at `/opt/homebrew/share/android-commandlinetools`
+- KidSearch screen deferred (nice-to-have, not in this session)
+- Playlist detail screen not yet implemented (placeholder click handler)
+- No image loading library yet (Coil/Glide) — thumbnails shown as placeholder icons
+- Google Cloud Console YouTube API key still not created — needs setup before runtime testing
+
+**Next Session Focus**: M3 completion — Add Coil image loading for thumbnails, KidSearch screen, then M4 Sleep mode or M3 kiosk mode.

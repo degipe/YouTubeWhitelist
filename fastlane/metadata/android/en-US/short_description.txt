@@ -1,0 +1,1 @@
+Whitelist-based YouTube client for kids. Parents approve, kids watch safely.

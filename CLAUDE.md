@@ -67,81 +67,6 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 
 ## Session Logs
 
-### Session 5 - 2026-02-09: Build Verification + M3 Kid Mode
-
-**Objectives**: Build environment setup, full compilation and test verification, M3 Kid Mode implementation (data layer, navigation, ViewModels with TDD, UI screens).
-
-**Completed**:
-- **Build Environment Setup**:
-  - Installed JDK 17 via Homebrew (`brew install openjdk@17`)
-  - Installed Android SDK CLI tools + platform-tools, build-tools 35, platforms android-35
-  - Created `local.properties` with SDK path and dummy YouTube API key
-  - Fixed `settings.gradle.kts` (`dependencyResolution` → `dependencyResolutionManagement`)
-  - Fixed `app/build.gradle.kts` properties loading (import + use{} for stream cleanup)
-  - Created adaptive launcher icons (foreground/background XML + mipmap wrappers)
-  - Added missing `retrofit` dependency to core:data
-  - **All 174 existing tests passing, assembleDebug successful**
-
-- **Test Fixes (3 failures)**:
-  - `Pbkdf2PinHasherTest`: replaceFirst flaky → Base64 decode + XOR byte tampering
-  - `AuthRepositoryImplTest`: MockK slot not captured → explicit coEvery for getParentAccountOnce()
-  - `SignInViewModelTest`: StandardTestDispatcher timing → Turbine + CompletableDeferred gate
-
-- **M3 Phase 1: Data Layer**:
-  - Added 6 kid mode queries to `WhitelistItemDao` (channels, videos, playlists by profile, videos by channel, search, item by ID)
-  - Created `WatchHistory` domain model + `WatchHistoryRepository` interface + `WatchHistoryRepositoryImpl` (TDD: 5 tests)
-  - Extended `WhitelistRepository` interface + impl with 6 new kid mode methods
-  - Updated `DataModule` with WatchHistoryRepository binding
-
-- **M3 Phase 2: Navigation**:
-  - `Route.KidHome` changed from `data object` to `data class(profileId)`
-  - Added `Route.ChannelDetail(profileId, channelTitle, channelThumbnailUrl)`, `Route.VideoPlayer(profileId, videoId, channelTitle?)`, `Route.KidSearch(profileId)`
-  - `SplashUiState.ReturningUser` → `data class(profileId)` — SplashVM now loads first profile via KidProfileRepository
-  - `ProfileCreationUiState` → `createdProfileId: String?` — returns created profile ID
-  - `ParentDashboardScreen.onBackToKidMode` → passes `selectedProfileId`
-  - Updated `AppNavigation.kt` with all profileId-based navigations
-  - Updated SplashViewModelTest (6 tests, from 3 — added profile loading scenarios)
-
-- **M3 Phase 3: ViewModels (TDD)**:
-  - `KidHomeViewModel` — combine() 4 flows (profile + channels + videos + playlists), stateIn(Eagerly), AssistedInject. **11 tests**
-  - `ChannelDetailViewModel` — videos by channelTitle, stateIn(Eagerly), AssistedInject with @Assisted("id"). **6 tests**
-  - `VideoPlayerViewModel` — video loading, sibling navigation, auto-next, watch history recording, playNext/playPrevious/playVideoAt. **15 tests**
-  - Fixed `@Assisted` duplicate String types: `@Assisted("profileId")`, `@Assisted("channelTitle")`, `@Assisted("videoId")`
-
-- **M3 Phase 4: UI Screens**:
-  - `KidHomeScreen` (feature:kid) — greeting, channel grid (2-col LazyVerticalGrid), video LazyRow, playlist LazyRow, parent access FAB, empty state
-  - `ChannelDetailScreen` — TopAppBar + LazyColumn of video cards (thumbnail + title + channel)
-  - `VideoPlayerScreen` — YouTube IFrame Player via WebView, next/prev controls, "Up Next" list with clickable cards
-  - `YouTubePlayerHtml` — IFrame API HTML generator (autoplay, controls, rel=0, modestbranding, no annotations)
-  - Deleted old placeholder `KidHomeScreen` from app module
-  - Full `AppNavigation.kt` wiring with AssistedInject for KidHome, ChannelDetail, VideoPlayer
-
-- **Code Review Fixes (7 issues found, all fixed)**:
-  - CRITICAL: JavaScript bridge `@Keep` annotation — extracted `VideoEndedBridge` class to survive R8
-  - CRITICAL: WebView memory leak — `DisposableEffect(youtubeId)` instead of `Unit`, + `webViewRef.clear()`
-  - CRITICAL: Coroutine leak in KidHomeVM/ChannelDetailVM — `stateIn(Eagerly)` instead of `launch{collect}`
-  - HIGH: UpNextCard clickability — added `playVideoAt(index)` public method + onClick callback
-  - HIGH: ProfileCreationViewModel architecture violation — replaced direct DAO usage with KidProfileRepository
-
-**Decisions Made**:
-- `stateIn(Eagerly)` for KidHome/ChannelDetail VMs (always active when screen shown, avoids test complexity)
-- `@Assisted("identifier")` for disambiguating multiple String params in Hilt AssistedInject
-- `VideoEndedBridge` with `@Keep` for R8-safe JavaScript bridge
-- `WebView` DisposableEffect keyed on `youtubeId` for proper cleanup on video navigation
-- Channel thumbnails passed as route params (not re-fetched from DB)
-
-**Test Stats**: 212 total tests (174 existing + 38 new: 5 WatchHistory + 3 SplashVM new + 11 KidHome + 6 ChannelDetail + 15 VideoPlayer — some existing tests adjusted)
-
-**Notes**:
-- `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home` required for all Gradle commands
-- Android SDK at `/opt/homebrew/share/android-commandlinetools`
-- KidSearch screen deferred (nice-to-have, not in this session)
-- Playlist detail screen not yet implemented (placeholder click handler)
-- No image loading library yet (Coil/Glide) — thumbnails shown as placeholder icons
-- Google Cloud Console YouTube API key still not created — needs setup before runtime testing
-
-**Next Session Focus**: M3 completion — Add Coil image loading for thumbnails, KidSearch screen, then M4 Sleep mode or M3 kiosk mode.
-
 ### Session 6 - 2026-02-09: M3 Completion (Coil, KidSearch) + M4 Sleep Mode
 
 **Objectives**: Complete M3 milestone (Coil image loading, KidSearch screen), begin and complete M4 milestone (Sleep Mode with timer, fade-out, dark UI).
@@ -397,3 +322,85 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 - Short session — focused solely on Ko-fi integration and store preparation
 
 **Next Session Focus**: M7 continuation — ProGuard/R8 rules, release signing config, F-Droid metadata directory structure, GitHub Release, final device testing.
+
+### Session 10 - 2026-02-09: M7 - Publication Preparation
+
+**Objectives**: Complete M7 milestone: ProGuard/R8 finalization, release signing, F-Droid metadata, version bump, CHANGELOG, release build verification.
+
+**Completed**:
+- **ProGuard/R8 Rules Finalization**:
+  - Comprehensive `proguard-rules.pro` rewrite covering all project-specific concerns
+  - kotlinx-serialization: keep serializers, Companion objects, generated `$$serializer` classes
+  - Navigation Compose: keep Route sealed interface + all subclasses (type-safe nav needs runtime serialization)
+  - Export DTOs + YouTube API DTOs: keep entire packages
+  - WebView JavaScript bridges: explicit `-keepclassmembers` for `@JavascriptInterface` methods + `JavascriptInterface` attribute
+  - Retrofit: keep `YouTubeApiService` interface methods + annotation attributes (Signature, Exceptions, RuntimeVisibleAnnotations)
+  - OkHttp: `-dontwarn` for platform-specific classes (conscrypt, bouncycastle, openjsse)
+  - Room: keep entity + DAO classes
+  - Tink/Security Crypto: `-dontwarn` for ErrorProne annotations (CanIgnoreReturnValue, CheckReturnValue, Immutable, RestrictedApi)
+  - Kotlin: keep `kotlin.Metadata`
+
+- **Release Signing Configuration**:
+  - Generated `release-keystore.jks` (RSA 2048, 10000 days validity, CN=Peter Degi, O=degipe, L=Budapest, C=HU)
+  - Added `signingConfigs { create("release") }` block to `app/build.gradle.kts` reading from `local.properties`
+  - Release buildType linked to release signing config
+  - Keystore path + credentials in `local.properties` (git-ignored)
+  - `.gitignore` updated: uncommented `*.jks` and `*.keystore`
+
+- **F-Droid Metadata (Triple-T format)**:
+  - Created `fastlane/metadata/android/en-US/` directory structure
+  - `title.txt`, `short_description.txt`, `full_description.txt` (from STORE_LISTING.md content)
+  - `changelogs/1.txt` for versionCode 1
+  - Created `fastlane/metadata/android/hu-HU/` Hungarian locale
+  - `title.txt`, `short_description.txt`, `full_description.txt` Hungarian translations
+  - `changelogs/1.txt` Hungarian changelog
+
+- **Version Bump + CHANGELOG**:
+  - `versionName` bumped from "0.1.0" to "1.0.0"
+  - `versionCode` stays at 1 (first release)
+  - Created `CHANGELOG.md` following Keep a Changelog format
+  - All 18 features documented in [1.0.0] release entry
+
+- **Build Verification**:
+  - All 355 tests passing
+  - Release APK build successful with R8 minification + resource shrinking
+  - Release APK signed with release keystore
+  - **APK size: 2.4 MB** (excellent for the feature set)
+  - First R8 failure resolved: Tink ErrorProne annotation `-dontwarn` rules added
+
+**Decisions Made**:
+- Comprehensive ProGuard rules as belt-and-suspenders (explicit rules even when @Keep annotations exist)
+- JKS keystore format (standard, compatible with all Android tools)
+- Keystore credentials in `local.properties` (not in build.gradle.kts, not in git)
+- Triple-T metadata format (standard for F-Droid + Play Store via fastlane)
+- Bilingual metadata: en-US + hu-HU
+
+**Files Created**:
+- `CHANGELOG.md`
+- `release-keystore.jks` (git-ignored)
+- `fastlane/metadata/android/en-US/title.txt`
+- `fastlane/metadata/android/en-US/short_description.txt`
+- `fastlane/metadata/android/en-US/full_description.txt`
+- `fastlane/metadata/android/en-US/changelogs/1.txt`
+- `fastlane/metadata/android/hu-HU/title.txt`
+- `fastlane/metadata/android/hu-HU/short_description.txt`
+- `fastlane/metadata/android/hu-HU/full_description.txt`
+- `fastlane/metadata/android/hu-HU/changelogs/1.txt`
+
+**Files Modified**:
+- `app/proguard-rules.pro` (comprehensive rewrite)
+- `app/build.gradle.kts` (signing config + version bump)
+- `.gitignore` (uncommented keystore exclusion)
+- `local.properties` (signing credentials + GOOGLE_CLIENT_ID placeholder)
+
+**Test Stats**: 355 tests, all green (no new tests — publication preparation session)
+
+**Notes**:
+- Release APK at `app/build/outputs/apk/release/app-release.apk` (2.4 MB)
+- Keystore password: stored in local.properties only, change before production use
+- Session 5 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-5)
+- Google Cloud Console API key + OAuth client ID still needed for runtime testing
+- GitHub Release + APK upload is manual step (needs git push first)
+- Play Store screenshots + feature graphic still needed before store submission
+
+**Next Session Focus**: Real device testing with actual Google API credentials, Play Store screenshots, GitHub Release creation, F-Droid submission preparation.
