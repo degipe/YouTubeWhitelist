@@ -1,8 +1,8 @@
-# Session 9 Starting Prompt
+# Session 10 Starting Prompt
 
-Ez a 9. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 10. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Fókusz: M7 - Publication Preparation
+## Fókusz: M7 - Publication Preparation (folytatás)
 
 ### 1. ProGuard / R8 Finalization
 - ProGuard rules review (WebView JavaScript bridges, Serialization, Room, Hilt)
@@ -14,23 +14,19 @@ Ez a 9. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextusho
 - `signingConfigs` blokk a `build.gradle.kts`-ben
 - Keystore path/password a `local.properties`-ben
 
-### 3. App Metadata
-- Play Store listing szövegek (title, short/full description, screenshots)
-- F-Droid metadata (`fastlane/metadata/android/` struktúra)
-- Feature graphic, screenshots generálás
-
-### 4. F-Droid Specifikus
-- `fdroid/` metadata dir (Repomaker / Triple-T format)
-- Build recipe (`build:` section in metadata)
+### 3. F-Droid Metadata
+- `fastlane/metadata/android/` struktúra (Triple-T format)
+- `en-US/full_description.txt`, `short_description.txt`, `title.txt`
+- `hu-HU/` magyar fordítás
 - Anti-features: `NonFreeNet` (YouTube API)
-- Verify no non-FOSS dependencies (Google Auth SDK already removed)
+- Verify no non-FOSS dependencies
 
-### 5. GitHub Release
+### 4. GitHub Release
 - Version bump (versionCode, versionName)
 - CHANGELOG.md írás
 - GitHub Release draft + APK attachment
 
-### 6. Final Device Testing
+### 5. Final Device Testing
 - Google Cloud Console OAuth + YouTube API key beállítás (GOOGLE_SETUP.md alapján)
 - Valódi eszközön tesztelés (sign-in, whitelist, kid mode, kiosk, sleep, export/import)
 - Edge case-ek kézi tesztelés (offline, time limit, playlist detail)
@@ -42,5 +38,6 @@ Ez a 9. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextusho
 - **TDD skill használata kötelező!**
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push
 - Kommunikáció magyarul, dokumentáció angolul
-- M1-M6 milestone-ok elkészültek, M7 hátra van
+- M1-M6 milestone-ok elkészültek, M7 van hátra
+- Ko-fi donation integráció kész (About screen, README, STORE_LISTING.md)
 - Google Cloud Console API key/OAuth client ID **még nincs** — runtime teszteléshez szükséges (lásd GOOGLE_SETUP.md)

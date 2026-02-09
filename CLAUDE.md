@@ -67,53 +67,6 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 
 ## Session Logs
 
-### Session 4 - 2026-02-09: M2 - Parent Mode UI, ViewModels, Navigation
-
-**Objectives**: M2 continuation: Parent mode ViewModels (TDD), UI screens (WhitelistManager, WebViewBrowser, ParentDashboard), navigation route additions.
-
-**Completed**:
-- **feature:parent ViewModels (TDD)**:
-  - `WhitelistManagerViewModel` — list items by profile, filter by type (CHANNEL/VIDEO/PLAYLIST), add from URL, remove item, loading/error/success states, add URL dialog state. Uses Hilt Assisted Injection for profileId parameter.
-  - `WebViewBrowserViewModel` — URL change detection via YouTubeUrlParser, detected content type for FAB, add to whitelist via WhitelistRepository, AddToWhitelistResult sealed interface (Success/Error).
-  - `ParentDashboardViewModel` — loads parent account + kid profiles via flatMapLatest, auto-selects first profile, preserves selection on reactive updates.
-- **feature:parent Tests (TDD, test-first)**:
-  - `WhitelistManagerViewModelTest` — 15 test cases (initial state, loading, filter by type, clear filter, add URL dialog, add success/error/loading/blank, remove, dismiss messages)
-  - `WebViewBrowserViewModelTest` — 13 test cases (URL detection for video/channel/handle/playlist, clear on non-YouTube, add success/loading/error, no action without detection, dismiss result)
-  - `ParentDashboardViewModelTest` — 9 test cases (loading, profiles load, auto-select, no account, select profile, reactive updates, preserves selection)
-- **feature:parent UI Screens**:
-  - `WhitelistManagerScreen` — Scaffold + TopAppBar, FilterChipRow (All/Channels/Videos/Playlists), LazyColumn with WhitelistItemCard (title, channel, type badge, delete), FAB for add, AddUrlDialog with loading state, Snackbar for success/error, empty state, loading state
-  - `WebViewBrowserScreen` — AndroidView WebView with security hardening (no file access, no mixed content, safe browsing), LinearProgressIndicator for page load, animated ExtendedFAB for detected YouTube content, Snackbar for add results, proper WebView cleanup (about:blank + stopLoading + destroy)
-  - `ParentDashboardScreen` — profile selector (LazyRow with ProfileChip cards), action cards (Manage Whitelist, Browse YouTube, Change PIN), loading state, enabled/disabled based on profile selection
-- **Navigation Updates**:
-  - Added `Route.WhitelistManager(profileId: String)` and `Route.WebViewBrowser(profileId: String)` to type-safe Route sealed interface
-  - Updated `AppNavigation.kt` with new composable destinations, Hilt ViewModel injection, Assisted Injection for WhitelistManager
-  - Removed old placeholder ParentDashboardScreen from app module (replaced by feature:parent version)
-- **Code Review Fixes (9 issues found, 6 fixed)**:
-  - CRITICAL: WebView memory leak fix — proper cleanup (about:blank, stopLoading, clearHistory, destroy)
-  - CRITICAL: WebView security hardening — allowFileAccess=false, allowContentAccess=false, MIXED_CONTENT_NEVER_ALLOW, safeBrowsingEnabled
-  - CRITICAL: ParentDashboardViewModel race condition — nested collectLatest/collect replaced with flatMapLatest
-  - MEDIUM: Inconsistent error state clearing — successMessage nulled on new add action
-  - MEDIUM: Missing loading state UI in WhitelistManagerScreen — added isLoading=true initial state + CircularProgressIndicator
-  - MEDIUM: Missing FAB content description — added accessibility label
-
-**Decisions Made**:
-- ViewModels in feature:parent with subpackage structure: ui/dashboard/, ui/whitelist/, ui/browser/
-- WhitelistManagerViewModel uses Hilt Assisted Injection (@AssistedFactory) for profileId parameter
-- WebViewBrowser route takes profileId parameter (not savedStateHandle) for clean data passing
-- WebView: JavaScript enabled (required for YouTube), but file access and mixed content disabled
-- ParentDashboard uses flatMapLatest for account→profiles flow chain (avoids coroutine leaks)
-- Kept manual Job tracking in WhitelistManagerViewModel for filter change cancel+restart pattern
-
-**Test Stats**: 37 test cases this session (15 whitelist manager + 13 browser + 9 dashboard)
-
-**Notes**:
-- Build environment still not set up (JDK 8, no Android SDK) — all code uncompiled
-- WebView state restoration on config changes (rotation) deferred — nice-to-have for later
-- Old app module ParentDashboardScreen removed (was placeholder, replaced by feature:parent version)
-- Emojis used in WhitelistItemCard type icons — may need replacement with proper vector icons later
-
-**Next Session Focus**: M2 completion — Build verification (JDK 17 + Android SDK setup), compile and run all tests, fix any compilation issues. Then start M3 (Kid mode: content grid, channel view, video player).
-
 ### Session 5 - 2026-02-09: Build Verification + M3 Kid Mode
 
 **Objectives**: Build environment setup, full compilation and test verification, M3 Kid Mode implementation (data layer, navigation, ViewModels with TDD, UI screens).
@@ -402,3 +355,45 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 - All M1-M6 milestones now complete, M7 (Publication) remaining
 
 **Next Session Focus**: M7 - Publication preparation (ProGuard rules, signing config, Play Store listing, F-Droid metadata, GitHub Release, final testing on real device).
+
+### Session 9 - 2026-02-09: Ko-fi Donation Integration + README + Store Listing
+
+**Objectives**: Integrate Ko-fi donation support into the app (About screen), create full English README with Ko-fi badge, prepare Play Store and F-Droid store listing texts.
+
+**Completed**:
+- **About Screen**:
+  - Created `AboutScreen.kt` in `feature/parent/ui/about/` — static composable (no ViewModel), vertically scrollable
+  - Content: app name + version, description, GPLv3 license, clickable GitHub link, Ko-fi donation card with `Intent(ACTION_VIEW)` to `https://ko-fi.com/peterdegi`
+  - Added `Route.About` to navigation Route sealed interface
+  - Added `composable<Route.About>` to `AppNavigation.kt`
+  - Added `onAbout` callback + Info ActionCard to `ParentDashboardScreen` (after "Change PIN")
+
+- **README.md** (full rewrite):
+  - Ko-fi GitHub button badge at top: `[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X8X71TWXEN)`
+  - English project description, features list (13 features)
+  - Build instructions (prerequisites, clone, local.properties, gradlew)
+  - Link to GOOGLE_SETUP.md
+  - Tech stack, GPLv3 license, Ko-fi support section with badge image
+
+- **STORE_LISTING.md** (new file):
+  - Google Play Store: title (80 char), short description (80 char), full description with features, privacy section, Ko-fi link
+  - F-Droid: summary, description with feature list, privacy section, anti-features note (NonFreeNet), Ko-fi link
+
+- **Archive**: Session 4 archived to CLAUDE_ARCHIVE_1.md
+
+**Files Changed**:
+- Created: `feature/parent/src/main/java/.../ui/about/AboutScreen.kt`
+- Created: `STORE_LISTING.md`
+- Modified: `app/.../navigation/Route.kt` (added About route)
+- Modified: `app/.../navigation/AppNavigation.kt` (added About composable + wiring)
+- Modified: `feature/parent/.../dashboard/ParentDashboardScreen.kt` (added onAbout + ActionCard)
+- Overwritten: `README.md` (full English README with Ko-fi)
+
+**Test Stats**: 355 tests, all green (no new tests — About screen is static composable)
+
+**Notes**:
+- Ko-fi link: `https://ko-fi.com/peterdegi`, widget ID: `X8X71TWXEN`
+- About screen is static (no ViewModel needed) — only uses `LocalContext.current` for Intent launching
+- Short session — focused solely on Ko-fi integration and store preparation
+
+**Next Session Focus**: M7 continuation — ProGuard/R8 rules, release signing config, F-Droid metadata directory structure, GitHub Release, final device testing.
