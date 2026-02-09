@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
 
 @Entity(
     tableName = "whitelist_items",
@@ -28,9 +29,3 @@ data class WhitelistItemEntity(
     val channelTitle: String? = null,
     val addedAt: Long = System.currentTimeMillis()
 )
-
-enum class WhitelistItemType {
-    CHANNEL,
-    VIDEO,
-    PLAYLIST
-}

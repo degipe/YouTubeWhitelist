@@ -1,31 +1,37 @@
-# Session 3 Starting Prompt
+# Session 4 Starting Prompt
 
-Ez a 3. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 4. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Fókusz: M1 befejezés + M2 kezdése
+## Fókusz: M2 folytatás - Parent Mode UI
 
-### 1. Build verifikáció és teszt futtatás
+### 1. Build verifikáció (ha elérhető JDK 17 + Android SDK)
 
-- Gradle build ellenőrzés (ha elérhető JDK 17 + Android SDK)
-- Unit tesztek futtatása: core:auth és app modul tesztek
-- Kompilációs hibák javítása ha szükséges
+- Gradle build ellenőrzés
+- Összes unit teszt futtatása (core:common, core:network, core:data, core:auth, app modulok)
+- Kompilációs hibák javítása
 
-### 2. M2 kezdés: Parent Mode - WebView böngésző
+### 2. Parent Mode ViewModels (feature:parent)
 
-A PRD M2 milestone-ja alapján:
-- WebView alapú YouTube böngésző a :feature:parent modulban
-- URL parsing: YouTube video/channel/playlist URL-ek felismerése
-- Whitelist CRUD: videó/csatorna/playlist hozzáadása a whitelist-hez
-- YouTube Data API v3 kliens a :core:network modulban
+TDD-vel:
+- `WhitelistManagerViewModel` - whitelist elemek listázása, szűrés típus szerint, URL-ből hozzáadás, törlés
+- `WebViewBrowserViewModel` - URL detektálás, FAB megjelenítés, whitelist-hez adás
+- `ParentDashboardViewModel` - profil választó, navigáció kezelés
 
-### 3. YouTube API integráció
+### 3. Parent Mode UI (feature:parent)
 
-- Retrofit service a YouTube Data API v3-hoz
-- Video/channel/playlist metadata lekérdezés
-- Thumbnail URL-ek kezelése
+- `ParentDashboardScreen` kibővítés (jelenlegi placeholder felváltása)
+- `WhitelistManagerScreen` - elemek listája szűrő tabokkal, hozzáadás/törlés
+- `WebViewBrowserScreen` - AndroidView WebView + lebegő FAB gomb
+
+### 4. Navigáció frissítés
+
+- Új route-ok: `WhitelistManager(profileId)`, `WebViewBrowser`
+- `AppNavigation.kt` frissítés az új destination-ökkel
+- ParentDashboard-ról navigáció a browser-hez és whitelist manager-hez
 
 ### Megjegyzések
 
 - **FONTOS**: TDD skill használata kötelező! Test-driven development: tesztek először, implementáció utána
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push
 - Kommunikáció magyarul, dokumentáció angolul
+- Google Cloud Console YouTube API key szükséges lesz runtime teszteléshez

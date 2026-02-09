@@ -5,8 +5,8 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
 import io.github.degipe.youtubewhitelist.core.database.entity.WhitelistItemEntity
-import io.github.degipe.youtubewhitelist.core.database.entity.WhitelistItemType
 import kotlinx.coroutines.flow.Flow
 
 @Dao

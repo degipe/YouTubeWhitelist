@@ -19,6 +19,18 @@ android {
         versionName = "0.1.0"
 
         testInstrumentationRunner = "io.github.degipe.youtubewhitelist.HiltTestRunner"
+
+        // YouTube Data API v3 key from local.properties
+        val localProperties = java.util.Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localProperties.load(localPropertiesFile.inputStream())
+        }
+        buildConfigField(
+            "String",
+            "YOUTUBE_API_KEY",
+            "\"${localProperties.getProperty("youtube.api.key", "")}\""
+        )
     }
 
     buildTypes {

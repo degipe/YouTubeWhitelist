@@ -8,6 +8,7 @@ This file tracks where session logs are stored across CLAUDE.md and archive file
 |---------|------------|------------|---------|
 | 1       | 2026-02-09 | CLAUDE.md  | Project initialization, multi-module setup, database entities |
 | 2       | 2026-02-09 | CLAUDE.md  | PIN management, auth infrastructure, navigation graph |
+| 3       | 2026-02-09 | CLAUDE.md  | M2: YouTube API DTOs, URL parser, whitelist/API/profile repositories |
 
 ## Archive Files
 
