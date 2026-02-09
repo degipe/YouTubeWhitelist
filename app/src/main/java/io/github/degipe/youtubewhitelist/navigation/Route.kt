@@ -12,4 +12,6 @@ sealed interface Route {
     @Serializable data object ProfileCreation : Route
     @Serializable data object KidHome : Route
     @Serializable data object ParentDashboard : Route
+    @Serializable data class WhitelistManager(val profileId: String) : Route
+    @Serializable data class WebViewBrowser(val profileId: String) : Route
 }
