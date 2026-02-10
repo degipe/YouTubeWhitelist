@@ -21,10 +21,12 @@ This file tracks where session logs are stored across CLAUDE.md and archive file
 | 13      | 2026-02-10 | CLAUDE.md           | Sleep Mode refactoring (phases 4-5), device testing bug fixes, channel video search via YouTube API |
 | 14      | 2026-02-10 | CLAUDE.md           | Reverse SDLC documentation (BRD, FS, HLD, LLD — 2138 lines, 18 Mermaid diagrams) |
 | 15      | 2026-02-10 | CLAUDE.md           | SDLC documentation completion (Developer Onboarding, User Manual, PRD English translation) |
+| 16      | 2026-02-10 | CLAUDE.md           | Store submission + final polish (GitHub Release v1.0.0, Privacy Policy, screenshots, API key restriction, F-Droid, Play Store guide) |
 
 ## Archive Files
 
 - **CLAUDE_ARCHIVE_1.md**: Sessions 1-10
+- **CLAUDE_ARCHIVE_2.md**: Sessions 11+
 
 <!--
 Archive naming convention:

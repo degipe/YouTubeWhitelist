@@ -1,55 +1,51 @@
-# Session 16 Starting Prompt
+# Session 17 Starting Prompt
 
-Ez a 16. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 17. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Fókusz: Store Submission + Final Polish
+## Előző Session (16) Összefoglaló
 
-### 1. GitHub Release
+Store submission + final polish kész:
+- GitHub Release v1.0.0 (tag + APK csatolva)
+- Privacy Policy GitHub Pages-en + repo-ban
+- AboutScreen v1.0.0 + Privacy Policy link
+- GCP API key korlátozva (Android + YouTube Data API v3 only)
+- OAuth consent screen published to Production
+- 5 Play Store screenshot emulátorról
+- F-Droid RFP tartalom előkészítve (manuális GitLab beküldés kell)
+- Play Store Submission Guide elkészítve
 
-- `git tag v1.0.0` + push tag
-- GitHub Release létrehozása CHANGELOG.md tartalommal
-- Signed APK csatolása a release-hez
+## Mi van kész
 
-### 2. Privacy Policy
+- App teljesen működőképes (378+ teszt, mind zöld)
+- Release APK (2.5 MB) és AAB (5.5 MB)
+- GitHub Release v1.0.0: https://github.com/degipe/YouTubeWhitelist/releases/tag/v1.0.0
+- Privacy Policy: https://degipe.github.io/YouTubeWhitelist/privacy-policy/
+- GCP API key korlátozva, OAuth consent published
+- Teljes SDLC dokumentáció (BRD, FS, HLD, LLD, PRD, Developer Onboarding, User Manual)
+- Play Store screenshots (5 db) fastlane metadata-ban
+- Play Store Submission Guide (`docs/PLAY_STORE_SUBMISSION.md`)
 
-- Privacy Policy oldal létrehozása (GitHub Pages vagy static page)
-- Tartalom: no data collection, all data stays on device, YouTube API usage, no analytics
-- Link hozzáadása az About screen-hez
+## Mi maradt a publikáláshoz
 
-### 3. Play Store Screenshots
+1. **Play Store beküldés**: Kövesd a `docs/PLAY_STORE_SUBMISSION.md` guide-ot, AAB feltöltés, content rating kitöltés
+2. **F-Droid RFP**: Manuálisan beküldeni GitLab-ra (tartalom: `docs/PLAY_STORE_SUBMISSION.md` alapján vagy újragenerálni)
+3. **Feature graphic**: 1024x500 banner a Play Store-hoz (kötelező)
+4. **App icon**: 512x512 PNG export a Play Store-hoz (kötelező)
+5. **Jobb screenshotok**: Valódi eszközről, valódi YouTube thumbnailokkal (opcionális)
 
-- Készíts 4-6 screenshot-ot a főbb képernyőkről (emulator vagy valós eszköz)
-- Feature graphic (1024x500) ha szükséges
+## Opcionális fejlesztések
 
-### 4. API Key Restriction
-
-- GCP Console: API Key korlátozása YouTube Data API v3-ra
-- Android app restriction: package name (`io.github.degipe.youtubewhitelist`) + SHA-1 fingerprint
-- OAuth consent screen: publish for production (jelenleg Testing mode)
-
-### 5. F-Droid Submission
-
-- Verify reproducible builds
-- Submit RFP issue on F-Droid GitLab (https://gitlab.com/fdroid/rfp)
-- AntiFeatures: NonFreeNet (YouTube API usage)
-
-### 6. Play Store Submission
-
-- Upload AAB: `app/build/outputs/bundle/release/app-release.aab`
-- Content rating questionnaire
-- Store listing (STORE_LISTING.md tartalma)
-- Screenshots + feature graphic
+- README badges (Play Store, F-Droid, GitHub Release)
+- CI/CD (GitHub Actions: build + teszt)
+- Magyar nyelvű store listing screenshotok
+- Értékelés kérő dialog (in-app review API)
 
 ### Megjegyzések
 
-- **Teljes dokumentáció kész** (`docs/` mappa): BRD, FS, HLD, LLD, PRD, Developer Onboarding, User Manual — 7 dokumentum
 - **ADB path**: `/opt/homebrew/share/android-commandlinetools/platform-tools/adb`
 - **Build parancsok**:
   - APK: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew assembleRelease`
   - AAB: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew bundleRelease`
-- **378+ teszt** van, mind zöld
-- **Release builds**: APK 2.4 MB, AAB 5.2 MB
 - **GCP Project**: `youtubewhitelist-486917`
-- **OAuth**: Testing mode (test user configured in GCP Console)
 - Kommunikáció magyarul, dokumentáció angolul
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push
