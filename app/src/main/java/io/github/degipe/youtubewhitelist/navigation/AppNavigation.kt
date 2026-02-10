@@ -158,14 +158,19 @@ fun AppNavigation(
                 onSearchClick = {
                     navController.navigate(Route.KidSearch(route.profileId))
                 },
-                onChannelClick = { channelTitle, thumbnailUrl ->
+                onChannelClick = { channelId, channelTitle, thumbnailUrl ->
                     navController.navigate(
-                        Route.ChannelDetail(route.profileId, channelTitle, thumbnailUrl)
+                        Route.ChannelDetail(route.profileId, channelId, channelTitle, thumbnailUrl)
                     )
                 },
-                onVideoClick = { videoId, channelTitle ->
+                onVideoClick = { videoId, videoTitle, channelTitle ->
                     navController.navigate(
-                        Route.VideoPlayer(route.profileId, videoId, channelTitle)
+                        Route.VideoPlayer(
+                            profileId = route.profileId,
+                            videoId = videoId,
+                            videoTitle = videoTitle,
+                            channelTitle = channelTitle
+                        )
                     )
                 },
                 onPlaylistClick = { youtubeId, title, thumbnailUrl ->
@@ -180,16 +185,21 @@ fun AppNavigation(
             val route = backStackEntry.toRoute<Route.ChannelDetail>()
             val viewModel: ChannelDetailViewModel =
                 hiltViewModel<ChannelDetailViewModel, ChannelDetailViewModel.Factory> { factory ->
-                    factory.create(route.profileId, route.channelTitle)
+                    factory.create(route.channelId, route.channelTitle)
                 }
             ChannelDetailScreen(
                 viewModel = viewModel,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onVideoClick = { videoId, channelTitle ->
+                onVideoClick = { videoId, videoTitle, channelTitle ->
                     navController.navigate(
-                        Route.VideoPlayer(route.profileId, videoId, channelTitle)
+                        Route.VideoPlayer(
+                            profileId = route.profileId,
+                            videoId = videoId,
+                            videoTitle = videoTitle,
+                            channelTitle = channelTitle
+                        )
                     )
                 }
             )
@@ -199,7 +209,7 @@ fun AppNavigation(
             val route = backStackEntry.toRoute<Route.VideoPlayer>()
             val viewModel: VideoPlayerViewModel =
                 hiltViewModel<VideoPlayerViewModel, VideoPlayerViewModel.Factory> { factory ->
-                    factory.create(route.profileId, route.videoId, route.channelTitle)
+                    factory.create(route.profileId, route.videoId, route.videoTitle, route.channelTitle)
                 }
             VideoPlayerScreen(
                 viewModel = viewModel,
@@ -223,14 +233,19 @@ fun AppNavigation(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onVideoClick = { videoId, channelTitle ->
+                onVideoClick = { videoId, videoTitle, channelTitle ->
                     navController.navigate(
-                        Route.VideoPlayer(route.profileId, videoId, channelTitle)
+                        Route.VideoPlayer(
+                            profileId = route.profileId,
+                            videoId = videoId,
+                            videoTitle = videoTitle,
+                            channelTitle = channelTitle
+                        )
                     )
                 },
-                onChannelClick = { channelTitle, thumbnailUrl ->
+                onChannelClick = { channelId, channelTitle, thumbnailUrl ->
                     navController.navigate(
-                        Route.ChannelDetail(route.profileId, channelTitle, thumbnailUrl)
+                        Route.ChannelDetail(route.profileId, channelId, channelTitle, thumbnailUrl)
                     )
                 },
                 onPlaylistClick = { youtubeId, title, thumbnailUrl ->
@@ -253,9 +268,14 @@ fun AppNavigation(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onVideoClick = { videoId, channelTitle ->
+                onVideoClick = { videoId, videoTitle, channelTitle ->
                     navController.navigate(
-                        Route.VideoPlayer(route.profileId, videoId, channelTitle)
+                        Route.VideoPlayer(
+                            profileId = route.profileId,
+                            videoId = videoId,
+                            videoTitle = videoTitle,
+                            channelTitle = channelTitle
+                        )
                     )
                 }
             )

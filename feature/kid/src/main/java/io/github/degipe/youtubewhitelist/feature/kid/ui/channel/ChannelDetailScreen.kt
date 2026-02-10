@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,14 +35,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
+import io.github.degipe.youtubewhitelist.core.data.model.PlaylistVideo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChannelDetailScreen(
     viewModel: ChannelDetailViewModel,
     onNavigateBack: () -> Unit,
-    onVideoClick: (videoId: String, channelTitle: String?) -> Unit
+    onVideoClick: (videoId: String, videoTitle: String, channelTitle: String?) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -77,6 +78,26 @@ fun ChannelDetailScreen(
                     CircularProgressIndicator()
                 }
             }
+            uiState.error != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = uiState.error ?: "Unknown error",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = viewModel::retry) {
+                            Text("Retry")
+                        }
+                    }
+                }
+            }
             uiState.videos.isEmpty() -> {
                 Box(
                     modifier = Modifier
@@ -99,10 +120,10 @@ fun ChannelDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
                 ) {
-                    items(uiState.videos, key = { it.id }) { video ->
+                    items(uiState.videos, key = { it.videoId }) { video ->
                         ChannelVideoCard(
                             video = video,
-                            onClick = { onVideoClick(video.id, video.channelTitle) }
+                            onClick = { onVideoClick(video.videoId, video.title, video.channelTitle) }
                         )
                     }
                 }
@@ -113,7 +134,7 @@ fun ChannelDetailScreen(
 
 @Composable
 private fun ChannelVideoCard(
-    video: WhitelistItem,
+    video: PlaylistVideo,
     onClick: () -> Unit
 ) {
     Card(
@@ -145,7 +166,7 @@ private fun ChannelVideoCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = video.channelTitle ?: "",
+                    text = video.channelTitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

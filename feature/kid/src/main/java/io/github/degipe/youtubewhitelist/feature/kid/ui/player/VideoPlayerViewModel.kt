@@ -37,6 +37,7 @@ class VideoPlayerViewModel @AssistedInject constructor(
     private val timeLimitChecker: TimeLimitChecker,
     @Assisted("profileId") private val profileId: String,
     @Assisted("videoId") private val videoId: String,
+    @Assisted("videoTitle") private val initialVideoTitle: String,
     @Assisted("channelTitle") private val channelTitle: String?
 ) : ViewModel() {
 
@@ -45,6 +46,7 @@ class VideoPlayerViewModel @AssistedInject constructor(
         fun create(
             @Assisted("profileId") profileId: String,
             @Assisted("videoId") videoId: String,
+            @Assisted("videoTitle") videoTitle: String,
             @Assisted("channelTitle") channelTitle: String?
         ): VideoPlayerViewModel
     }
@@ -61,18 +63,11 @@ class VideoPlayerViewModel @AssistedInject constructor(
     }
 
     private fun loadVideo() {
-        viewModelScope.launch {
-            whitelistRepository.getItemById(videoId)
-                .collect { item ->
-                    if (item != null) {
-                        _uiState.value = _uiState.value.copy(
-                            videoTitle = item.title,
-                            youtubeId = item.youtubeId,
-                            isLoading = false
-                        )
-                    }
-                }
-        }
+        _uiState.value = _uiState.value.copy(
+            videoTitle = initialVideoTitle,
+            youtubeId = videoId,
+            isLoading = false
+        )
     }
 
     private fun loadSiblings() {
@@ -82,7 +77,7 @@ class VideoPlayerViewModel @AssistedInject constructor(
         siblingsJob = viewModelScope.launch {
             whitelistRepository.getVideosByChannelTitle(profileId, channelTitle)
                 .collect { siblings ->
-                    val currentIdx = siblings.indexOfFirst { it.id == _uiState.value.videoId }
+                    val currentIdx = siblings.indexOfFirst { it.youtubeId == _uiState.value.youtubeId }
                     _uiState.value = _uiState.value.copy(
                         siblingVideos = siblings,
                         currentIndex = currentIdx,
@@ -144,7 +139,7 @@ class VideoPlayerViewModel @AssistedInject constructor(
 
         val nextItem = siblings[index]
         _uiState.value = _uiState.value.copy(
-            videoId = nextItem.id,
+            videoId = nextItem.youtubeId,
             videoTitle = nextItem.title,
             youtubeId = nextItem.youtubeId,
             currentIndex = index,

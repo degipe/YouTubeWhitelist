@@ -16,12 +16,14 @@ sealed interface Route {
     @Serializable data class WebViewBrowser(val profileId: String) : Route
     @Serializable data class ChannelDetail(
         val profileId: String,
+        val channelId: String,
         val channelTitle: String,
         val channelThumbnailUrl: String
     ) : Route
     @Serializable data class VideoPlayer(
         val profileId: String,
         val videoId: String,
+        val videoTitle: String = "",
         val channelTitle: String? = null
     ) : Route
     @Serializable data class KidSearch(val profileId: String) : Route

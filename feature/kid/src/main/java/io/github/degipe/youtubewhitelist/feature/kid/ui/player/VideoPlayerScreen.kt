@@ -1,8 +1,14 @@
 package io.github.degipe.youtubewhitelist.feature.kid.ui.player
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.os.Handler
+import android.os.Looper
+import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebSettings
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.Keep
@@ -45,7 +51,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -61,7 +66,6 @@ fun VideoPlayerScreen(
     onParentAccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -116,9 +120,8 @@ fun VideoPlayerScreen(
                     // YouTube Player WebView
                     YouTubePlayer(
                         youtubeId = uiState.youtubeId,
-                        onVideoEnded = { watchedSeconds ->
-                            viewModel.onVideoEnded(watchedSeconds)
-                        },
+                        onVideoEnded = { viewModel.playNext() },
+                        onEmbedError = { viewModel.playNext() },
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(16f / 9f)
@@ -186,7 +189,7 @@ fun VideoPlayerScreen(
                         ) {
                             val filteredSiblings = uiState.siblingVideos
                                 .mapIndexed { index, item -> index to item }
-                                .filterNot { it.second.id == uiState.videoId }
+                                .filterNot { it.second.youtubeId == uiState.youtubeId }
                             items(filteredSiblings, key = { it.second.id }) { (index, video) ->
                                 UpNextCard(
                                     video = video,
@@ -236,18 +239,103 @@ fun VideoPlayerScreen(
 }
 
 @Keep
-private class VideoEndedBridge(private val callback: (Int) -> Unit) {
+private class VideoEndedBridge(
+    private val onVideoEnded: () -> Unit,
+    private val onEmbedError: () -> Unit
+) {
+    private val handler = Handler(Looper.getMainLooper())
+
     @JavascriptInterface
-    fun onVideoEnded(durationSeconds: Int) {
-        callback(durationSeconds)
+    fun onStateChange(state: Int) {
+        // YT.PlayerState.ENDED == 0
+        if (state == 0) {
+            handler.post { onVideoEnded() }
+        }
     }
+
+    @JavascriptInterface
+    fun onError(errorCode: Int) {
+        // 101, 150 = embedding disabled by video owner
+        if (errorCode == 101 || errorCode == 150) {
+            handler.post { onEmbedError() }
+        }
+    }
+
+    @JavascriptInterface
+    fun onReady() { }
+}
+
+private fun buildYouTubePlayerHtml(videoId: String, origin: String, showControls: Boolean): String {
+    val controls = if (showControls) 1 else 0
+    return """
+        <!DOCTYPE html>
+        <html>
+        <style type="text/css">
+            html, body {
+                height: 100%;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                background-color: #000000;
+                overflow: hidden;
+                position: fixed;
+            }
+        </style>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <script defer src="https://www.youtube.com/iframe_api"></script>
+        </head>
+        <body>
+            <div id="player"></div>
+        </body>
+        <script type="text/javascript">
+            var player;
+            function onYouTubeIframeAPIReady() {
+                player = new YT.Player('player', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: '$videoId',
+                    playerVars: {
+                        autoplay: 1,
+                        controls: $controls,
+                        enablejsapi: 1,
+                        fs: 1,
+                        origin: '$origin',
+                        rel: 0,
+                        iv_load_policy: 3,
+                        modestbranding: 1,
+                        playsinline: 1
+                    },
+                    events: {
+                        onReady: function(event) {
+                            if (typeof AndroidBridge !== 'undefined') {
+                                AndroidBridge.onReady();
+                            }
+                        },
+                        onStateChange: function(event) {
+                            if (typeof AndroidBridge !== 'undefined') {
+                                AndroidBridge.onStateChange(event.data);
+                            }
+                        },
+                        onError: function(event) {
+                            if (typeof AndroidBridge !== 'undefined') {
+                                AndroidBridge.onError(event.data);
+                            }
+                        }
+                    }
+                });
+            }
+        </script>
+        </html>
+    """.trimIndent()
 }
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun YouTubePlayer(
     youtubeId: String,
-    onVideoEnded: (watchedSeconds: Int) -> Unit,
+    onVideoEnded: () -> Unit,
+    onEmbedError: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
@@ -265,45 +353,48 @@ private fun YouTubePlayer(
     }
 
     AndroidView(
-        factory = { context ->
-            WebView(context).apply {
+        factory = { ctx ->
+            WebView(ctx).apply {
                 webViewRef.value = this
+
+                val origin = "https://${ctx.packageName}"
 
                 settings.javaScriptEnabled = true
                 settings.mediaPlaybackRequiresUserGesture = false
-                settings.allowFileAccess = false
-                settings.allowContentAccess = false
-                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                settings.safeBrowsingEnabled = true
+                settings.domStorageEnabled = true
+                settings.cacheMode = WebSettings.LOAD_DEFAULT
 
-                webChromeClient = WebChromeClient()
-                webViewClient = WebViewClient()
+                val cookieManager = CookieManager.getInstance()
+                cookieManager.setAcceptCookie(true)
+                cookieManager.setAcceptThirdPartyCookies(this, true)
 
                 addJavascriptInterface(
-                    VideoEndedBridge(onVideoEnded),
+                    VideoEndedBridge(onVideoEnded, onEmbedError),
                     "AndroidBridge"
                 )
 
-                val html = YouTubePlayerHtml.generate(youtubeId)
-                loadDataWithBaseURL(
-                    "https://www.youtube.com",
-                    html,
-                    "text/html",
-                    "UTF-8",
-                    null
-                )
+                webChromeClient = object : WebChromeClient() {
+                    override fun getDefaultVideoPoster(): Bitmap? {
+                        return super.getDefaultVideoPoster()
+                            ?: Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565)
+                    }
+                }
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): Boolean {
+                        // Block all navigation to prevent kids from escaping the app
+                        // (e.g., "Watch on YouTube" links on embed-disabled videos)
+                        return true
+                    }
+                }
+
+                val html = buildYouTubePlayerHtml(youtubeId, origin, showControls = true)
+                loadDataWithBaseURL(origin, html, "text/html", "utf-8", null)
             }
         },
-        update = { wv ->
-            val html = YouTubePlayerHtml.generate(youtubeId)
-            wv.loadDataWithBaseURL(
-                "https://www.youtube.com",
-                html,
-                "text/html",
-                "UTF-8",
-                null
-            )
-        },
+        update = { /* Re-creation handled by DisposableEffect keyed on youtubeId */ },
         modifier = modifier
     )
 }

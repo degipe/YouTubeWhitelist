@@ -53,8 +53,8 @@ import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 fun KidSearchScreen(
     viewModel: KidSearchViewModel,
     onNavigateBack: () -> Unit,
-    onVideoClick: (videoId: String, channelTitle: String?) -> Unit,
-    onChannelClick: (channelTitle: String, thumbnailUrl: String) -> Unit,
+    onVideoClick: (videoId: String, videoTitle: String, channelTitle: String?) -> Unit,
+    onChannelClick: (youtubeId: String, channelTitle: String, thumbnailUrl: String) -> Unit,
     onPlaylistClick: (youtubeId: String, title: String, thumbnailUrl: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -155,8 +155,8 @@ fun KidSearchScreen(
                             item = item,
                             onClick = {
                                 when (item.type) {
-                                    WhitelistItemType.VIDEO -> onVideoClick(item.youtubeId, item.channelTitle)
-                                    WhitelistItemType.CHANNEL -> onChannelClick(item.title, item.thumbnailUrl)
+                                    WhitelistItemType.VIDEO -> onVideoClick(item.youtubeId, item.title, item.channelTitle)
+                                    WhitelistItemType.CHANNEL -> onChannelClick(item.youtubeId, item.title, item.thumbnailUrl)
                                     WhitelistItemType.PLAYLIST -> onPlaylistClick(item.youtubeId, item.title, item.thumbnailUrl)
                                 }
                             }

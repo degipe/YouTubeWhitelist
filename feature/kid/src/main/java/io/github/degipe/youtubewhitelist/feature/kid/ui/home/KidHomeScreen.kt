@@ -53,8 +53,8 @@ fun KidHomeScreen(
     viewModel: KidHomeViewModel,
     onParentAccess: () -> Unit,
     onSearchClick: () -> Unit,
-    onChannelClick: (channelTitle: String, thumbnailUrl: String) -> Unit,
-    onVideoClick: (videoId: String, channelTitle: String?) -> Unit,
+    onChannelClick: (youtubeId: String, channelTitle: String, thumbnailUrl: String) -> Unit,
+    onVideoClick: (videoId: String, videoTitle: String, channelTitle: String?) -> Unit,
     onPlaylistClick: (youtubeId: String, title: String, thumbnailUrl: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -170,8 +170,8 @@ private fun EmptyContent(profileName: String, modifier: Modifier = Modifier) {
 private fun KidHomeContent(
     uiState: KidHomeUiState,
     onSearchClick: () -> Unit,
-    onChannelClick: (channelTitle: String, thumbnailUrl: String) -> Unit,
-    onVideoClick: (videoId: String, channelTitle: String?) -> Unit,
+    onChannelClick: (youtubeId: String, channelTitle: String, thumbnailUrl: String) -> Unit,
+    onVideoClick: (videoId: String, videoTitle: String, channelTitle: String?) -> Unit,
     onPlaylistClick: (youtubeId: String, title: String, thumbnailUrl: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -235,7 +235,7 @@ private fun KidHomeContent(
                 items(uiState.channels, key = { it.id }) { channel ->
                     ChannelCard(
                         channel = channel,
-                        onClick = { onChannelClick(channel.title, channel.thumbnailUrl) }
+                        onClick = { onChannelClick(channel.youtubeId, channel.title, channel.thumbnailUrl) }
                     )
                 }
             }
@@ -254,7 +254,7 @@ private fun KidHomeContent(
                 items(uiState.recentVideos, key = { it.id }) { video ->
                     VideoCard(
                         video = video,
-                        onClick = { onVideoClick(video.id, video.channelTitle) }
+                        onClick = { onVideoClick(video.youtubeId, video.title, video.channelTitle) }
                     )
                 }
             }

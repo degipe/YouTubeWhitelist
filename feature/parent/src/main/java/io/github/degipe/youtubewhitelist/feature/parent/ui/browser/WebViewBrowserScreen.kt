@@ -2,6 +2,7 @@ package io.github.degipe.youtubewhitelist.feature.parent.ui.browser
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -160,6 +161,11 @@ private fun YouTubeWebView(
                     }
                 }
 
+                // Enable cookies so YouTube login persists (Premium, ad-free, etc.)
+                val cookieManager = CookieManager.getInstance()
+                cookieManager.setAcceptCookie(true)
+                cookieManager.setAcceptThirdPartyCookies(this, true)
+
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(
                         view: WebView?,
@@ -189,6 +195,7 @@ private fun YouTubeWebView(
 
     DisposableEffect(Unit) {
         onDispose {
+            CookieManager.getInstance().flush()
             webViewRef.value?.apply {
                 loadUrl("about:blank")
                 stopLoading()

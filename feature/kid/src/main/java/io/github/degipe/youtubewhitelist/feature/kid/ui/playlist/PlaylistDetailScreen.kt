@@ -44,7 +44,7 @@ fun PlaylistDetailScreen(
     viewModel: PlaylistDetailViewModel,
     playlistTitle: String,
     onNavigateBack: () -> Unit,
-    onVideoClick: (videoId: String, channelTitle: String?) -> Unit
+    onVideoClick: (videoId: String, videoTitle: String, channelTitle: String?) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -125,7 +125,7 @@ fun PlaylistDetailScreen(
                     items(uiState.videos, key = { it.videoId }) { video ->
                         PlaylistVideoCard(
                             video = video,
-                            onClick = { onVideoClick(video.videoId, video.channelTitle) }
+                            onClick = { onVideoClick(video.videoId, video.title, video.channelTitle) }
                         )
                     }
                 }

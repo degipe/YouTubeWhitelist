@@ -1,55 +1,44 @@
-# Session 12 Starting Prompt
+# Session 13 Starting Prompt
 
-Ez a 12. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 13. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Fókusz: Real Device Testing + Store Submission
+## Fókusz: Store Submission + Final Polish
 
-### 1. Device Testing Results
+### 1. GitHub Release
 
-- Az előző session végén az APK sideloading tutorial elkészült
-- Teszteld az APK-t valódi eszközön és jelentsd a bugokat
-- Teljes user flow tesztelés:
-  - Sign-in (WebView OAuth — `degi.peter@gmail.com` test user)
-  - PIN setup + entry
-  - Profile creation
-  - YouTube browsing + whitelist management
-  - Kid mode (grid, channel detail, video player)
-  - Search within whitelisted content
-  - Playlist detail
-  - Sleep mode (timer, volume fade)
-  - Time limits
-  - Export/Import
-  - Kiosk mode (screen pinning)
-  - About screen + Ko-fi link
+- `git tag v1.0.0` + push tag
+- GitHub Release létrehozása CHANGELOG.md tartalommal
+- Signed APK csatolása a release-hez
 
-### 2. Bug Fixes
+### 2. Privacy Policy
 
-- Fix any issues found during device testing
+- Privacy Policy oldal létrehozása (GitHub Pages vagy static page)
+- Tartalom: no data collection, all data stays on device, YouTube API usage, no analytics
+- Link hozzáadása az About screen-hez
 
-### 3. API Key Restriction
+### 3. Play Store Screenshots
 
-- After confirming API works: restrict API key to YouTube Data API v3 + Android apps
-- Add package name (`io.github.degipe.youtubewhitelist`) + SHA-1 fingerprint
+- Készíts 4-6 screenshot-ot a főbb képernyőkről (emulator vagy valós eszköz)
+- Feature graphic (1024x500) ha szükséges
 
-### 4. Play Store Submission
+### 4. API Key Restriction
 
-- Screenshots (phone + tablet if applicable)
-- Feature graphic (1024x500)
-- Privacy policy URL (GitHub Pages or README link)
-- Content rating questionnaire
-- Upload AAB: `app/build/outputs/bundle/release/app-release.aab`
+- GCP Console: API Key korlátozása YouTube Data API v3-ra
+- Android app restriction: package name (`io.github.degipe.youtubewhitelist`) + SHA-1 fingerprint
+- OAuth consent screen: publish for production (jelenleg Testing mode)
 
-### 5. GitHub Release
-
-- `git tag v1.0.0`
-- GitHub Release with CHANGELOG content
-- Attach signed APK
-
-### 6. F-Droid Submission
+### 5. F-Droid Submission
 
 - Verify reproducible builds
-- Submit RFP issue on F-Droid GitLab
-- AntiFeatures: NonFreeNet
+- Submit RFP issue on F-Droid GitLab (https://gitlab.com/fdroid/rfp)
+- AntiFeatures: NonFreeNet (YouTube API usage)
+
+### 6. Play Store Submission
+
+- Upload AAB: `app/build/outputs/bundle/release/app-release.aab`
+- Content rating questionnaire
+- Store listing (STORE_LISTING.md tartalma)
+- Screenshots + feature graphic
 
 ### Megjegyzések
 
@@ -61,5 +50,7 @@ Ez a 12. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextush
 - **Release builds**: APK 2.4 MB, AAB 5.2 MB
 - **GCP Project**: `youtubewhitelist-486917`
 - **OAuth**: Testing mode, test user: `degi.peter@gmail.com`
+- **Fontos**: Két bejelentkezés kell: OAuth (Chrome Custom Tabs) + Browse YouTube WebView (külön cookie store)
+- **WebView security**: shouldOverrideUrlLoading blokkolja a navigációt a player-ben
 - Kommunikáció magyarul, dokumentáció angolul
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push

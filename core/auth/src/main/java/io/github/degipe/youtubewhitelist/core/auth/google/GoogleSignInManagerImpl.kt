@@ -1,79 +1,77 @@
 package io.github.degipe.youtubewhitelist.core.auth.google
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
 import io.github.degipe.youtubewhitelist.core.auth.di.GoogleClientId
-import kotlinx.coroutines.CompletableDeferred
+import io.github.degipe.youtubewhitelist.core.auth.di.GoogleClientSecret
 import java.util.UUID
 import javax.inject.Inject
 
 /**
- * WebView-based OAuth 2.0 implementation of GoogleSignInManager.
+ * Custom Chrome Tabs + loopback server OAuth 2.0 implementation.
  * F-Droid compatible — no Google Play Services SDK dependency.
  *
  * Flow:
- * 1. Launches OAuthActivity (in app module) with Google OAuth consent URL
- * 2. User signs in via WebView
- * 3. OAuthActivity intercepts redirect, returns authorization code
- * 4. Code is exchanged for tokens via HTTP POST to Google token endpoint
- * 5. ID token (JWT) is parsed for user info (email, name)
+ * 1. Starts a local HTTP server on a random port
+ * 2. Opens Google OAuth consent screen in a Custom Chrome Tab
+ * 3. After user signs in, Google redirects to localhost:{port}/callback
+ * 4. Loopback server captures the authorization code
+ * 5. Code is exchanged for tokens via HTTP POST to Google token endpoint
+ * 6. ID token (JWT) is parsed for user info (email, name)
  */
 class GoogleSignInManagerImpl @Inject constructor(
     private val tokenExchanger: OAuthTokenExchanger,
-    @GoogleClientId private val clientId: String
+    @GoogleClientId private val clientId: String,
+    @GoogleClientSecret private val clientSecret: String
 ) : GoogleSignInManager {
 
     private var signedIn = false
 
     override suspend fun signIn(activityContext: Context): GoogleSignInResult {
-        val state = UUID.randomUUID().toString()
-        val authUrl = OAuthConfig.buildAuthUrl(clientId, state)
+        val server = OAuthLoopbackServer()
+        try {
+            val state = UUID.randomUUID().toString()
+            val authUrl = OAuthConfig.buildAuthUrl(clientId, state, server.redirectUri)
 
-        // Launch OAuthActivity and wait for result via static bridge
-        val deferred = CompletableDeferred<OAuthCallbackResult>()
-        pendingCallback = deferred
+            val customTabsIntent = CustomTabsIntent.Builder().build()
+            customTabsIntent.launchUrl(activityContext, Uri.parse(authUrl))
 
-        val intent = Intent()
-        intent.setClassName(
-            activityContext.packageName,
-            "io.github.degipe.youtubewhitelist.ui.auth.OAuthActivity"
-        )
-        intent.putExtra(EXTRA_AUTH_URL, authUrl)
+            val callbackResult = server.awaitAuthorizationCode()
 
-        if (activityContext is Activity) {
-            activityContext.startActivityForResult(intent, OAUTH_REQUEST_CODE)
-        } else {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            activityContext.startActivity(intent)
-        }
+            // Bring app back to foreground (CCT stays in background)
+            bringAppToForeground(activityContext)
 
-        val callbackResult = deferred.await()
+            return when (callbackResult) {
+                is OAuthCallbackResult.Success -> {
+                    try {
+                        val tokens = tokenExchanger.exchangeCodeForTokens(
+                            callbackResult.code, clientId, clientSecret, server.redirectUri
+                        )
+                        val userInfo = tokens.idToken?.let { tokenExchanger.parseIdToken(it) }
 
-        return when (callbackResult) {
-            is OAuthCallbackResult.Success -> {
-                try {
-                    val tokens = tokenExchanger.exchangeCodeForTokens(callbackResult.code, clientId)
-                    val userInfo = tokens.idToken?.let { tokenExchanger.parseIdToken(it) }
-
-                    signedIn = true
-                    GoogleSignInResult.Success(
-                        googleAccountId = userInfo?.sub ?: UUID.randomUUID().toString(),
-                        email = userInfo?.email ?: "",
-                        displayName = userInfo?.name,
-                        accessToken = tokens.accessToken,
-                        refreshToken = tokens.refreshToken
-                    )
-                } catch (e: Exception) {
-                    GoogleSignInResult.Error("Token exchange failed: ${e.message}", e)
+                        signedIn = true
+                        GoogleSignInResult.Success(
+                            googleAccountId = userInfo?.sub ?: UUID.randomUUID().toString(),
+                            email = userInfo?.email ?: "",
+                            displayName = userInfo?.name,
+                            accessToken = tokens.accessToken,
+                            refreshToken = tokens.refreshToken
+                        )
+                    } catch (e: Exception) {
+                        GoogleSignInResult.Error("Token exchange failed: ${e.message}", e)
+                    }
+                }
+                is OAuthCallbackResult.Error -> {
+                    GoogleSignInResult.Error(callbackResult.message)
+                }
+                is OAuthCallbackResult.Cancelled -> {
+                    GoogleSignInResult.Cancelled
                 }
             }
-            is OAuthCallbackResult.Error -> {
-                GoogleSignInResult.Error(callbackResult.message)
-            }
-            is OAuthCallbackResult.Cancelled -> {
-                GoogleSignInResult.Cancelled
-            }
+        } finally {
+            server.shutdown()
         }
     }
 
@@ -83,31 +81,11 @@ class GoogleSignInManagerImpl @Inject constructor(
 
     override fun isSignedIn(): Boolean = signedIn
 
-    sealed class OAuthCallbackResult {
-        data class Success(val code: String) : OAuthCallbackResult()
-        data class Error(val message: String) : OAuthCallbackResult()
-        data object Cancelled : OAuthCallbackResult()
-    }
-
-    companion object {
-        const val EXTRA_AUTH_URL = "auth_url"
-        const val OAUTH_REQUEST_CODE = 9001
-
-        @Volatile
-        var pendingCallback: CompletableDeferred<OAuthCallbackResult>? = null
-
-        /**
-         * Called from OAuthActivity when the OAuth flow completes.
-         */
-        fun onOAuthResult(code: String?, error: String?) {
-            val callback = pendingCallback ?: return
-            pendingCallback = null
-
-            when {
-                code != null -> callback.complete(OAuthCallbackResult.Success(code))
-                error != null -> callback.complete(OAuthCallbackResult.Error(error))
-                else -> callback.complete(OAuthCallbackResult.Cancelled)
-            }
+    private fun bringAppToForeground(context: Context) {
+        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        intent?.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        if (intent != null) {
+            context.startActivity(intent)
         }
     }
 }

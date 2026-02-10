@@ -54,6 +54,13 @@ android {
             "GOOGLE_CLIENT_ID",
             "\"${localProperties.getProperty("GOOGLE_CLIENT_ID", "")}\""
         )
+
+        // Google OAuth 2.0 Client Secret from local.properties
+        buildConfigField(
+            "String",
+            "GOOGLE_CLIENT_SECRET",
+            "\"${localProperties.getProperty("GOOGLE_CLIENT_SECRET", "")}\""
+        )
     }
 
     buildTypes {

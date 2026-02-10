@@ -65,7 +65,8 @@ class VideoPlayerViewModelTest {
 
     private fun createViewModel(
         profileId: String = "profile-1",
-        videoId: String = "current",
+        videoId: String = "yt-current",
+        videoTitle: String = "Current Video",
         channelTitle: String? = "Fun Channel"
     ): VideoPlayerViewModel {
         return VideoPlayerViewModel(
@@ -74,31 +75,22 @@ class VideoPlayerViewModelTest {
             timeLimitChecker = timeLimitChecker,
             profileId = profileId,
             videoId = videoId,
+            initialVideoTitle = videoTitle,
             channelTitle = channelTitle
         )
     }
 
     @Test
-    fun `initial state has video id`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
+    fun `initial state has video id and title`() = runTest(testDispatcher) {
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
         setupDefaultTimeLimit()
 
         val viewModel = createViewModel()
 
-        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
-    }
-
-    @Test
-    fun `loads video title from repository`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
-        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
-        setupDefaultTimeLimit()
-
-        val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
-
+        assertThat(viewModel.uiState.value.videoId).isEqualTo("yt-current")
         assertThat(viewModel.uiState.value.videoTitle).isEqualTo("Current Video")
+        assertThat(viewModel.uiState.value.youtubeId).isEqualTo("yt-current")
+        assertThat(viewModel.uiState.value.isLoading).isFalse()
     }
 
     @Test
@@ -108,7 +100,6 @@ class VideoPlayerViewModelTest {
             currentVideo,
             makeVideo("v3", "Video 3")
         )
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
         setupDefaultTimeLimit()
 
@@ -120,7 +111,6 @@ class VideoPlayerViewModelTest {
 
     @Test
     fun `no siblings when channelTitle is null`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         setupDefaultTimeLimit()
 
         val viewModel = createViewModel(channelTitle = null)
@@ -136,7 +126,6 @@ class VideoPlayerViewModelTest {
             currentVideo,
             makeVideo("v3", "Video 3")
         )
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
         setupDefaultTimeLimit()
 
@@ -149,7 +138,6 @@ class VideoPlayerViewModelTest {
     @Test
     fun `hasNext is true when not last video`() = runTest(testDispatcher) {
         val siblings = listOf(currentVideo, makeVideo("v2", "Video 2"))
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
         setupDefaultTimeLimit()
 
@@ -162,7 +150,6 @@ class VideoPlayerViewModelTest {
     @Test
     fun `hasNext is false when last video`() = runTest(testDispatcher) {
         val siblings = listOf(makeVideo("v1", "Video 1"), currentVideo)
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
         setupDefaultTimeLimit()
 
@@ -175,7 +162,6 @@ class VideoPlayerViewModelTest {
     @Test
     fun `hasPrevious is true when not first video`() = runTest(testDispatcher) {
         val siblings = listOf(makeVideo("v1", "Video 1"), currentVideo)
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
         setupDefaultTimeLimit()
 
@@ -188,7 +174,6 @@ class VideoPlayerViewModelTest {
     @Test
     fun `hasPrevious is false when first video`() = runTest(testDispatcher) {
         val siblings = listOf(currentVideo, makeVideo("v2", "Video 2"))
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
         setupDefaultTimeLimit()
 
@@ -200,7 +185,6 @@ class VideoPlayerViewModelTest {
 
     @Test
     fun `onVideoEnded records watch history`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
         setupDefaultTimeLimit()
 
@@ -218,8 +202,6 @@ class VideoPlayerViewModelTest {
     @Test
     fun `onVideoEnded auto-next when has next`() = runTest(testDispatcher) {
         val siblings = listOf(currentVideo, makeVideo("v2", "Next Video"))
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
-        every { whitelistRepository.getItemById("v2") } returns flowOf(makeVideo("v2", "Next Video"))
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
         setupDefaultTimeLimit()
 
@@ -229,14 +211,12 @@ class VideoPlayerViewModelTest {
         viewModel.onVideoEnded(watchedSeconds = 60)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.videoId).isEqualTo("v2")
+        assertThat(viewModel.uiState.value.youtubeId).isEqualTo("yt-v2")
     }
 
     @Test
     fun `playNext navigates to next video`() = runTest(testDispatcher) {
         val siblings = listOf(currentVideo, makeVideo("v2", "Next Video"))
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
-        every { whitelistRepository.getItemById("v2") } returns flowOf(makeVideo("v2", "Next Video"))
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
         setupDefaultTimeLimit()
 
@@ -246,14 +226,12 @@ class VideoPlayerViewModelTest {
         viewModel.playNext()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.videoId).isEqualTo("v2")
+        assertThat(viewModel.uiState.value.youtubeId).isEqualTo("yt-v2")
     }
 
     @Test
     fun `playPrevious navigates to previous video`() = runTest(testDispatcher) {
         val siblings = listOf(makeVideo("v1", "Prev Video"), currentVideo)
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
-        every { whitelistRepository.getItemById("v1") } returns flowOf(makeVideo("v1", "Prev Video"))
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
         setupDefaultTimeLimit()
 
@@ -263,12 +241,11 @@ class VideoPlayerViewModelTest {
         viewModel.playPrevious()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.videoId).isEqualTo("v1")
+        assertThat(viewModel.uiState.value.youtubeId).isEqualTo("yt-v1")
     }
 
     @Test
     fun `playNext does nothing when no next`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
         setupDefaultTimeLimit()
 
@@ -278,14 +255,13 @@ class VideoPlayerViewModelTest {
         viewModel.playNext()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+        assertThat(viewModel.uiState.value.youtubeId).isEqualTo("yt-current")
     }
 
     // === Time Limit Tests ===
 
     @Test
     fun `displays remaining time when limit set`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
         every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
             TimeLimitStatus(dailyLimitMinutes = 60, watchedTodaySeconds = 1800, remainingSeconds = 1800, isLimitReached = false)
@@ -300,7 +276,6 @@ class VideoPlayerViewModelTest {
 
     @Test
     fun `time limit reached sets flag`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
         every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
             TimeLimitStatus(dailyLimitMinutes = 60, watchedTodaySeconds = 3600, remainingSeconds = 0, isLimitReached = true)
@@ -314,7 +289,6 @@ class VideoPlayerViewModelTest {
 
     @Test
     fun `no limit set shows no remaining time`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
         setupDefaultTimeLimit()
 
@@ -327,7 +301,6 @@ class VideoPlayerViewModelTest {
 
     @Test
     fun `remaining time updates reactively`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
         every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
             TimeLimitStatus(dailyLimitMinutes = 60, watchedTodaySeconds = 3000, remainingSeconds = 600, isLimitReached = false)
@@ -343,7 +316,6 @@ class VideoPlayerViewModelTest {
 
     @Test
     fun `playPrevious does nothing on single video`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
         setupDefaultTimeLimit()
 
@@ -353,14 +325,13 @@ class VideoPlayerViewModelTest {
         viewModel.playPrevious()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+        assertThat(viewModel.uiState.value.youtubeId).isEqualTo("yt-current")
         assertThat(viewModel.uiState.value.hasPrevious).isFalse()
         assertThat(viewModel.uiState.value.hasNext).isFalse()
     }
 
     @Test
     fun `onVideoEnded stays on last video when no next`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
         setupDefaultTimeLimit()
 
@@ -370,14 +341,13 @@ class VideoPlayerViewModelTest {
         viewModel.onVideoEnded(watchedSeconds = 60)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+        assertThat(viewModel.uiState.value.youtubeId).isEqualTo("yt-current")
         coVerify { watchHistoryRepository.recordWatch("profile-1", "yt-current", "Current Video", 60) }
     }
 
     @Test
     fun `playVideoAt ignores out of bounds index`() = runTest(testDispatcher) {
         val siblings = listOf(currentVideo, makeVideo("v2", "Video 2"))
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(siblings)
         setupDefaultTimeLimit()
 
@@ -387,12 +357,11 @@ class VideoPlayerViewModelTest {
         viewModel.playVideoAt(5)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+        assertThat(viewModel.uiState.value.youtubeId).isEqualTo("yt-current")
     }
 
     @Test
     fun `playVideoAt ignores negative index`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(listOf(currentVideo))
         setupDefaultTimeLimit()
 
@@ -402,12 +371,11 @@ class VideoPlayerViewModelTest {
         viewModel.playVideoAt(-1)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.videoId).isEqualTo("current")
+        assertThat(viewModel.uiState.value.youtubeId).isEqualTo("yt-current")
     }
 
     @Test
     fun `formats 1 hour remaining correctly`() = runTest(testDispatcher) {
-        every { whitelistRepository.getItemById("current") } returns flowOf(currentVideo)
         every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
         every { timeLimitChecker.getTimeLimitStatus("profile-1") } returns flowOf(
             TimeLimitStatus(dailyLimitMinutes = 120, watchedTodaySeconds = 3600, remainingSeconds = 3600, isLimitReached = false)

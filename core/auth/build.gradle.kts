@@ -29,6 +29,9 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:database"))
 
+    // Browser (Custom Chrome Tabs for OAuth - Google requires it, WebView is blocked)
+    implementation(libs.androidx.browser)
+
     // Security
     implementation(libs.security.crypto)
     implementation(libs.biometric)

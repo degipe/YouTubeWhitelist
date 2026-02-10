@@ -1,12 +1,17 @@
 package io.github.degipe.youtubewhitelist.feature.sleep.ui
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.os.Handler
+import android.os.Looper
+import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebSettings
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.Keep
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -360,11 +365,94 @@ private fun TimerExpiredContent(onDismiss: () -> Unit) {
 }
 
 @Keep
-private class SleepVideoEndedBridge(private val callback: () -> Unit) {
+private class SleepVideoEndedBridge(
+    private val onVideoEnded: () -> Unit,
+    private val onEmbedError: () -> Unit
+) {
+    private val handler = Handler(Looper.getMainLooper())
+
     @JavascriptInterface
-    fun onVideoEnded(durationSeconds: Int) {
-        callback()
+    fun onStateChange(state: Int) {
+        // YT.PlayerState.ENDED == 0
+        if (state == 0) {
+            handler.post { onVideoEnded() }
+        }
     }
+
+    @JavascriptInterface
+    fun onError(errorCode: Int) {
+        // 101, 150 = embedding disabled by video owner
+        if (errorCode == 101 || errorCode == 150) {
+            handler.post { onEmbedError() }
+        }
+    }
+
+    @JavascriptInterface
+    fun onReady() { }
+}
+
+private fun buildSleepPlayerHtml(videoId: String, origin: String): String {
+    return """
+        <!DOCTYPE html>
+        <html>
+        <style type="text/css">
+            html, body {
+                height: 100%;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                background-color: #000000;
+                overflow: hidden;
+                position: fixed;
+            }
+        </style>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <script defer src="https://www.youtube.com/iframe_api"></script>
+        </head>
+        <body>
+            <div id="player"></div>
+        </body>
+        <script type="text/javascript">
+            var player;
+            function onYouTubeIframeAPIReady() {
+                player = new YT.Player('player', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: '$videoId',
+                    playerVars: {
+                        autoplay: 1,
+                        controls: 0,
+                        enablejsapi: 1,
+                        fs: 0,
+                        origin: '$origin',
+                        rel: 0,
+                        iv_load_policy: 3,
+                        modestbranding: 1,
+                        playsinline: 1
+                    },
+                    events: {
+                        onReady: function(event) {
+                            if (typeof AndroidBridge !== 'undefined') {
+                                AndroidBridge.onReady();
+                            }
+                        },
+                        onStateChange: function(event) {
+                            if (typeof AndroidBridge !== 'undefined') {
+                                AndroidBridge.onStateChange(event.data);
+                            }
+                        },
+                        onError: function(event) {
+                            if (typeof AndroidBridge !== 'undefined') {
+                                AndroidBridge.onError(event.data);
+                            }
+                        }
+                    }
+                });
+            }
+        </script>
+        </html>
+    """.trimIndent()
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -393,84 +481,43 @@ private fun SleepYouTubePlayer(
             WebView(context).apply {
                 webViewRef.value = this
 
+                val origin = "https://${context.packageName}"
+
                 settings.javaScriptEnabled = true
                 settings.mediaPlaybackRequiresUserGesture = false
-                settings.allowFileAccess = false
-                settings.allowContentAccess = false
-                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                settings.safeBrowsingEnabled = true
+                settings.domStorageEnabled = true
+                settings.cacheMode = WebSettings.LOAD_DEFAULT
 
-                webChromeClient = WebChromeClient()
-                webViewClient = WebViewClient()
+                val cookieManager = CookieManager.getInstance()
+                cookieManager.setAcceptCookie(true)
+                cookieManager.setAcceptThirdPartyCookies(this, true)
 
                 addJavascriptInterface(
-                    SleepVideoEndedBridge(onVideoEnded),
+                    SleepVideoEndedBridge(onVideoEnded, onVideoEnded),
                     "AndroidBridge"
                 )
 
-                val html = SleepPlayerHtml.generate(youtubeId)
-                loadDataWithBaseURL(
-                    "https://www.youtube.com",
-                    html,
-                    "text/html",
-                    "UTF-8",
-                    null
-                )
+                webChromeClient = object : WebChromeClient() {
+                    override fun getDefaultVideoPoster(): Bitmap? {
+                        return super.getDefaultVideoPoster()
+                            ?: Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565)
+                    }
+                }
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): Boolean {
+                        // Block all navigation to prevent escaping the app
+                        return true
+                    }
+                }
+
+                val html = buildSleepPlayerHtml(youtubeId, origin)
+                loadDataWithBaseURL(origin, html, "text/html", "utf-8", null)
             }
         },
-        update = { wv ->
-            val html = SleepPlayerHtml.generate(youtubeId)
-            wv.loadDataWithBaseURL(
-                "https://www.youtube.com",
-                html,
-                "text/html",
-                "UTF-8",
-                null
-            )
-        },
+        update = { /* Re-creation handled by DisposableEffect keyed on youtubeId */ },
         modifier = modifier
     )
-}
-
-private object SleepPlayerHtml {
-    fun generate(videoId: String): String = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body { margin: 0; background: #0A0A1A; overflow: hidden; }
-                #player { width: 100%; height: 100%; }
-            </style>
-        </head>
-        <body>
-            <div id="player"></div>
-            <script src="https://www.youtube.com/iframe_api"></script>
-            <script>
-                var player;
-                function onYouTubeIframeAPIReady() {
-                    player = new YT.Player('player', {
-                        videoId: '$videoId',
-                        playerVars: {
-                            autoplay: 1,
-                            controls: 0,
-                            rel: 0,
-                            modestbranding: 1,
-                            iv_load_policy: 3,
-                            fs: 0
-                        },
-                        events: {
-                            onStateChange: function(event) {
-                                if (event.data === YT.PlayerState.ENDED) {
-                                    var duration = Math.round(player.getDuration());
-                                    AndroidBridge.onVideoEnded(duration);
-                                }
-                            }
-                        }
-                    });
-                }
-            </script>
-        </body>
-        </html>
-    """.trimIndent()
 }

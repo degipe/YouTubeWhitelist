@@ -29,7 +29,9 @@ class OAuthTokenExchanger @Inject constructor(
 
     suspend fun exchangeCodeForTokens(
         code: String,
-        clientId: String
+        clientId: String,
+        clientSecret: String,
+        redirectUri: String
     ): OAuthTokenResponse = withContext(ioDispatcher) {
         val url = URL(OAuthConfig.TOKEN_ENDPOINT)
         val connection = url.openConnection() as HttpURLConnection
@@ -41,7 +43,8 @@ class OAuthTokenExchanger @Inject constructor(
             val body = buildString {
                 append("code=").append(code)
                 append("&client_id=").append(clientId)
-                append("&redirect_uri=").append(OAuthConfig.REDIRECT_URI)
+                append("&client_secret=").append(clientSecret)
+                append("&redirect_uri=").append(redirectUri)
                 append("&grant_type=authorization_code")
             }
 

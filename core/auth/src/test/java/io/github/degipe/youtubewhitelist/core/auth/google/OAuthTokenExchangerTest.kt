@@ -45,42 +45,4 @@ class OAuthTokenExchangerTest {
     fun `parseIdToken throws for invalid JWT format`() {
         exchanger.parseIdToken("not-a-jwt")
     }
-
-    @Test
-    fun `onOAuthResult completes pending callback with success`() {
-        val deferred = kotlinx.coroutines.CompletableDeferred<GoogleSignInManagerImpl.OAuthCallbackResult>()
-        GoogleSignInManagerImpl.pendingCallback = deferred
-
-        GoogleSignInManagerImpl.onOAuthResult("test-code", null)
-
-        assertThat(deferred.isCompleted).isTrue()
-        val result = deferred.getCompleted()
-        assertThat(result).isInstanceOf(GoogleSignInManagerImpl.OAuthCallbackResult.Success::class.java)
-        assertThat((result as GoogleSignInManagerImpl.OAuthCallbackResult.Success).code).isEqualTo("test-code")
-    }
-
-    @Test
-    fun `onOAuthResult completes pending callback with cancelled when no code or error`() {
-        val deferred = kotlinx.coroutines.CompletableDeferred<GoogleSignInManagerImpl.OAuthCallbackResult>()
-        GoogleSignInManagerImpl.pendingCallback = deferred
-
-        GoogleSignInManagerImpl.onOAuthResult(null, null)
-
-        assertThat(deferred.isCompleted).isTrue()
-        val result = deferred.getCompleted()
-        assertThat(result).isInstanceOf(GoogleSignInManagerImpl.OAuthCallbackResult.Cancelled::class.java)
-    }
-
-    @Test
-    fun `onOAuthResult completes pending callback with error`() {
-        val deferred = kotlinx.coroutines.CompletableDeferred<GoogleSignInManagerImpl.OAuthCallbackResult>()
-        GoogleSignInManagerImpl.pendingCallback = deferred
-
-        GoogleSignInManagerImpl.onOAuthResult(null, "access_denied")
-
-        assertThat(deferred.isCompleted).isTrue()
-        val result = deferred.getCompleted()
-        assertThat(result).isInstanceOf(GoogleSignInManagerImpl.OAuthCallbackResult.Error::class.java)
-        assertThat((result as GoogleSignInManagerImpl.OAuthCallbackResult.Error).message).isEqualTo("access_denied")
-    }
 }

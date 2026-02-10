@@ -67,87 +67,6 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 
 ## Session Logs
 
-### Session 7 - 2026-02-09: M5 - Multi-profile, Time Limits, Watch Stats, Export/Import
-
-**Objectives**: Complete M5 milestone in one session: multi-profile support, daily time limits, watch statistics, and JSON export/import.
-
-**Completed**:
-- **Phase 1: Watch Stats (data layer)**:
-  - `DailyWatchAggregate` Room POJO for aggregated daily watch time
-  - `WatchStats` + `DailyWatchStat` domain models
-  - 3 new `WatchHistoryDao` queries (getVideosWatchedCount, getDailyWatchTime, getTotalWatchedSecondsFlow)
-  - 3 new `WatchHistoryRepository` methods (getWatchStats, getTotalWatchedSecondsToday, getTotalWatchedSecondsTodayFlow)
-  - `WatchHistoryRepositoryImpl` with `startOfToday()` helper using `java.time.LocalDate`
-  - 8 new tests in `WatchHistoryRepositoryImplTest`
-
-- **Phase 1: WatchStatsViewModel + Screen**:
-  - `WatchStatsViewModel` (AssistedInject, StatsPeriod enum DAY/WEEK/MONTH, DailyStatItem, formatWatchTime)
-  - `WatchStatsScreen` (period FilterChips, summary cards, daily breakdown bar chart)
-  - 11 tests in `WatchStatsViewModelTest`
-
-- **Phase 2: Time Limits**:
-  - `TimeLimitChecker` interface + `TimeLimitCheckerImpl` (combines profile + watch history flows via `combine()`)
-  - `TimeLimitStatus` data class (dailyLimitMinutes, watchedTodaySeconds, remainingSeconds, isLimitReached)
-  - DI binding in `DataModule`
-  - `KidHomeViewModel` extended: 5-flow combine, remainingTimeFormatted, isTimeLimitReached
-  - `VideoPlayerViewModel` extended: observeTimeLimit(), remainingTimeFormatted, isTimeLimitReached
-  - `KidHomeScreen` updated: remaining time Card + "Time's Up" full-screen overlay
-  - `VideoPlayerScreen` updated: remaining time badge + "Time's Up" overlay + onParentAccess
-  - 8 tests in `TimeLimitCheckerImplTest`, +3 in KidHomeVM, +4 in VideoPlayerVM
-
-- **Phase 3: Multi-profile**:
-  - `SplashViewModel` extended: `MultipleProfiles` state (profiles.size > 1)
-  - `SplashScreen` updated: onMultipleProfiles callback
-  - `ProfileSelectorViewModel` (flatMapLatest account→profiles) + 6 tests
-  - `ProfileSelectorScreen` (2-column grid of ProfileCards, Parent Mode button)
-  - `ProfileEditViewModel` (AssistedInject, save/delete profile, daily limit editing) + 14 tests
-  - `ProfileEditScreen` (name, avatar URL, daily limit slider 15-180 min, Save/Delete)
-  - +2 SplashViewModel tests
-
-- **Phase 4: Export/Import**:
-  - `ExportData` @Serializable DTOs (ExportData, ExportProfile, ExportWhitelistItem) in core:export
-  - `ExportImportService` interface + `ExportImportServiceImpl` (DAOs directly, UUID generation)
-  - `ExportModule` Hilt DI (@Binds)
-  - `ExportImportViewModel` (AssistedInject, export/import/dismiss) + 10 tests
-  - `ExportImportScreen` (SAF CreateDocument/OpenDocument launchers, Merge/Overwrite dialog)
-  - 14 tests in `ExportImportServiceImplTest`
-
-- **Phase 5: Navigation wiring + Dashboard**:
-  - 4 new routes: ProfileSelector, ProfileEdit(profileId), WatchStats(profileId), ExportImport(parentAccountId)
-  - `AppNavigation.kt` updated with all new composable destinations + AssistedInject wiring
-  - `ParentDashboardViewModel` extended: parentAccountId in UiState
-  - `ParentDashboardScreen` updated: 4 new action cards (Edit Profile, Watch Stats, Export/Import, Create Profile)
-  - `feature:parent/build.gradle.kts`: added core:export dependency
-
-- **Phase 6: Build verification**:
-  - Fix: `AppResult` import path `core.common.result.AppResult` (not `core.common.AppResult`)
-  - Fix: Relaxed MockK mock returns non-null for nullable types — explicit `coEvery { findByYoutubeId } returns null`
-  - **316 tests, all green**
-
-**Decisions Made**:
-- `TimeLimitChecker` as separate class — combines profile + watch history flows (SoC)
-- core:export uses DAOs directly — avoids circular deps with core:data
-- Import generates new UUIDs — prevents PK conflicts
-- Export version field — future-proofing for format changes
-- Full Kid mode blocking when time limit reached — overlay on KidHome + VideoPlayer
-- ProfileSelector at app level (not feature:parent) — shown before mode selection
-- getTotalWatchedSecondsTodayFlow as Flow — reactive time limit updates without polling
-- No watch history in export — only profiles + whitelist items
-- ParentDashboardUiState includes parentAccountId for Export/Import route
-
-**Test Stats**: 316 total tests (237 existing + 79 new), all green
-
-**New tests breakdown**: WatchHistoryRepo +8, TimeLimitChecker 8, WatchStatsVM 11, KidHomeVM +3, VideoPlayerVM +4, SplashVM +2, ProfileSelectorVM 6, ProfileEditVM 14, ExportImportService 14, ExportImportVM 10
-
-**Notes**:
-- Relaxed MockK mocks return non-null objects for nullable types — always explicit mock for null returns
-- `AppResult` is in `core.common.result` package (not `core.common`)
-- Playlist detail screen still not implemented
-- Kiosk mode deferred to later session
-- Google Cloud Console YouTube API key still not created
-
-**Next Session Focus**: M6 - Testing, bugfix, optimization. Or M3 kiosk mode, playlist detail screen.
-
 ### Session 8 - 2026-02-09: M6 - Missing Features, Edge Case Tests, Optimization
 
 **Objectives**: Complete deferred M3 features (Playlist Detail Screen, Kiosk Mode), replace mock Google Sign-In with F-Droid-compatible WebView OAuth, edge case tests, optimization.
@@ -385,3 +304,62 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 - Release builds: `app/build/outputs/apk/release/app-release.apk` (2.4 MB), `app/build/outputs/bundle/release/app-release.aab` (5.2 MB)
 
 **Next Session Focus**: Real device testing (sideload APK, test full user flow), bug fixes if needed, Play Store screenshots, GitHub Release + tag, F-Droid submission, Privacy Policy page.
+
+### Session 12 - 2026-02-10: Device Testing, WebView Security Fix, Cookie Persistence
+
+**Objectives**: Real device + emulator testing, fix embed-disabled video security issue, fix YouTube Premium cookie persistence in Browse YouTube.
+
+**Completed**:
+- **WebView Navigation Security Fix (VideoPlayerScreen + SleepModeScreen)**:
+  - Added `shouldOverrideUrlLoading` returning `true` to block ALL navigation in video player WebViews
+  - Prevents kids from escaping the app via "Watch on YouTube" links on embed-disabled videos
+  - Added `onEmbedError` callback to `VideoEndedBridge` JavaScript bridge — handles YouTube IFrame Player error codes 101/150 (embedding disabled by video owner)
+  - Auto-skips to next video when embed error detected (`viewModel.playNext()`)
+  - Same fixes applied to `SleepModeScreen`'s `SleepVideoEndedBridge`
+
+- **Browse YouTube Cookie Persistence Fix**:
+  - Added `CookieManager` setup to `WebViewBrowserScreen`'s `YouTubeWebView`
+  - `CookieManager.setAcceptCookie(true)` + `setAcceptThirdPartyCookies(this, true)` enables YouTube login session persistence
+  - `CookieManager.flush()` in `DisposableEffect.onDispose` persists cookies to disk before WebView destruction
+  - YouTube Premium now recognized in Browse YouTube — no ads, no sign-in prompts
+
+- **Attempted WebView OAuth (reverted)**:
+  - Created `OAuthWebViewActivity` to share cookie store between OAuth and Browse YouTube WebViews
+  - Goal: single sign-in experience (sign in once, Premium recognized everywhere)
+  - **Google blocked it** — Google's policy since 2016 prohibits OAuth in embedded WebViews (error: "access denied")
+  - Fully reverted to Chrome Custom Tabs + OAuthLoopbackServer implementation
+  - Deleted `OAuthWebViewActivity`, restored `androidx.browser` dependency
+
+- **Emulator Testing**:
+  - Installed release APK on Android 14 emulator, verified video playback with IFrame Player
+  - Navigation blocking confirmed — no "Watch on YouTube" escape links
+  - Video navigation (Next/Previous) working correctly
+  - Inserted test data directly via `adb shell run-as ... sqlite3` (emulator gesture navigation zone blocked FAB taps)
+
+- **Real Device Testing**:
+  - User confirmed fix works on real device ("szuper, most megy frankón")
+  - YouTube Premium recognized after CookieManager fix
+
+**Decisions Made**:
+- `shouldOverrideUrlLoading` returns `true` unconditionally in player WebViews — no legitimate navigation needed
+- Error codes 101/150 trigger auto-skip (not error message) — seamless UX for kids
+- Chrome Custom Tabs remains the only OAuth option — Google blocks embedded WebView OAuth
+- Users must sign in twice: once for app (Chrome Custom Tabs OAuth), once in Browse YouTube WebView — separate cookie stores, both sessions persist
+- CookieManager.flush() on dispose ensures YouTube login survives app restarts
+
+**Files Modified**:
+- `feature/kid/src/main/java/.../player/VideoPlayerScreen.kt` (navigation blocking + embed error handling)
+- `feature/sleep/src/main/java/.../ui/SleepModeScreen.kt` (same security fixes)
+- `feature/parent/src/main/java/.../browser/WebViewBrowserScreen.kt` (CookieManager setup + flush)
+- `core/auth/build.gradle.kts` (comment updated about Chrome Custom Tabs requirement)
+
+**Test Stats**: 355 tests, all green (no new tests — runtime security fixes verified on device/emulator)
+
+**Notes**:
+- Google blocks OAuth in embedded WebViews since 2016 — must use Chrome Custom Tabs or system browser
+- Chrome Custom Tabs cookie store is completely separate from app's WebView CookieManager
+- CookieManager is global across all WebViews within the app — Browse YouTube login persists across sessions
+- Emulator gesture navigation zone can swallow taps near screen bottom — use `adb shell run-as` + `sqlite3` for direct DB testing
+- Session 7 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-7)
+
+**Next Session Focus**: Play Store screenshots, GitHub Release + tag v1.0.0, F-Droid submission, Privacy Policy page, API key restriction.
