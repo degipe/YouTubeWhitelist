@@ -41,11 +41,16 @@ android {
 
         testInstrumentationRunner = "io.github.degipe.youtubewhitelist.HiltTestRunner"
 
-        // YouTube Data API v3 key from local.properties
+        // YouTube Data API v3 key
+        // Priority: local.properties > built-in key
+        // Built-in key ensures app works without local.properties (e.g., F-Droid builds)
+        // API keys are not secret — they are visible in every APK
+        val youtubeApiKey = localProperties.getProperty("YOUTUBE_API_KEY", "")
+            .ifEmpty { "AIzaSyAXXg4oIzROnKYzVBjuRY8dDgwc2jnIzF4" }
         buildConfigField(
             "String",
             "YOUTUBE_API_KEY",
-            "\"${localProperties.getProperty("YOUTUBE_API_KEY", "")}\""
+            "\"$youtubeApiKey\""
         )
 
         // Google OAuth 2.0 Client ID from local.properties

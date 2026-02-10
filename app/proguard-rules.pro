@@ -30,6 +30,12 @@
 # YouTube API DTOs (Retrofit + kotlinx-serialization converter)
 -keep class io.github.degipe.youtubewhitelist.core.network.dto.** { *; }
 
+# oEmbed DTOs (Retrofit + kotlinx-serialization converter)
+-keep class io.github.degipe.youtubewhitelist.core.network.oembed.** { *; }
+
+# Invidious API DTOs (kotlinx-serialization)
+-keep class io.github.degipe.youtubewhitelist.core.network.invidious.** { *; }
+
 # ===== WebView JavaScript Bridges =====
 # @Keep + @JavascriptInterface — explicit rules as belt-and-suspenders
 # R8 may strip private inner classes even with @Keep in some configurations
@@ -41,6 +47,9 @@
 # ===== Retrofit =====
 # Keep Retrofit service interface methods (annotations are read via reflection)
 -keep,allowobfuscation interface io.github.degipe.youtubewhitelist.core.network.api.YouTubeApiService {
+    <methods>;
+}
+-keep,allowobfuscation interface io.github.degipe.youtubewhitelist.core.network.oembed.OEmbedService {
     <methods>;
 }
 # Keep Retrofit annotation parameters

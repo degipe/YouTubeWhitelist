@@ -67,82 +67,6 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 
 ## Session Logs
 
-### Session 14 - 2026-02-10: Reverse SDLC Documentation
-
-**Objectives**: Generate complete SDLC documentation from codebase (reverse engineering) for professional GitHub presentation.
-
-**Completed**:
-- **LLD.md (Low-Level Design)** — 948 lines, 5 Mermaid diagrams:
-  - Module dependency graph (all 10 modules with arrows)
-  - ER diagram (4 entities with relationships, PKs, FKs, indices)
-  - All 4 DAO method inventories (38 methods total)
-  - 7 repository interfaces with full Kotlin method signatures
-  - URL parsing flow diagram (two-phase duplicate detection)
-  - YouTube API Service (5 endpoints with parameters + quota table)
-  - Complete DTO hierarchy (ChannelDto, VideoDto, PlaylistDto, SearchResultDto, ThumbnailSet)
-  - OkHttp config (ApiKeyInterceptor, debug-only logging)
-  - OAuth 2.0 sequence diagram (Chrome Custom Tabs + Loopback Server)
-  - PIN security (PBKDF2 config table + brute force lockout schedule)
-  - Token storage (EncryptedSharedPreferences, AES256-GCM)
-  - All 7 Hilt modules + 7 qualifier annotations + AssistedInject pattern
-  - SleepTimerManager state machine diagram (IDLE → RUNNING → EXPIRED)
-  - TimeLimitChecker combine pattern
-  - Export/Import JSON schema + strategies
-  - WebView architecture (player + browser, security settings)
-  - ProGuard/R8 rules summary table
-  - Key design patterns (AppResult, Flow combining, debounce+flatMapLatest, manual Job tracking)
-
-- **HLD.md (High-Level Design)** — 470 lines, 8 Mermaid diagrams:
-  - System architecture overview (layered: Presentation → Domain → Data → External)
-  - Module architecture graph with responsibility matrix
-  - Technology stack table (20+ libraries with versions)
-  - MVVM data flow diagram (Compose → ViewModel → Repository → Room/API)
-  - Navigation screen flow (20 screens, type-safe routes)
-  - Security architecture (auth layers, data protection)
-  - Data storage strategy (Room, ESP, SharedPreferences, CookieManager, BuildConfig)
-  - YouTube API integration with quota management
-  - Build & release pipeline (debug/release, dual APK+AAB)
-  - Error handling strategy (AppResult pattern, layer-by-layer)
-
-- **FS.md (Functional Specification)** — 463 lines, 5 Mermaid diagrams:
-  - Application overview + 2 user roles (Parent/Kid)
-  - 18-screen inventory table (route, ViewModel, module)
-  - 15 functional requirements (FR-01 through FR-15)
-  - 5 user flow diagrams (first-time setup, returning user, video playback, whitelist management, search)
-  - 6 UiState specifications (field tables per ViewModel)
-  - Validation rules + error handling & user feedback tables
-
-- **BRD.md (Business Requirements Document)** — 257 lines:
-  - Executive summary (problem, solution, value proposition)
-  - 5 business objectives + target users
-  - 8 business requirements with sub-requirements
-  - 18 non-functional requirements (performance, security, privacy, reliability)
-  - Constraints & assumptions tables
-  - Success metrics (technical + post-launch)
-  - Glossary (15 terms)
-
-- **Mermaid Diagram Validation**:
-  - All 18 diagrams extracted and validated with `mermaid-cli` (`mmdc`)
-  - 18/18 rendered successfully — zero syntax errors
-  - Verified no sensitive data (API keys, passwords) in any document
-
-**Files Created**:
-- `docs/LLD.md` (948 lines)
-- `docs/HLD.md` (470 lines)
-- `docs/FS.md` (463 lines)
-- `docs/BRD.md` (257 lines)
-
-**Test Stats**: 378+ tests, all green (no changes to code — documentation only session)
-
-**Notes**:
-- Total: 2138 lines of documentation, 18 Mermaid diagrams across 3 files
-- Documents cross-reference each other (e.g., HLD → LLD §10)
-- GitHub renders Mermaid diagrams natively — no additional tooling needed
-- Codebase explored with 6 parallel agents (DB, network, auth, repositories, DI, navigation/VMs)
-- Session 9 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-9)
-
-**Next Session Focus**: Store submission + final polish (GitHub Release, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission).
-
 ### Session 15 - 2026-02-10: SDLC Documentation Completion (Onboarding, User Manual, PRD Translation)
 
 **Objectives**: Create comprehensive developer onboarding guide, detailed user manual, and translate Hungarian PRD to English markdown.
@@ -406,3 +330,106 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 - Kid search removal alone makes the app viable for ~5000 concurrent users on single API key
 
 **Next Session Focus**: Decide on API strategy (built-in key + oEmbed/RSS hybrid recommended), implement chosen strategy, then proceed to store submissions.
+
+### Session 19 - 2026-02-10: Strategy E Implementation (Hybrid + Invidious Fallback)
+
+**Objectives**: Implement Strategy E — oEmbed/RSS free endpoints + YouTube API + Invidious fallback. Built-in API key for F-Droid compatibility.
+
+**Completed**:
+- **Phase 1: oEmbed Service** (FREE video/playlist metadata):
+  - `OEmbedResponse` data class (kotlinx.serialization)
+  - `OEmbedService` Retrofit interface (base URL: `youtube.com/oembed`)
+  - 4 unit tests (video, playlist, channelId extraction, unknown fields)
+
+- **Phase 2: RSS Feed Parser** (FREE channel video list):
+  - `RssVideoEntry` data class (videoId, title, thumbnail, channel, published)
+  - `RssFeedParser` with `javax.xml.parsers.DocumentBuilderFactory` (namespace-aware, XXE-protected)
+  - `fetchChannelVideos(channelId)` → last 15 videos, no API key needed
+  - 5 unit tests (valid XML, empty, malformed, missing videoId, thumbnail URL)
+
+- **Phase 3: Invidious API Service** (fallback):
+  - `InvidiousDto` — 5 @Serializable data classes (Video, Channel, Playlist, PlaylistVideo, Thumbnail)
+  - `InvidiousApiService` — HTTP client with dynamic base URL (getVideo, getChannel, getPlaylist, resolveChannel)
+  - `InvidiousInstanceManager` — round-robin instance rotation, health tracking (max 2 failures, 5 min reset), thread-safe (@Synchronized)
+  - 6 unit tests (healthy instance, round-robin, failure skip, all down, health reset, success reset)
+
+- **Phase 4: HybridYouTubeRepositoryImpl** (fallback chain):
+  - Replaces `YouTubeApiRepositoryImpl` as the Hilt binding for `YouTubeApiRepository`
+  - Fallback chain per method: oEmbed/RSS → YouTube API → Invidious → Error
+  - `OEmbedMapper` — maps oEmbed response to domain models (Video, Playlist)
+  - `InvidiousMapper` — maps Invidious DTOs to domain models (Video, Channel, Playlist, PlaylistVideo)
+  - `extractChannelIdFromUploadsPlaylist()` — converts UU→UC prefix for RSS channel resolution
+  - IOException-specific failure tracking (parsing errors don't penalize Invidious instances)
+  - 13 unit tests covering all fallback chains
+
+- **Phase 5: DI & Build Changes**:
+  - `@PlainOkHttp` and `@YouTubeApiOkHttp` Hilt qualifiers
+  - `NetworkModule` updated: 2 OkHttpClients, oEmbed/RSS/Invidious providers
+  - `DataModule` binding: `HybridYouTubeRepositoryImpl` → `YouTubeApiRepository`
+  - `app/build.gradle.kts`: built-in fallback API key for F-Droid builds
+
+- **Code Review Fixes**:
+  - XXE protection in RssFeedParser (6 security features disabled)
+  - @Synchronized on InvidiousInstanceManager methods (thread safety)
+  - IOException-only failure tracking in withInvidiousFallback (parsing errors don't penalize instances)
+  - ProGuard rules for oEmbed + Invidious DTOs and OEmbedService Retrofit interface
+
+**Architecture**:
+```
+YouTubeApiRepository (interface — unchanged)
+  └── HybridYouTubeRepositoryImpl (NEW)
+        ├── OEmbedService (free, Retrofit)
+        ├── RssFeedParser (free, XML)
+        ├── YouTubeApiService (existing, with quota)
+        └── InvidiousApiService (fallback, dynamic base URL)
+```
+
+**Fallback chain**:
+| Method | Free | API | Invidious |
+|--------|------|-----|-----------|
+| getVideoById | oEmbed | videos.list | /api/v1/videos |
+| getPlaylistById | oEmbed | playlists.list | /api/v1/playlists |
+| getChannelById | — | channels.list | /api/v1/channels |
+| getChannelByHandle | — | channels.list (forHandle) | /api/v1/resolveurl |
+| getPlaylistItems | RSS (UU→UC) | playlistItems.list | /api/v1/channels or /playlists |
+
+**Files Created** (16):
+- `core/network/.../oembed/OEmbedResponse.kt`
+- `core/network/.../oembed/OEmbedService.kt`
+- `core/network/.../rss/RssVideoEntry.kt`
+- `core/network/.../rss/RssFeedParser.kt`
+- `core/network/.../invidious/InvidiousDto.kt`
+- `core/network/.../invidious/InvidiousApiService.kt`
+- `core/network/.../invidious/InvidiousInstanceManager.kt`
+- `core/network/.../di/PlainOkHttp.kt`
+- `core/network/.../di/YouTubeApiOkHttp.kt`
+- `core/data/.../repository/impl/HybridYouTubeRepositoryImpl.kt`
+- `core/data/.../mapper/OEmbedMapper.kt`
+- `core/data/.../mapper/InvidiousMapper.kt`
+- `core/network/src/test/.../oembed/OEmbedResponseTest.kt` (4 tests)
+- `core/network/src/test/.../rss/RssFeedParserTest.kt` (5 tests)
+- `core/network/src/test/.../invidious/InvidiousInstanceManagerTest.kt` (6 tests)
+- `core/data/src/test/.../repository/impl/HybridYouTubeRepositoryImplTest.kt` (13 tests)
+
+**Files Modified** (3):
+- `core/network/.../di/NetworkModule.kt` (qualifiers, 5 new providers)
+- `core/data/.../di/DataModule.kt` (HybridYouTubeRepositoryImpl binding)
+- `app/build.gradle.kts` (built-in fallback API key)
+- `app/proguard-rules.pro` (oEmbed + Invidious ProGuard rules)
+
+**Decisions Made**:
+- `YouTubeApiRepository` interface unchanged — ViewModels don't need modification
+- `YouTubeApiRepositoryImpl` kept as-is (used by WhitelistRepositoryImpl tests)
+- Built-in API key in source code (not secret — visible in every APK)
+- oEmbed returns less data than API (no duration/description/subscriberCount) — empty/null fields
+- RSS only for uploads playlists (UU prefix → UC channel ID conversion)
+- Invidious instance list: vid.puffyan.us, yewtu.be, invidious.namazso.eu, inv.nadeko.net
+
+**Test Stats**: 413 tests, all green (373 existing + 28 new + 12 oEmbed/RSS/Invidious)
+
+**Notes**:
+- Session 14 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-14)
+- Most YouTube operations now cost 0 API units (oEmbed/RSS)
+- Only @handle resolution and direct channel lookup use API quota (1 unit each)
+- Invidious fallback activates on IOException only — parsing errors don't penalize instances
+- XXE protection: 6 security features disabled in DocumentBuilderFactory

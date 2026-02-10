@@ -12,7 +12,7 @@ import io.github.degipe.youtubewhitelist.core.data.repository.YouTubeApiReposito
 import io.github.degipe.youtubewhitelist.core.data.repository.impl.KidProfileRepositoryImpl
 import io.github.degipe.youtubewhitelist.core.data.repository.impl.WatchHistoryRepositoryImpl
 import io.github.degipe.youtubewhitelist.core.data.repository.impl.WhitelistRepositoryImpl
-import io.github.degipe.youtubewhitelist.core.data.repository.impl.YouTubeApiRepositoryImpl
+import io.github.degipe.youtubewhitelist.core.data.repository.impl.HybridYouTubeRepositoryImpl
 import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerManager
 import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerManagerImpl
 import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
@@ -28,7 +28,7 @@ abstract class DataModule {
 
     @Binds
     @Singleton
-    abstract fun bindYouTubeApiRepository(impl: YouTubeApiRepositoryImpl): YouTubeApiRepository
+    abstract fun bindYouTubeApiRepository(impl: HybridYouTubeRepositoryImpl): YouTubeApiRepository
 
     @Binds
     @Singleton
