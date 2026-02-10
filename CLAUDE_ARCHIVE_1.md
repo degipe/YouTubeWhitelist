@@ -1,4 +1,4 @@
-# YouTubeWhitelist - Session Archive 1 (Sessions 1-8)
+# YouTubeWhitelist - Session Archive 1 (Sessions 1-9)
 
 ### Session 1 - 2026-02-09: Project Initialization
 
@@ -396,3 +396,43 @@
 - F-Droid: app will get NonFreeNet anti-feature tag (YouTube API) but can be in main repo
 - Google Cloud Console OAuth + YouTube API key still needs manual setup (see GOOGLE_SETUP.md)
 - All M1-M6 milestones now complete, M7 (Publication) remaining
+
+### Session 9 - 2026-02-09: Ko-fi Donation Integration + README + Store Listing
+
+**Objectives**: Integrate Ko-fi donation support into the app (About screen), create full English README with Ko-fi badge, prepare Play Store and F-Droid store listing texts.
+
+**Completed**:
+- **About Screen**:
+  - Created `AboutScreen.kt` in `feature/parent/ui/about/` — static composable (no ViewModel), vertically scrollable
+  - Content: app name + version, description, GPLv3 license, clickable GitHub link, Ko-fi donation card with `Intent(ACTION_VIEW)` to `https://ko-fi.com/peterdegi`
+  - Added `Route.About` to navigation Route sealed interface
+  - Added `composable<Route.About>` to `AppNavigation.kt`
+  - Added `onAbout` callback + Info ActionCard to `ParentDashboardScreen` (after "Change PIN")
+
+- **README.md** (full rewrite):
+  - Ko-fi GitHub button badge at top: `[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X8X71TWXEN)`
+  - English project description, features list (13 features)
+  - Build instructions (prerequisites, clone, local.properties, gradlew)
+  - Link to GOOGLE_SETUP.md
+  - Tech stack, GPLv3 license, Ko-fi support section with badge image
+
+- **STORE_LISTING.md** (new file):
+  - Google Play Store: title (80 char), short description (80 char), full description with features, privacy section, Ko-fi link
+  - F-Droid: summary, description with feature list, privacy section, anti-features note (NonFreeNet), Ko-fi link
+
+- **Archive**: Session 4 archived to CLAUDE_ARCHIVE_1.md
+
+**Files Changed**:
+- Created: `feature/parent/src/main/java/.../ui/about/AboutScreen.kt`
+- Created: `STORE_LISTING.md`
+- Modified: `app/.../navigation/Route.kt` (added About route)
+- Modified: `app/.../navigation/AppNavigation.kt` (added About composable + wiring)
+- Modified: `feature/parent/.../dashboard/ParentDashboardScreen.kt` (added onAbout + ActionCard)
+- Overwritten: `README.md` (full English README with Ko-fi)
+
+**Test Stats**: 355 tests, all green (no new tests — About screen is static composable)
+
+**Notes**:
+- Ko-fi link: `https://ko-fi.com/peterdegi`, widget ID: `X8X71TWXEN`
+- About screen is static (no ViewModel needed) — only uses `LocalContext.current` for Intent launching
+- Short session — focused solely on Ko-fi integration and store preparation

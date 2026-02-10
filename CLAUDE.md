@@ -67,48 +67,6 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 
 ## Session Logs
 
-### Session 9 - 2026-02-09: Ko-fi Donation Integration + README + Store Listing
-
-**Objectives**: Integrate Ko-fi donation support into the app (About screen), create full English README with Ko-fi badge, prepare Play Store and F-Droid store listing texts.
-
-**Completed**:
-- **About Screen**:
-  - Created `AboutScreen.kt` in `feature/parent/ui/about/` — static composable (no ViewModel), vertically scrollable
-  - Content: app name + version, description, GPLv3 license, clickable GitHub link, Ko-fi donation card with `Intent(ACTION_VIEW)` to `https://ko-fi.com/peterdegi`
-  - Added `Route.About` to navigation Route sealed interface
-  - Added `composable<Route.About>` to `AppNavigation.kt`
-  - Added `onAbout` callback + Info ActionCard to `ParentDashboardScreen` (after "Change PIN")
-
-- **README.md** (full rewrite):
-  - Ko-fi GitHub button badge at top: `[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X8X71TWXEN)`
-  - English project description, features list (13 features)
-  - Build instructions (prerequisites, clone, local.properties, gradlew)
-  - Link to GOOGLE_SETUP.md
-  - Tech stack, GPLv3 license, Ko-fi support section with badge image
-
-- **STORE_LISTING.md** (new file):
-  - Google Play Store: title (80 char), short description (80 char), full description with features, privacy section, Ko-fi link
-  - F-Droid: summary, description with feature list, privacy section, anti-features note (NonFreeNet), Ko-fi link
-
-- **Archive**: Session 4 archived to CLAUDE_ARCHIVE_1.md
-
-**Files Changed**:
-- Created: `feature/parent/src/main/java/.../ui/about/AboutScreen.kt`
-- Created: `STORE_LISTING.md`
-- Modified: `app/.../navigation/Route.kt` (added About route)
-- Modified: `app/.../navigation/AppNavigation.kt` (added About composable + wiring)
-- Modified: `feature/parent/.../dashboard/ParentDashboardScreen.kt` (added onAbout + ActionCard)
-- Overwritten: `README.md` (full English README with Ko-fi)
-
-**Test Stats**: 355 tests, all green (no new tests — About screen is static composable)
-
-**Notes**:
-- Ko-fi link: `https://ko-fi.com/peterdegi`, widget ID: `X8X71TWXEN`
-- About screen is static (no ViewModel needed) — only uses `LocalContext.current` for Intent launching
-- Short session — focused solely on Ko-fi integration and store preparation
-
-**Next Session Focus**: M7 continuation — ProGuard/R8 rules, release signing config, F-Droid metadata directory structure, GitHub Release, final device testing.
-
 ### Session 10 - 2026-02-09: M7 - Publication Preparation
 
 **Objectives**: Complete M7 milestone: ProGuard/R8 finalization, release signing, F-Droid metadata, version bump, CHANGELOG, release build verification.
@@ -365,5 +323,81 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 - Sleep timer now works as background countdown — overlay appears on KidHome and VideoPlayer when expired
 - `combine()` inside `flatMapLatest` is cancelled when new query arrives — clean cancellation
 - Session 8 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-8)
+
+**Next Session Focus**: Store submission + final polish (GitHub Release, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission).
+
+### Session 14 - 2026-02-10: Reverse SDLC Documentation
+
+**Objectives**: Generate complete SDLC documentation from codebase (reverse engineering) for professional GitHub presentation.
+
+**Completed**:
+- **LLD.md (Low-Level Design)** — 948 lines, 5 Mermaid diagrams:
+  - Module dependency graph (all 10 modules with arrows)
+  - ER diagram (4 entities with relationships, PKs, FKs, indices)
+  - All 4 DAO method inventories (38 methods total)
+  - 7 repository interfaces with full Kotlin method signatures
+  - URL parsing flow diagram (two-phase duplicate detection)
+  - YouTube API Service (5 endpoints with parameters + quota table)
+  - Complete DTO hierarchy (ChannelDto, VideoDto, PlaylistDto, SearchResultDto, ThumbnailSet)
+  - OkHttp config (ApiKeyInterceptor, debug-only logging)
+  - OAuth 2.0 sequence diagram (Chrome Custom Tabs + Loopback Server)
+  - PIN security (PBKDF2 config table + brute force lockout schedule)
+  - Token storage (EncryptedSharedPreferences, AES256-GCM)
+  - All 7 Hilt modules + 7 qualifier annotations + AssistedInject pattern
+  - SleepTimerManager state machine diagram (IDLE → RUNNING → EXPIRED)
+  - TimeLimitChecker combine pattern
+  - Export/Import JSON schema + strategies
+  - WebView architecture (player + browser, security settings)
+  - ProGuard/R8 rules summary table
+  - Key design patterns (AppResult, Flow combining, debounce+flatMapLatest, manual Job tracking)
+
+- **HLD.md (High-Level Design)** — 470 lines, 8 Mermaid diagrams:
+  - System architecture overview (layered: Presentation → Domain → Data → External)
+  - Module architecture graph with responsibility matrix
+  - Technology stack table (20+ libraries with versions)
+  - MVVM data flow diagram (Compose → ViewModel → Repository → Room/API)
+  - Navigation screen flow (20 screens, type-safe routes)
+  - Security architecture (auth layers, data protection)
+  - Data storage strategy (Room, ESP, SharedPreferences, CookieManager, BuildConfig)
+  - YouTube API integration with quota management
+  - Build & release pipeline (debug/release, dual APK+AAB)
+  - Error handling strategy (AppResult pattern, layer-by-layer)
+
+- **FS.md (Functional Specification)** — 463 lines, 5 Mermaid diagrams:
+  - Application overview + 2 user roles (Parent/Kid)
+  - 18-screen inventory table (route, ViewModel, module)
+  - 15 functional requirements (FR-01 through FR-15)
+  - 5 user flow diagrams (first-time setup, returning user, video playback, whitelist management, search)
+  - 6 UiState specifications (field tables per ViewModel)
+  - Validation rules + error handling & user feedback tables
+
+- **BRD.md (Business Requirements Document)** — 257 lines:
+  - Executive summary (problem, solution, value proposition)
+  - 5 business objectives + target users
+  - 8 business requirements with sub-requirements
+  - 18 non-functional requirements (performance, security, privacy, reliability)
+  - Constraints & assumptions tables
+  - Success metrics (technical + post-launch)
+  - Glossary (15 terms)
+
+- **Mermaid Diagram Validation**:
+  - All 18 diagrams extracted and validated with `mermaid-cli` (`mmdc`)
+  - 18/18 rendered successfully — zero syntax errors
+  - Verified no sensitive data (API keys, passwords) in any document
+
+**Files Created**:
+- `docs/LLD.md` (948 lines)
+- `docs/HLD.md` (470 lines)
+- `docs/FS.md` (463 lines)
+- `docs/BRD.md` (257 lines)
+
+**Test Stats**: 378+ tests, all green (no changes to code — documentation only session)
+
+**Notes**:
+- Total: 2138 lines of documentation, 18 Mermaid diagrams across 3 files
+- Documents cross-reference each other (e.g., HLD → LLD §10)
+- GitHub renders Mermaid diagrams natively — no additional tooling needed
+- Codebase explored with 6 parallel agents (DB, network, auth, repositories, DI, navigation/VMs)
+- Session 9 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-9)
 
 **Next Session Focus**: Store submission + final polish (GitHub Release, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission).

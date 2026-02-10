@@ -1,6 +1,6 @@
-# Session 14 Starting Prompt
+# Session 15 Starting Prompt
 
-Ez a 14. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 15. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
 ## Fókusz: Store Submission + Final Polish
 
@@ -42,6 +42,7 @@ Ez a 14. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextush
 
 ### Megjegyzések
 
+- **SDLC dokumentáció kész**: `docs/BRD.md`, `docs/FS.md`, `docs/HLD.md`, `docs/LLD.md` — 2138 sor, 18 Mermaid diagram, mind validálva
 - **ADB path**: `/opt/homebrew/share/android-commandlinetools/platform-tools/adb`
 - **Build parancsok**:
   - APK: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew assembleRelease`
@@ -50,7 +51,5 @@ Ez a 14. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextush
 - **Release builds**: APK 2.4 MB, AAB 5.2 MB
 - **GCP Project**: `youtubewhitelist-486917`
 - **OAuth**: Testing mode (test user configured in GCP Console)
-- **Sleep mode**: Háttér timer, KidHome + VideoPlayer overlay, max 600 perc
-- **Channel video search**: YouTube Search API (max 3 csatorna, 100 unit/keresés, 10k napi limit)
 - Kommunikáció magyarul, dokumentáció angolul
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push
