@@ -67,80 +67,6 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 
 ## Session Logs
 
-### Session 13 - 2026-02-10: Sleep Mode Refactoring + Device Testing Bug Fixes + Channel Video Search
-
-**Objectives**: Refactor Sleep Mode from standalone video player to background timer, device testing with bug fixes, implement channel video search in kid mode.
-
-**Completed**:
-- **Sleep Mode Refactoring (Phases 4-5)**:
-  - Phases 1-3 completed in previous session (SleepTimerManager, SleepModeViewModel rewrite, SleepModeScreen rewrite)
-  - Phase 4: Added `SleepTimerManager` to `KidHomeViewModel` and `VideoPlayerViewModel`
-  - Nested `combine()` for 6th flow in KidHomeViewModel (Kotlin combine() supports max 5 natively)
-  - `isSleepTimerExpired` added to both UiStates (checks profileId match)
-  - "Good Night" overlay on both KidHomeScreen and VideoPlayerScreen (dark theme, Bedtime icon, Lock FAB)
-  - Phase 5: Navigation wiring — SleepTimerManager injected in MainActivity, passed to AppNavigation
-  - PinEntry: `sleepTimerManager.stopTimer()` when timer EXPIRED and PIN verified
-  - SleepModeScreen `onStartTimer` → navigates to KidHome
-  - +7 new tests (4 KidHome + 3 VideoPlayer)
-
-- **Device Testing Bug Fixes**:
-  - **Fullscreen + sleep timer**: `LaunchedEffect(shouldBlock)` exits fullscreen + JavaScript `pauseVideo()` when overlay appears
-  - **Channel cards cut off**: Replaced `LazyVerticalGrid` (fixed height) with `Column` + `Row` + `chunked(2)` for natural sizing
-  - **FAB covers delete button**: Moved Add button from Scaffold FAB to inline `IconButton` in filter chip row
-  - **Search only accepts 1 character**: Exposed `queryFlow.asStateFlow()` as `query` — TextField uses immediate state, results use debounced state
-  - **Search also checks channelTitle**: SQL updated to `(title LIKE '%' || :query || '%' OR channelTitle LIKE '%' || :query || '%')`
-
-- **Channel Video Search via YouTube API (TDD)**:
-  - `searchVideosInChannel(channelId, query)` added to `YouTubeApiRepository` — uses YouTube Search API (`search.list`, `channelId` + `q` filter, max 10 results)
-  - `getChannelYoutubeIds(profileId)` added to `WhitelistRepository` — delegates to existing DAO `getYoutubeIdsByType`
-  - `KidSearchViewModel` refactored: `combine()` merges local DB results + API channel video results via `_channelVideoResults` StateFlow
-  - `searchChannels()` fires as side-effect in `flatMapLatest`, runs in separate coroutine Job (cancellable)
-  - Max 3 channels searched (quota protection: 100 units/search, 10k daily limit)
-  - `distinctBy { it.youtubeId }` deduplicates local + API results
-  - API errors silently skipped — local results always shown
-  - +5 YouTubeApiRepo tests + 5 KidSearchViewModel tests
-
-**Decisions Made**:
-- Reuse `PlaylistVideo` model for search results (position=0) — avoids new model class
-- Max 3 channel API searches per query — quota protection (300 units max per search)
-- `_channelVideoResults` MutableStateFlow + `combine()` inside `flatMapLatest` — clean separation of local (reactive) + API (one-shot) search
-- `searchChannels()` as fire-and-forget coroutine with explicit Job cancellation on new query
-- API search results mapped to `WhitelistItem` with `id = "search-${videoId}"` prefix — prevents LazyColumn key conflicts
-
-**Files Modified**:
-- `core/data/.../repository/YouTubeApiRepository.kt` (+1 method)
-- `core/data/.../repository/impl/YouTubeApiRepositoryImpl.kt` (+searchVideosInChannel impl)
-- `core/data/.../repository/WhitelistRepository.kt` (+1 method)
-- `core/data/.../repository/impl/WhitelistRepositoryImpl.kt` (+getChannelYoutubeIds impl)
-- `core/database/.../dao/WhitelistItemDao.kt` (searchItems SQL updated for channelTitle)
-- `feature/kid/.../search/KidSearchViewModel.kt` (major: +YouTubeApiRepository dep, channel search logic)
-- `feature/kid/.../search/KidSearchScreen.kt` (TextField uses immediate query state)
-- `feature/kid/.../home/KidHomeViewModel.kt` (+SleepTimerManager, nested combine)
-- `feature/kid/.../home/KidHomeScreen.kt` (channel grid fix + "Good Night" overlay)
-- `feature/kid/.../player/VideoPlayerViewModel.kt` (+SleepTimerManager, observeSleepTimer)
-- `feature/kid/.../player/VideoPlayerScreen.kt` (fullscreen exit + pause + overlay)
-- `feature/parent/.../whitelist/WhitelistManagerScreen.kt` (FAB → inline button)
-- `feature/parent/.../dashboard/ParentDashboardScreen.kt` (subtitle text)
-- `app/.../navigation/AppNavigation.kt` (SleepTimerManager wiring)
-- `app/.../MainActivity.kt` (+SleepTimerManager injection)
-
-**Test Files Modified**:
-- `core/data/src/test/.../YouTubeApiRepositoryImplTest.kt` (+5 searchVideosInChannel tests)
-- `feature/kid/src/test/.../search/KidSearchViewModelTest.kt` (+7 tests: 2 query sync + 5 channel search)
-- `feature/kid/src/test/.../home/KidHomeViewModelTest.kt` (+4 sleep timer tests)
-- `feature/kid/src/test/.../player/VideoPlayerViewModelTest.kt` (+3 sleep timer tests)
-
-**Test Stats**: 378+ tests, all green (355 existing + 7 sleep + 2 query + 5 search repo + 5 search VM + ~4 others)
-
-**Notes**:
-- YouTube Search API costs 100 units per call — with 3 channels max, each search uses up to 300 units (10k daily limit)
-- Channel video search results appear as VIDEO type WhitelistItems with `id = "search-..."` prefix
-- Sleep timer now works as background countdown — overlay appears on KidHome and VideoPlayer when expired
-- `combine()` inside `flatMapLatest` is cancelled when new query arrives — clean cancellation
-- Session 8 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-8)
-
-**Next Session Focus**: Store submission + final polish (GitHub Release, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission).
-
 ### Session 14 - 2026-02-10: Reverse SDLC Documentation
 
 **Objectives**: Generate complete SDLC documentation from codebase (reverse engineering) for professional GitHub presentation.
@@ -411,3 +337,72 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 - `uiautomator dump` returns exact XML bounds for all UI elements — reliable for adb tap automation
 - "App is pinned" / "App unpinned" toasts appear on kiosk mode transitions — wait 5 seconds before screenshotting
 - API error for many-image requests: max 2000px dimension per image — avoid reading too many screenshots in one conversation
+
+### Session 18 - 2026-02-10: F-Droid/API Strategy Analysis + Remove API Search from Kid Mode
+
+**Objectives**: Analyze F-Droid inclusion policy compliance, research API-free YouTube endpoints, remove expensive YouTube Search API from kid mode.
+
+**Completed**:
+- **F-Droid Inclusion Policy Analysis**:
+  - Reviewed full inclusion criteria against project
+  - All FLOSS requirements met (GPLv3, no proprietary deps, no Play Services, no tracking)
+  - Identified critical issue: "F-Droid does not sign up for any API keys" — app needs YouTube API key
+  - F-Droid builds from source → `local.properties` not available → empty API keys → broken app
+
+- **YouTube API-Free Endpoints Research** (parallel agents):
+  - **oEmbed API** (`youtube.com/oembed`): returns title, author_name, thumbnail for videos/playlists (NOT channels). No API key, no quota, no rate limit.
+  - **RSS/Atom feeds** (`youtube.com/feeds/videos.xml`): returns last 15 videos per channel/playlist with full metadata. No API key. NOT compatible with @handles.
+  - **Direct thumbnails** (`i.ytimg.com/vi/{id}/mqdefault.jpg`): always available, no API needed
+  - **Invidious/Piped**: open-source YouTube proxy with full API, no key needed, but unreliable instances
+
+- **Current API Usage Inventory** (code analysis):
+  - 5 endpoints: channels.list, videos.list, playlists.list, playlistItems.list, search.list
+  - **95% of quota consumed by search.list** (100-300 units/query vs 1-2 units for everything else)
+  - Shared API key supports max ~3 concurrent intensive users (10k daily limit)
+
+- **Strategy Document** (`/tmp/YOUTUBE_API_STRATEGY.md`):
+  - 5 strategies compared (Hybrid, Zero-API, Built-in key, Invidious, Hybrid+Invidious)
+  - Detailed quota math for each scenario
+  - 3-phase implementation roadmap proposed
+  - NOT published to GitHub (internal analysis only)
+
+- **GCP API Key Restriction Fix**:
+  - Removed Android app restriction (was blocking daughter's phone with 403)
+  - Kept API restriction: YouTube Data API v3 only
+  - Before: Android apps (`io.github.degipe.youtubewhitelist` + SHA-1) + YouTube Data API v3
+  - After: No application restriction + YouTube Data API v3 only
+
+- **Removed YouTube Search API from Kid Mode**:
+  - `KidSearchViewModel`: removed `YouTubeApiRepository` dependency, `_channelVideoResults`, `channelSearchJob`, `searchChannels()`, `combine()` logic
+  - Search now only queries local Room DB (whitelist items by title/channelTitle)
+  - 120 → 68 lines of code (43% reduction)
+  - 5 API search tests removed, 10 local search tests remain (all green)
+  - **Quota impact**: Kid search now 0 API units (was 100-300 per query). Daily limit supports ~5000 users.
+
+**Decisions Made**:
+- Remove YouTube Search API from kid mode (95% of quota consumption) — local search only
+- GCP API key: remove Android restriction, keep API restriction only (needed for multi-device support)
+- F-Droid submission deferred until API strategy finalized (oEmbed/RSS hybrid vs built-in key)
+- Play Store submission also deferred pending API strategy decision
+
+**Files Modified**:
+- `feature/kid/.../search/KidSearchViewModel.kt` (removed YouTubeApiRepository, simplified to local-only search)
+- `feature/kid/src/test/.../search/KidSearchViewModelTest.kt` (removed 5 API search tests)
+
+**Session Files**:
+- `CLAUDE.md` (Session 13 archived, Session 18 added)
+- `CLAUDE_ARCHIVE_2.md` (Session 13 added, now contains sessions 11-13)
+- `ARCHITECTURE.md` (Session 18 entry)
+- `NEXT_SESSION_PROMPT.md` (updated for Session 19)
+
+**Test Stats**: 373+ tests, all green (378 - 5 removed API search tests)
+
+**Notes**:
+- `/tmp/YOUTUBE_API_STRATEGY.md` contains full analysis (12 sections, quota math, implementation details) — NOT for GitHub
+- oEmbed can replace videos.list and playlists.list (0 quota vs 1 unit each)
+- RSS can replace channel video listing (0 quota, but max 15 videos vs 50)
+- @handle → channelId resolution still needs YouTube API (no free alternative)
+- Invidious is unreliable (instances go down, YouTube blocks them) — only as last-resort fallback
+- Kid search removal alone makes the app viable for ~5000 concurrent users on single API key
+
+**Next Session Focus**: Decide on API strategy (built-in key + oEmbed/RSS hybrid recommended), implement chosen strategy, then proceed to store submissions.

@@ -2,13 +2,8 @@ package io.github.degipe.youtubewhitelist.feature.kid.ui.search
 
 import com.google.common.truth.Truth.assertThat
 import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
-import io.github.degipe.youtubewhitelist.core.common.result.AppResult
-import io.github.degipe.youtubewhitelist.core.data.model.PlaylistVideo
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
-import io.github.degipe.youtubewhitelist.core.data.repository.YouTubeApiRepository
-import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -28,7 +23,6 @@ import org.junit.Test
 class KidSearchViewModelTest {
 
     private lateinit var whitelistRepository: WhitelistRepository
-    private lateinit var youTubeApiRepository: YouTubeApiRepository
     private val testDispatcher = StandardTestDispatcher()
 
     private val testVideo = WhitelistItem(
@@ -56,9 +50,6 @@ class KidSearchViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         whitelistRepository = mockk()
-        youTubeApiRepository = mockk()
-        // Default: no whitelisted channels (existing tests don't need API search)
-        coEvery { whitelistRepository.getChannelYoutubeIds(any()) } returns emptyList()
     }
 
     @After
@@ -69,7 +60,6 @@ class KidSearchViewModelTest {
     private fun createViewModel(profileId: String = "profile-1"): KidSearchViewModel {
         return KidSearchViewModel(
             whitelistRepository = whitelistRepository,
-            youTubeApiRepository = youTubeApiRepository,
             profileId = profileId
         )
     }
@@ -250,99 +240,4 @@ class KidSearchViewModelTest {
         assertThat(viewModel.query.value).isEqualTo("abc")
     }
 
-    // === Channel video search via YouTube API ===
-
-    @Test
-    fun `search includes videos from whitelisted channels via API`() = runTest(testDispatcher) {
-        // Local search returns the channel itself
-        every { whitelistRepository.searchItems("profile-1", "fun") } returns flowOf(listOf(testChannel))
-        coEvery { whitelistRepository.getChannelYoutubeIds("profile-1") } returns listOf("UC123")
-        coEvery { youTubeApiRepository.searchVideosInChannel("UC123", "fun") } returns
-            AppResult.Success(listOf(
-                PlaylistVideo(videoId = "vid-api-1", title = "Dog having Fun", thumbnailUrl = "https://img/api1.jpg", channelTitle = "Fun Channel", position = 0)
-            ))
-
-        val viewModel = createViewModel()
-        viewModel.onQueryChanged("fun")
-        advanceTimeBy(350)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        val results = viewModel.uiState.value.results
-        assertThat(results).hasSize(2) // channel + API video
-        assertThat(results.map { it.title }).containsAtLeast("Fun Channel", "Dog having Fun")
-    }
-
-    @Test
-    fun `channel video search does not duplicate already whitelisted videos`() = runTest(testDispatcher) {
-        // Local search returns a video with youtubeId "vid123"
-        every { whitelistRepository.searchItems("profile-1", "fun") } returns flowOf(listOf(testVideo))
-        coEvery { whitelistRepository.getChannelYoutubeIds("profile-1") } returns listOf("UC123")
-        // API returns same videoId "vid123"
-        coEvery { youTubeApiRepository.searchVideosInChannel("UC123", "fun") } returns
-            AppResult.Success(listOf(
-                PlaylistVideo(videoId = "vid123", title = "Fun Video", thumbnailUrl = "https://img/v.jpg", channelTitle = "Fun Channel", position = 0)
-            ))
-
-        val viewModel = createViewModel()
-        viewModel.onQueryChanged("fun")
-        advanceTimeBy(350)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        val results = viewModel.uiState.value.results
-        assertThat(results).hasSize(1) // deduplicated
-        assertThat(results[0].youtubeId).isEqualTo("vid123")
-    }
-
-    @Test
-    fun `channel video search skips API when no channels whitelisted`() = runTest(testDispatcher) {
-        every { whitelistRepository.searchItems("profile-1", "fun") } returns flowOf(listOf(testVideo))
-        coEvery { whitelistRepository.getChannelYoutubeIds("profile-1") } returns emptyList()
-
-        val viewModel = createViewModel()
-        viewModel.onQueryChanged("fun")
-        advanceTimeBy(350)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        coVerify(exactly = 0) { youTubeApiRepository.searchVideosInChannel(any(), any()) }
-        assertThat(viewModel.uiState.value.results).hasSize(1)
-    }
-
-    @Test
-    fun `channel video search handles API error gracefully`() = runTest(testDispatcher) {
-        every { whitelistRepository.searchItems("profile-1", "fun") } returns flowOf(listOf(testChannel))
-        coEvery { whitelistRepository.getChannelYoutubeIds("profile-1") } returns listOf("UC123")
-        coEvery { youTubeApiRepository.searchVideosInChannel("UC123", "fun") } returns
-            AppResult.Error("Network error")
-
-        val viewModel = createViewModel()
-        viewModel.onQueryChanged("fun")
-        advanceTimeBy(350)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // Should still show local results despite API error
-        val results = viewModel.uiState.value.results
-        assertThat(results).hasSize(1)
-        assertThat(results[0].title).isEqualTo("Fun Channel")
-    }
-
-    @Test
-    fun `channel video search limits to 3 channels max`() = runTest(testDispatcher) {
-        every { whitelistRepository.searchItems("profile-1", "fun") } returns flowOf(emptyList())
-        coEvery { whitelistRepository.getChannelYoutubeIds("profile-1") } returns
-            listOf("UC1", "UC2", "UC3", "UC4", "UC5")
-        coEvery { youTubeApiRepository.searchVideosInChannel(any(), any()) } returns
-            AppResult.Success(emptyList())
-
-        val viewModel = createViewModel()
-        viewModel.onQueryChanged("fun")
-        advanceTimeBy(350)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // Should only call for first 3 channels (quota protection)
-        coVerify(exactly = 1) { youTubeApiRepository.searchVideosInChannel("UC1", "fun") }
-        coVerify(exactly = 1) { youTubeApiRepository.searchVideosInChannel("UC2", "fun") }
-        coVerify(exactly = 1) { youTubeApiRepository.searchVideosInChannel("UC3", "fun") }
-        coVerify(exactly = 0) { youTubeApiRepository.searchVideosInChannel("UC4", any()) }
-        coVerify(exactly = 0) { youTubeApiRepository.searchVideosInChannel("UC5", any()) }
-    }
 }

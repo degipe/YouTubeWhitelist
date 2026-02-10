@@ -72,3 +72,35 @@
 - Users sign in twice (Chrome Custom Tabs + Browse YouTube WebView — separate cookie stores)
 
 **Test Stats**: 355 tests, all green
+
+### Session 13 - 2026-02-10: Sleep Mode Refactoring + Device Testing Bug Fixes + Channel Video Search
+
+**Objectives**: Refactor Sleep Mode from standalone video player to background timer, device testing with bug fixes, implement channel video search in kid mode.
+
+**Completed**:
+- **Sleep Mode Refactoring (Phases 4-5)**:
+  - Phases 1-3 completed in previous session (SleepTimerManager, SleepModeViewModel rewrite, SleepModeScreen rewrite)
+  - Phase 4: Added `SleepTimerManager` to `KidHomeViewModel` and `VideoPlayerViewModel`
+  - Nested `combine()` for 6th flow in KidHomeViewModel (Kotlin combine() supports max 5 natively)
+  - `isSleepTimerExpired` added to both UiStates (checks profileId match)
+  - "Good Night" overlay on both KidHomeScreen and VideoPlayerScreen (dark theme, Bedtime icon, Lock FAB)
+  - Phase 5: Navigation wiring — SleepTimerManager injected in MainActivity, passed to AppNavigation
+  - PinEntry: `sleepTimerManager.stopTimer()` when timer EXPIRED and PIN verified
+  - SleepModeScreen `onStartTimer` → navigates to KidHome
+  - +7 new tests (4 KidHome + 3 VideoPlayer)
+
+- **Device Testing Bug Fixes**:
+  - **Fullscreen + sleep timer**: `LaunchedEffect(shouldBlock)` exits fullscreen + JavaScript `pauseVideo()` when overlay appears
+  - **Channel cards cut off**: Replaced `LazyVerticalGrid` (fixed height) with `Column` + `Row` + `chunked(2)` for natural sizing
+  - **FAB covers delete button**: Moved Add button from Scaffold FAB to inline `IconButton` in filter chip row
+  - **Search only accepts 1 character**: Exposed `queryFlow.asStateFlow()` as `query` — TextField uses immediate state, results use debounced state
+  - **Search also checks channelTitle**: SQL updated to `(title LIKE '%' || :query || '%' OR channelTitle LIKE '%' || :query || '%')`
+
+- **Channel Video Search via YouTube API (TDD)**:
+  - `searchVideosInChannel(channelId, query)` added to `YouTubeApiRepository`
+  - `getChannelYoutubeIds(profileId)` added to `WhitelistRepository`
+  - `KidSearchViewModel` refactored: `combine()` merges local DB results + API channel video results
+  - Max 3 channels searched (quota protection: 100 units/search, 10k daily limit)
+  - +5 YouTubeApiRepo tests + 5 KidSearchViewModel tests
+
+**Test Stats**: 378+ tests, all green
