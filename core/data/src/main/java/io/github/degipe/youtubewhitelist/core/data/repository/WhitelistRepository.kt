@@ -20,4 +20,5 @@ interface WhitelistRepository {
     fun getVideosByChannelTitle(profileId: String, channelTitle: String): Flow<List<WhitelistItem>>
     fun searchItems(profileId: String, query: String): Flow<List<WhitelistItem>>
     fun getItemById(itemId: String): Flow<WhitelistItem?>
+    suspend fun getChannelYoutubeIds(profileId: String): List<String>
 }

@@ -67,76 +67,6 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 
 ## Session Logs
 
-### Session 8 - 2026-02-09: M6 - Missing Features, Edge Case Tests, Optimization
-
-**Objectives**: Complete deferred M3 features (Playlist Detail Screen, Kiosk Mode), replace mock Google Sign-In with F-Droid-compatible WebView OAuth, edge case tests, optimization.
-
-**Completed**:
-- **Phase 1: Playlist Detail Screen (TDD)**:
-  - `PlaylistVideo` domain model in core:data
-  - `getPlaylistItems(playlistId)` added to `YouTubeApiRepository` interface + impl (PlaylistItemDto → PlaylistVideo mapping, null videoId filtering, thumbnail fallback)
-  - 5 new tests in `YouTubeApiRepositoryImplTest` (success, empty, API error, filters invalid items, network failure)
-  - `Route.PlaylistDetail(profileId, playlistId, playlistTitle, playlistThumbnailUrl)` navigation route
-  - `PlaylistDetailViewModelTest` — 8 TDD tests (loading, items loaded, empty, error, retry, loading on retry, correct playlistId, sorted by position)
-  - `PlaylistDetailViewModel` — one-shot API call pattern (MutableStateFlow + viewModelScope.launch), AssistedInject, retry(), sorts by position
-  - `PlaylistDetailScreen` — TopAppBar, LazyColumn of PlaylistVideoCard, loading/error/empty states, retry button
-  - Updated `KidHomeScreen` + `KidSearchScreen` onPlaylistClick callback signature to `(youtubeId, title, thumbnailUrl)`
-  - Full `AppNavigation.kt` wiring with AssistedInject
-
-- **Phase 2: Kiosk Mode (Screen Pinning + BackHandler)**:
-  - `BackHandler` added to `KidHomeScreen` (blocks back exit in kid mode)
-  - `startLockTask()` via `LaunchedEffect` in AppNavigation KidHome composable
-  - `stopLockTask()` in PinEntry `onPinVerified` callback
-  - Activity access via `LocalContext.current as? Activity` pattern
-
-- **Phase 3: WebView OAuth 2.0 (F-Droid compatible)**:
-  - Removed Google Auth SDK deps from libs.versions.toml and core:auth build.gradle.kts
-  - `OAuthConfig` — pure Java URL builder (java.net.URLEncoder, no android.net.Uri), auth/token endpoints, redirect URI, scopes
-  - `OAuthTokenExchanger` — HTTP POST via HttpURLConnection to Google token endpoint, JWT id_token parsing via java.util.Base64 + org.json.JSONObject, returns GoogleUserInfo
-  - `OAuthActivity` — WebView showing Google OAuth consent screen, intercepts localhost/callback redirect, calls static onOAuthResult()
-  - `GoogleSignInManagerImpl` rewritten — WebView OAuth flow with CompletableDeferred bridge between Activity and Manager, @GoogleClientId injection
-  - `@GoogleClientId` qualifier annotation in core:auth
-  - `ApiKeyModule` updated with `provideGoogleClientId()` from BuildConfig
-  - `GOOGLE_CLIENT_ID` BuildConfig field in app/build.gradle.kts from local.properties
-  - OAuthActivity registered in AndroidManifest
-  - `OAuthConfigTest` — 2 tests (URL parameters, endpoint)
-  - `OAuthTokenExchangerTest` — 6 tests with @RunWith(RobolectricTestRunner::class) (JWT parsing valid/null name/invalid, onOAuthResult success/cancelled/error)
-  - `GOOGLE_SETUP.md` — step-by-step Google Cloud Console setup guide
-
-- **Phase 4: Edge Case Tests + Bugfix**:
-  - `YouTubeApiRepositoryImplTest` +6 tests: SocketTimeoutException, UnknownHostException, HTTP 429 rate limit, unexpected RuntimeException, blank thumbnail URLs (all blank → empty, blank high → uses medium)
-  - `WhitelistRepositoryImplTest` +4 tests: empty URL, whitespace URL, non-YouTube URL, duplicate check after handle resolution
-  - `KidHomeViewModelTest` +3 tests: formats 1h exactly ("1h 0m"), formats <1min ("0m"), reactive content→empty transition
-  - `VideoPlayerViewModelTest` +5 tests: playPrevious noop on single video, onVideoEnded stays on last, playVideoAt out of bounds, negative index, formats 1h remaining
-
-- **Phase 5: Optimization**:
-  - `YouTubeWhitelistApp` now implements `ImageLoaderFactory` — Coil with 25% memory cache + 50MB disk cache + crossfade
-  - Room composite indices: `(kidProfileId, type)` on whitelist_items, `(kidProfileId, youtubeId)` unique on whitelist_items, `(kidProfileId, watchedAt)` on watch_history
-  - DB version bumped to 2 with `fallbackToDestructiveMigration()` (pre-release, no deployed data)
-
-**Decisions Made**:
-- WebView OAuth 2.0 instead of Google Sign-In SDK — F-Droid main repo compatible (no non-FOSS compiled deps)
-- "Web application" OAuth client type (not Android) — required for Authorization Code flow with WebView
-- CompletableDeferred as bridge between OAuthActivity and GoogleSignInManagerImpl
-- org.json.JSONObject for JWT parsing — requires Robolectric in unit tests
-- java.net.URLEncoder (not android.net.Uri) for OAuth URL building — JVM test compatible
-- PlaylistDetailViewModel uses one-shot API call (not Flow/stateIn) since data comes from API, not local DB
-- Coil 50MB disk cache — thumbnails are primary bandwidth consumers
-- Unique composite index on (kidProfileId, youtubeId) — enforces DB-level uniqueness for duplicate prevention
-
-**Test Stats**: 355 total tests (316 existing + 13 playlist + 8 OAuth + 18 edge cases), all green
-
-**New tests breakdown**: YouTubeApiRepo +5 playlist +6 edge = 11, WhitelistRepo +4 edge, PlaylistDetailVM 8, OAuthConfig 2, OAuthTokenExchanger 6, KidHomeVM +3 edge, VideoPlayerVM +5 edge
-
-**Notes**:
-- android.net.Uri throws RuntimeException in JVM tests — always use java.net alternatives
-- org.json.JSONObject requires Robolectric (Android SDK class)
-- F-Droid: app will get NonFreeNet anti-feature tag (YouTube API) but can be in main repo
-- Google Cloud Console OAuth + YouTube API key still needs manual setup (see GOOGLE_SETUP.md)
-- All M1-M6 milestones now complete, M7 (Publication) remaining
-
-**Next Session Focus**: M7 - Publication preparation (ProGuard rules, signing config, Play Store listing, F-Droid metadata, GitHub Release, final testing on real device).
-
 ### Session 9 - 2026-02-09: Ko-fi Donation Integration + README + Store Listing
 
 **Objectives**: Integrate Ko-fi donation support into the app (About screen), create full English README with Ko-fi badge, prepare Play Store and F-Droid store listing texts.
@@ -363,3 +293,77 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 - Session 7 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-7)
 
 **Next Session Focus**: Play Store screenshots, GitHub Release + tag v1.0.0, F-Droid submission, Privacy Policy page, API key restriction.
+
+### Session 13 - 2026-02-10: Sleep Mode Refactoring + Device Testing Bug Fixes + Channel Video Search
+
+**Objectives**: Refactor Sleep Mode from standalone video player to background timer, device testing with bug fixes, implement channel video search in kid mode.
+
+**Completed**:
+- **Sleep Mode Refactoring (Phases 4-5)**:
+  - Phases 1-3 completed in previous session (SleepTimerManager, SleepModeViewModel rewrite, SleepModeScreen rewrite)
+  - Phase 4: Added `SleepTimerManager` to `KidHomeViewModel` and `VideoPlayerViewModel`
+  - Nested `combine()` for 6th flow in KidHomeViewModel (Kotlin combine() supports max 5 natively)
+  - `isSleepTimerExpired` added to both UiStates (checks profileId match)
+  - "Good Night" overlay on both KidHomeScreen and VideoPlayerScreen (dark theme, Bedtime icon, Lock FAB)
+  - Phase 5: Navigation wiring — SleepTimerManager injected in MainActivity, passed to AppNavigation
+  - PinEntry: `sleepTimerManager.stopTimer()` when timer EXPIRED and PIN verified
+  - SleepModeScreen `onStartTimer` → navigates to KidHome
+  - +7 new tests (4 KidHome + 3 VideoPlayer)
+
+- **Device Testing Bug Fixes**:
+  - **Fullscreen + sleep timer**: `LaunchedEffect(shouldBlock)` exits fullscreen + JavaScript `pauseVideo()` when overlay appears
+  - **Channel cards cut off**: Replaced `LazyVerticalGrid` (fixed height) with `Column` + `Row` + `chunked(2)` for natural sizing
+  - **FAB covers delete button**: Moved Add button from Scaffold FAB to inline `IconButton` in filter chip row
+  - **Search only accepts 1 character**: Exposed `queryFlow.asStateFlow()` as `query` — TextField uses immediate state, results use debounced state
+  - **Search also checks channelTitle**: SQL updated to `(title LIKE '%' || :query || '%' OR channelTitle LIKE '%' || :query || '%')`
+
+- **Channel Video Search via YouTube API (TDD)**:
+  - `searchVideosInChannel(channelId, query)` added to `YouTubeApiRepository` — uses YouTube Search API (`search.list`, `channelId` + `q` filter, max 10 results)
+  - `getChannelYoutubeIds(profileId)` added to `WhitelistRepository` — delegates to existing DAO `getYoutubeIdsByType`
+  - `KidSearchViewModel` refactored: `combine()` merges local DB results + API channel video results via `_channelVideoResults` StateFlow
+  - `searchChannels()` fires as side-effect in `flatMapLatest`, runs in separate coroutine Job (cancellable)
+  - Max 3 channels searched (quota protection: 100 units/search, 10k daily limit)
+  - `distinctBy { it.youtubeId }` deduplicates local + API results
+  - API errors silently skipped — local results always shown
+  - +5 YouTubeApiRepo tests + 5 KidSearchViewModel tests
+
+**Decisions Made**:
+- Reuse `PlaylistVideo` model for search results (position=0) — avoids new model class
+- Max 3 channel API searches per query — quota protection (300 units max per search)
+- `_channelVideoResults` MutableStateFlow + `combine()` inside `flatMapLatest` — clean separation of local (reactive) + API (one-shot) search
+- `searchChannels()` as fire-and-forget coroutine with explicit Job cancellation on new query
+- API search results mapped to `WhitelistItem` with `id = "search-${videoId}"` prefix — prevents LazyColumn key conflicts
+
+**Files Modified**:
+- `core/data/.../repository/YouTubeApiRepository.kt` (+1 method)
+- `core/data/.../repository/impl/YouTubeApiRepositoryImpl.kt` (+searchVideosInChannel impl)
+- `core/data/.../repository/WhitelistRepository.kt` (+1 method)
+- `core/data/.../repository/impl/WhitelistRepositoryImpl.kt` (+getChannelYoutubeIds impl)
+- `core/database/.../dao/WhitelistItemDao.kt` (searchItems SQL updated for channelTitle)
+- `feature/kid/.../search/KidSearchViewModel.kt` (major: +YouTubeApiRepository dep, channel search logic)
+- `feature/kid/.../search/KidSearchScreen.kt` (TextField uses immediate query state)
+- `feature/kid/.../home/KidHomeViewModel.kt` (+SleepTimerManager, nested combine)
+- `feature/kid/.../home/KidHomeScreen.kt` (channel grid fix + "Good Night" overlay)
+- `feature/kid/.../player/VideoPlayerViewModel.kt` (+SleepTimerManager, observeSleepTimer)
+- `feature/kid/.../player/VideoPlayerScreen.kt` (fullscreen exit + pause + overlay)
+- `feature/parent/.../whitelist/WhitelistManagerScreen.kt` (FAB → inline button)
+- `feature/parent/.../dashboard/ParentDashboardScreen.kt` (subtitle text)
+- `app/.../navigation/AppNavigation.kt` (SleepTimerManager wiring)
+- `app/.../MainActivity.kt` (+SleepTimerManager injection)
+
+**Test Files Modified**:
+- `core/data/src/test/.../YouTubeApiRepositoryImplTest.kt` (+5 searchVideosInChannel tests)
+- `feature/kid/src/test/.../search/KidSearchViewModelTest.kt` (+7 tests: 2 query sync + 5 channel search)
+- `feature/kid/src/test/.../home/KidHomeViewModelTest.kt` (+4 sleep timer tests)
+- `feature/kid/src/test/.../player/VideoPlayerViewModelTest.kt` (+3 sleep timer tests)
+
+**Test Stats**: 378+ tests, all green (355 existing + 7 sleep + 2 query + 5 search repo + 5 search VM + ~4 others)
+
+**Notes**:
+- YouTube Search API costs 100 units per call — with 3 channels max, each search uses up to 300 units (10k daily limit)
+- Channel video search results appear as VIDEO type WhitelistItems with `id = "search-..."` prefix
+- Sleep timer now works as background countdown — overlay appears on KidHome and VideoPlayer when expired
+- `combine()` inside `flatMapLatest` is cancelled when new query arrives — clean cancellation
+- Session 8 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-8)
+
+**Next Session Focus**: Store submission + final polish (GitHub Release, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission).

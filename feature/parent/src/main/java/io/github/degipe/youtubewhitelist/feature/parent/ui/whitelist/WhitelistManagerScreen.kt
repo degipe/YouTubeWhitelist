@@ -24,7 +24,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -89,11 +88,6 @@ fun WhitelistManagerScreen(
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = viewModel::showAddUrlDialog) {
-                Icon(Icons.Default.Add, contentDescription = "Add from URL")
-            }
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
@@ -104,7 +98,8 @@ fun WhitelistManagerScreen(
             FilterChipRow(
                 selectedType = uiState.filterType,
                 onFilterSelected = viewModel::setFilter,
-                onFilterCleared = viewModel::clearFilter
+                onFilterCleared = viewModel::clearFilter,
+                onAdd = viewModel::showAddUrlDialog
             )
 
             when {
@@ -146,13 +141,15 @@ fun WhitelistManagerScreen(
 private fun FilterChipRow(
     selectedType: WhitelistItemType?,
     onFilterSelected: (WhitelistItemType) -> Unit,
-    onFilterCleared: () -> Unit
+    onFilterCleared: () -> Unit,
+    onAdd: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         FilterChip(
             selected = selectedType == null,
@@ -164,6 +161,14 @@ private fun FilterChipRow(
                 selected = selectedType == type,
                 onClick = { onFilterSelected(type) },
                 label = { Text(type.displayName()) }
+            )
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        IconButton(onClick = onAdd) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Add from URL",
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }

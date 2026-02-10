@@ -9,6 +9,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 import io.github.degipe.youtubewhitelist.core.data.repository.KidProfileRepository
 import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerManager
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerStatus
 import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +25,8 @@ data class KidHomeUiState(
     val isLoading: Boolean = true,
     val isEmpty: Boolean = false,
     val remainingTimeFormatted: String? = null,
-    val isTimeLimitReached: Boolean = false
+    val isTimeLimitReached: Boolean = false,
+    val isSleepTimerExpired: Boolean = false
 )
 
 @HiltViewModel(assistedFactory = KidHomeViewModel.Factory::class)
@@ -31,6 +34,7 @@ class KidHomeViewModel @AssistedInject constructor(
     whitelistRepository: WhitelistRepository,
     kidProfileRepository: KidProfileRepository,
     timeLimitChecker: TimeLimitChecker,
+    sleepTimerManager: SleepTimerManager,
     @Assisted private val profileId: String
 ) : ViewModel() {
 
@@ -44,8 +48,11 @@ class KidHomeViewModel @AssistedInject constructor(
         whitelistRepository.getChannelsByProfile(profileId),
         whitelistRepository.getVideosByProfile(profileId),
         whitelistRepository.getPlaylistsByProfile(profileId),
-        timeLimitChecker.getTimeLimitStatus(profileId)
-    ) { profile, channels, videos, playlists, timeLimitStatus ->
+        combine(
+            timeLimitChecker.getTimeLimitStatus(profileId),
+            sleepTimerManager.state
+        ) { timeLimit, sleepState -> timeLimit to sleepState }
+    ) { profile, channels, videos, playlists, (timeLimitStatus, sleepState) ->
         KidHomeUiState(
             profileName = profile?.name ?: "",
             channels = channels,
@@ -54,7 +61,9 @@ class KidHomeViewModel @AssistedInject constructor(
             isLoading = false,
             isEmpty = channels.isEmpty() && videos.isEmpty() && playlists.isEmpty(),
             remainingTimeFormatted = timeLimitStatus.remainingSeconds?.let { formatRemaining(it) },
-            isTimeLimitReached = timeLimitStatus.isLimitReached
+            isTimeLimitReached = timeLimitStatus.isLimitReached,
+            isSleepTimerExpired = sleepState.status == SleepTimerStatus.EXPIRED
+                    && sleepState.profileId == profileId
         )
     }.stateIn(
         scope = viewModelScope,

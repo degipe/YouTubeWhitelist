@@ -5,6 +5,9 @@ import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 import io.github.degipe.youtubewhitelist.core.data.repository.WatchHistoryRepository
 import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerManager
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerState
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerStatus
 import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
 import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitStatus
 import io.mockk.coEvery
@@ -13,6 +16,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -28,6 +32,8 @@ class VideoPlayerViewModelTest {
     private lateinit var whitelistRepository: WhitelistRepository
     private lateinit var watchHistoryRepository: WatchHistoryRepository
     private lateinit var timeLimitChecker: TimeLimitChecker
+    private lateinit var sleepTimerManager: SleepTimerManager
+    private val sleepTimerStateFlow = MutableStateFlow(SleepTimerState())
     private val testDispatcher = StandardTestDispatcher()
 
     private val noLimitStatus = TimeLimitStatus(
@@ -52,6 +58,8 @@ class VideoPlayerViewModelTest {
         whitelistRepository = mockk(relaxed = true)
         watchHistoryRepository = mockk(relaxed = true)
         timeLimitChecker = mockk()
+        sleepTimerManager = mockk()
+        every { sleepTimerManager.state } returns sleepTimerStateFlow
     }
 
     @After
@@ -73,6 +81,7 @@ class VideoPlayerViewModelTest {
             whitelistRepository = whitelistRepository,
             watchHistoryRepository = watchHistoryRepository,
             timeLimitChecker = timeLimitChecker,
+            sleepTimerManager = sleepTimerManager,
             profileId = profileId,
             videoId = videoId,
             initialVideoTitle = videoTitle,
@@ -385,5 +394,61 @@ class VideoPlayerViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.remainingTimeFormatted).isEqualTo("1h 0m")
+    }
+
+    // === Sleep Timer Tests ===
+
+    @Test
+    fun `sleep timer expired for this profile sets isSleepTimerExpired true`() = runTest(testDispatcher) {
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+        setupDefaultTimeLimit()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        sleepTimerStateFlow.value = SleepTimerState(
+            status = SleepTimerStatus.EXPIRED,
+            profileId = "profile-1",
+            remainingSeconds = 0
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isSleepTimerExpired).isTrue()
+    }
+
+    @Test
+    fun `sleep timer running does not set isSleepTimerExpired`() = runTest(testDispatcher) {
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+        setupDefaultTimeLimit()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        sleepTimerStateFlow.value = SleepTimerState(
+            status = SleepTimerStatus.RUNNING,
+            profileId = "profile-1",
+            remainingSeconds = 600
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isSleepTimerExpired).isFalse()
+    }
+
+    @Test
+    fun `sleep timer expired for different profile does not set isSleepTimerExpired`() = runTest(testDispatcher) {
+        every { whitelistRepository.getVideosByChannelTitle("profile-1", "Fun Channel") } returns flowOf(emptyList())
+        setupDefaultTimeLimit()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        sleepTimerStateFlow.value = SleepTimerState(
+            status = SleepTimerStatus.EXPIRED,
+            profileId = "profile-OTHER",
+            remainingSeconds = 0
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isSleepTimerExpired).isFalse()
     }
 }

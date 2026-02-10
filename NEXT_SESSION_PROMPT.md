@@ -1,6 +1,6 @@
-# Session 13 Starting Prompt
+# Session 14 Starting Prompt
 
-Ez a 13. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 14. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
 ## Fókusz: Store Submission + Final Polish
 
@@ -46,11 +46,11 @@ Ez a 13. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextush
 - **Build parancsok**:
   - APK: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew assembleRelease`
   - AAB: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew bundleRelease`
-- **355 teszt** van, mind zöld
+- **378+ teszt** van, mind zöld
 - **Release builds**: APK 2.4 MB, AAB 5.2 MB
 - **GCP Project**: `youtubewhitelist-486917`
 - **OAuth**: Testing mode, test user: `degi.peter@gmail.com`
-- **Fontos**: Két bejelentkezés kell: OAuth (Chrome Custom Tabs) + Browse YouTube WebView (külön cookie store)
-- **WebView security**: shouldOverrideUrlLoading blokkolja a navigációt a player-ben
+- **Sleep mode**: Háttér timer, KidHome + VideoPlayer overlay, max 600 perc
+- **Channel video search**: YouTube Search API (max 3 csatorna, 100 unit/keresés, 10k napi limit)
 - Kommunikáció magyarul, dokumentáció angolul
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push

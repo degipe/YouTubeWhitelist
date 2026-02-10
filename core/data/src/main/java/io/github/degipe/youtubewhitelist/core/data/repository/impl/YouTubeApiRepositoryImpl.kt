@@ -95,6 +95,35 @@ class YouTubeApiRepositoryImpl @Inject constructor(
             }
         }
 
+    override suspend fun searchVideosInChannel(
+        channelId: String,
+        query: String
+    ): AppResult<List<PlaylistVideo>> = withContext(ioDispatcher) {
+        safeApiCall {
+            val response = youTubeApiService.search(
+                channelId = channelId,
+                query = query,
+                maxResults = 10
+            )
+            if (!response.isSuccessful) {
+                return@safeApiCall AppResult.Error("API error: ${response.code()}")
+            }
+            val items = response.body()?.items.orEmpty()
+            val videos = items.mapNotNull { item ->
+                val videoId = item.id?.videoId ?: return@mapNotNull null
+                val snippet = item.snippet ?: return@mapNotNull null
+                PlaylistVideo(
+                    videoId = videoId,
+                    title = snippet.title,
+                    thumbnailUrl = snippet.thumbnails.bestUrl(),
+                    channelTitle = snippet.channelTitle,
+                    position = 0
+                )
+            }
+            AppResult.Success(videos)
+        }
+    }
+
     private suspend fun <T> safeApiCall(block: suspend () -> AppResult<T>): AppResult<T> {
         return try {
             block()

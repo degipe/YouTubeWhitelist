@@ -18,10 +18,11 @@ This file tracks where session logs are stored across CLAUDE.md and archive file
 | 10      | 2026-02-09 | CLAUDE.md           | M7: Publication preparation (ProGuard, signing, F-Droid metadata, CHANGELOG, release build 2.4MB) |
 | 11      | 2026-02-09 | CLAUDE.md           | M7: Google Cloud Console setup, AAB build, sideloading tutorial |
 | 12      | 2026-02-10 | CLAUDE.md           | Device testing, WebView navigation security fix, cookie persistence, OAuth WebView attempt (reverted) |
+| 13      | 2026-02-10 | CLAUDE.md           | Sleep Mode refactoring (phases 4-5), device testing bug fixes, channel video search via YouTube API |
 
 ## Archive Files
 
-- **CLAUDE_ARCHIVE_1.md**: Sessions 1-10 (currently: sessions 1-7)
+- **CLAUDE_ARCHIVE_1.md**: Sessions 1-10 (currently: sessions 1-8)
 
 <!--
 Archive naming convention:

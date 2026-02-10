@@ -173,6 +173,11 @@ class WhitelistRepositoryImpl @Inject constructor(
     override fun getItemById(itemId: String): Flow<WhitelistItem?> =
         whitelistItemDao.getItemById(itemId).map { it?.toDomain() }
 
+    override suspend fun getChannelYoutubeIds(profileId: String): List<String> =
+        withContext(ioDispatcher) {
+            whitelistItemDao.getYoutubeIdsByType(profileId, WhitelistItemType.CHANNEL)
+        }
+
     companion object {
         fun WhitelistItemEntity.toDomain(): WhitelistItem = WhitelistItem(
             id = id,

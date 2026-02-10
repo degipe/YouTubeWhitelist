@@ -16,6 +16,9 @@ import io.github.degipe.youtubewhitelist.core.network.dto.ResourceId
 import io.github.degipe.youtubewhitelist.core.network.dto.Thumbnail
 import io.github.degipe.youtubewhitelist.core.network.dto.ThumbnailSet
 import io.github.degipe.youtubewhitelist.core.network.dto.VideoContentDetails
+import io.github.degipe.youtubewhitelist.core.network.dto.SearchResultDto
+import io.github.degipe.youtubewhitelist.core.network.dto.SearchResultId
+import io.github.degipe.youtubewhitelist.core.network.dto.SearchSnippet
 import io.github.degipe.youtubewhitelist.core.network.dto.VideoDto
 import io.github.degipe.youtubewhitelist.core.network.dto.VideoSnippet
 import io.github.degipe.youtubewhitelist.core.network.dto.YouTubeListResponse
@@ -437,6 +440,109 @@ class YouTubeApiRepositoryImplTest {
 
         val result = repository.getChannelById("UC123")
         assertThat((result as AppResult.Success).data.thumbnailUrl).isEqualTo("https://img/medium.jpg")
+    }
+
+    // === searchVideosInChannel ===
+
+    @Test
+    fun `searchVideosInChannel returns mapped video results`() = runTest(testDispatcher) {
+        val searchResults = listOf(
+            SearchResultDto(
+                id = SearchResultId(videoId = "vid1"),
+                snippet = SearchSnippet(
+                    title = "Dog having Fun",
+                    channelId = "UC123",
+                    channelTitle = "Fun Channel",
+                    thumbnails = ThumbnailSet(high = Thumbnail(url = "https://img/v1.jpg"))
+                )
+            ),
+            SearchResultDto(
+                id = SearchResultId(videoId = "vid2"),
+                snippet = SearchSnippet(
+                    title = "Cat Fun Time",
+                    channelId = "UC123",
+                    channelTitle = "Fun Channel",
+                    thumbnails = ThumbnailSet(medium = Thumbnail(url = "https://img/v2.jpg"))
+                )
+            )
+        )
+        coEvery { apiService.search(channelId = "UC123", query = "fun", maxResults = 10) } returns
+            Response.success(YouTubeListResponse(items = searchResults))
+
+        val result = repository.searchVideosInChannel("UC123", "fun")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        val videos = (result as AppResult.Success).data
+        assertThat(videos).hasSize(2)
+        assertThat(videos[0].videoId).isEqualTo("vid1")
+        assertThat(videos[0].title).isEqualTo("Dog having Fun")
+        assertThat(videos[0].channelTitle).isEqualTo("Fun Channel")
+        assertThat(videos[0].thumbnailUrl).isEqualTo("https://img/v1.jpg")
+        assertThat(videos[1].videoId).isEqualTo("vid2")
+        assertThat(videos[1].thumbnailUrl).isEqualTo("https://img/v2.jpg")
+    }
+
+    @Test
+    fun `searchVideosInChannel returns empty list for no results`() = runTest(testDispatcher) {
+        coEvery { apiService.search(channelId = "UC123", query = "xyz", maxResults = 10) } returns
+            Response.success(YouTubeListResponse(items = emptyList()))
+
+        val result = repository.searchVideosInChannel("UC123", "xyz")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        assertThat((result as AppResult.Success).data).isEmpty()
+    }
+
+    @Test
+    fun `searchVideosInChannel returns error for API failure`() = runTest(testDispatcher) {
+        coEvery { apiService.search(channelId = "UC123", query = "fun", maxResults = 10) } returns
+            Response.error(403, "Quota exceeded".toResponseBody())
+
+        val result = repository.searchVideosInChannel("UC123", "fun")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        assertThat((result as AppResult.Error).message).contains("API error")
+    }
+
+    @Test
+    fun `searchVideosInChannel filters out results without videoId`() = runTest(testDispatcher) {
+        val searchResults = listOf(
+            SearchResultDto(
+                id = SearchResultId(videoId = "vid1"),
+                snippet = SearchSnippet(
+                    title = "Valid",
+                    channelTitle = "Ch",
+                    thumbnails = ThumbnailSet(high = Thumbnail(url = "https://img/v1.jpg"))
+                )
+            ),
+            SearchResultDto(
+                id = SearchResultId(videoId = null),
+                snippet = SearchSnippet(title = "No VideoId", channelTitle = "Ch")
+            ),
+            SearchResultDto(
+                id = null,
+                snippet = SearchSnippet(title = "No Id", channelTitle = "Ch")
+            )
+        )
+        coEvery { apiService.search(channelId = "UC123", query = "test", maxResults = 10) } returns
+            Response.success(YouTubeListResponse(items = searchResults))
+
+        val result = repository.searchVideosInChannel("UC123", "test")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        assertThat((result as AppResult.Success).data).hasSize(1)
+        assertThat(result.data[0].videoId).isEqualTo("vid1")
+    }
+
+    @Test
+    fun `searchVideosInChannel returns error for network failure`() = runTest(testDispatcher) {
+        coEvery { apiService.search(channelId = "UC123", query = "fun", maxResults = 10) } throws
+            IOException("No internet")
+
+        val result = repository.searchVideosInChannel("UC123", "fun")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        assertThat((result as AppResult.Error).exception).isInstanceOf(IOException::class.java)
     }
 
     // === Helper ===

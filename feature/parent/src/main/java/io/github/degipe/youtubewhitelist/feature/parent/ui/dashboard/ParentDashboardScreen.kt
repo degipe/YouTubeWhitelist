@@ -203,7 +203,7 @@ private fun DashboardContent(
         ActionCard(
             icon = Icons.Default.Bedtime,
             title = "Sleep Mode",
-            subtitle = "Set a sleep timer with calming videos",
+            subtitle = "Set a background sleep timer",
             onClick = onOpenSleepMode,
             enabled = uiState.selectedProfileId != null
         )

@@ -9,6 +9,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 import io.github.degipe.youtubewhitelist.core.data.repository.WatchHistoryRepository
 import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerManager
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerStatus
 import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +29,8 @@ data class VideoPlayerUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val remainingTimeFormatted: String? = null,
-    val isTimeLimitReached: Boolean = false
+    val isTimeLimitReached: Boolean = false,
+    val isSleepTimerExpired: Boolean = false
 )
 
 @HiltViewModel(assistedFactory = VideoPlayerViewModel.Factory::class)
@@ -35,6 +38,7 @@ class VideoPlayerViewModel @AssistedInject constructor(
     private val whitelistRepository: WhitelistRepository,
     private val watchHistoryRepository: WatchHistoryRepository,
     private val timeLimitChecker: TimeLimitChecker,
+    private val sleepTimerManager: SleepTimerManager,
     @Assisted("profileId") private val profileId: String,
     @Assisted("videoId") private val videoId: String,
     @Assisted("videoTitle") private val initialVideoTitle: String,
@@ -60,6 +64,7 @@ class VideoPlayerViewModel @AssistedInject constructor(
         loadVideo()
         loadSiblings()
         observeTimeLimit()
+        observeSleepTimer()
     }
 
     private fun loadVideo() {
@@ -94,6 +99,17 @@ class VideoPlayerViewModel @AssistedInject constructor(
                 _uiState.value = _uiState.value.copy(
                     remainingTimeFormatted = status.remainingSeconds?.let { formatRemaining(it) },
                     isTimeLimitReached = status.isLimitReached
+                )
+            }
+        }
+    }
+
+    private fun observeSleepTimer() {
+        viewModelScope.launch {
+            sleepTimerManager.state.collect { sleepState ->
+                _uiState.value = _uiState.value.copy(
+                    isSleepTimerExpired = sleepState.status == SleepTimerStatus.EXPIRED
+                            && sleepState.profileId == profileId
                 )
             }
         }

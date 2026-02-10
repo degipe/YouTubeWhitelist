@@ -20,6 +20,8 @@ import io.github.degipe.youtubewhitelist.feature.kid.ui.playlist.PlaylistDetailS
 import io.github.degipe.youtubewhitelist.feature.kid.ui.playlist.PlaylistDetailViewModel
 import io.github.degipe.youtubewhitelist.feature.kid.ui.search.KidSearchScreen
 import io.github.degipe.youtubewhitelist.feature.kid.ui.search.KidSearchViewModel
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerManager
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerStatus
 import io.github.degipe.youtubewhitelist.feature.sleep.ui.SleepModeScreen
 import io.github.degipe.youtubewhitelist.feature.sleep.ui.SleepModeViewModel
 import io.github.degipe.youtubewhitelist.feature.parent.ui.browser.WebViewBrowserScreen
@@ -46,6 +48,7 @@ import io.github.degipe.youtubewhitelist.ui.screen.splash.SplashScreen
 
 @Composable
 fun AppNavigation(
+    sleepTimerManager: SleepTimerManager,
     navController: NavHostController = rememberNavController()
 ) {
     NavHost(
@@ -101,6 +104,10 @@ fun AppNavigation(
                         (pinContext as? Activity)?.stopLockTask()
                     } catch (_: Exception) {
                         // Screen pinning was not active
+                    }
+                    // Dismiss sleep timer overlay if expired
+                    if (sleepTimerManager.state.value.status == SleepTimerStatus.EXPIRED) {
+                        sleepTimerManager.stopTimer()
                     }
                     navController.navigate(Route.ParentDashboard) {
                         popUpTo<Route.PinEntry> { inclusive = true }
@@ -364,6 +371,11 @@ fun AppNavigation(
                 viewModel = viewModel,
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onStartTimer = {
+                    navController.navigate(Route.KidHome(route.profileId)) {
+                        popUpTo<Route.SleepMode> { inclusive = true }
+                    }
                 }
             )
         }

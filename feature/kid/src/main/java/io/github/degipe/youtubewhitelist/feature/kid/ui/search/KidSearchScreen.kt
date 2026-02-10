@@ -58,6 +58,7 @@ fun KidSearchScreen(
     onPlaylistClick: (youtubeId: String, title: String, thumbnailUrl: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val query by viewModel.query.collectAsStateWithLifecycle()
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -69,7 +70,7 @@ fun KidSearchScreen(
             TopAppBar(
                 title = {
                     TextField(
-                        value = uiState.query,
+                        value = query,
                         onValueChange = viewModel::onQueryChanged,
                         placeholder = { Text("Search videos, channels...") },
                         singleLine = true,
@@ -77,7 +78,7 @@ fun KidSearchScreen(
                             .fillMaxWidth()
                             .focusRequester(focusRequester),
                         trailingIcon = {
-                            if (uiState.query.isNotEmpty()) {
+                            if (query.isNotEmpty()) {
                                 IconButton(onClick = viewModel::onClearQuery) {
                                     Icon(
                                         imageVector = Icons.Default.Clear,
@@ -106,7 +107,7 @@ fun KidSearchScreen(
         }
     ) { padding ->
         when {
-            uiState.query.isBlank() -> {
+            query.isBlank() -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

@@ -2,6 +2,7 @@ package io.github.degipe.youtubewhitelist.core.data.di
 
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.degipe.youtubewhitelist.core.data.repository.KidProfileRepository
@@ -12,8 +13,13 @@ import io.github.degipe.youtubewhitelist.core.data.repository.impl.KidProfileRep
 import io.github.degipe.youtubewhitelist.core.data.repository.impl.WatchHistoryRepositoryImpl
 import io.github.degipe.youtubewhitelist.core.data.repository.impl.WhitelistRepositoryImpl
 import io.github.degipe.youtubewhitelist.core.data.repository.impl.YouTubeApiRepositoryImpl
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerManager
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerManagerImpl
 import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
 import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitCheckerImpl
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 @Module
@@ -39,4 +45,11 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindTimeLimitChecker(impl: TimeLimitCheckerImpl): TimeLimitChecker
+
+    companion object {
+        @Provides
+        @Singleton
+        fun provideSleepTimerManager(): SleepTimerManager =
+            SleepTimerManagerImpl(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+    }
 }

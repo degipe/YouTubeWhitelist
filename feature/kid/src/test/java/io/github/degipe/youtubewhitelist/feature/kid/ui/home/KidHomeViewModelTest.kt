@@ -6,6 +6,9 @@ import io.github.degipe.youtubewhitelist.core.data.model.KidProfile
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
 import io.github.degipe.youtubewhitelist.core.data.repository.KidProfileRepository
 import io.github.degipe.youtubewhitelist.core.data.repository.WhitelistRepository
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerManager
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerState
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerStatus
 import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitChecker
 import io.github.degipe.youtubewhitelist.core.data.timelimit.TimeLimitStatus
 import io.mockk.every
@@ -28,6 +31,8 @@ class KidHomeViewModelTest {
     private lateinit var whitelistRepository: WhitelistRepository
     private lateinit var kidProfileRepository: KidProfileRepository
     private lateinit var timeLimitChecker: TimeLimitChecker
+    private lateinit var sleepTimerManager: SleepTimerManager
+    private val sleepTimerStateFlow = MutableStateFlow(SleepTimerState())
     private val testDispatcher = StandardTestDispatcher()
 
     private val noLimitStatus = TimeLimitStatus(
@@ -71,6 +76,8 @@ class KidHomeViewModelTest {
         whitelistRepository = mockk()
         kidProfileRepository = mockk()
         timeLimitChecker = mockk()
+        sleepTimerManager = mockk()
+        every { sleepTimerManager.state } returns sleepTimerStateFlow
     }
 
     @After
@@ -87,6 +94,7 @@ class KidHomeViewModelTest {
             whitelistRepository = whitelistRepository,
             kidProfileRepository = kidProfileRepository,
             timeLimitChecker = timeLimitChecker,
+            sleepTimerManager = sleepTimerManager,
             profileId = profileId
         )
     }
@@ -328,6 +336,85 @@ class KidHomeViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.remainingTimeFormatted).isEqualTo("0m")
+    }
+
+    // === Sleep Timer Tests ===
+
+    @Test
+    fun `sleep timer expired for this profile sets isSleepTimerExpired true`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        sleepTimerStateFlow.value = SleepTimerState(
+            status = SleepTimerStatus.EXPIRED,
+            profileId = "profile-1",
+            remainingSeconds = 0
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isSleepTimerExpired).isTrue()
+    }
+
+    @Test
+    fun `sleep timer running does not set isSleepTimerExpired`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        sleepTimerStateFlow.value = SleepTimerState(
+            status = SleepTimerStatus.RUNNING,
+            profileId = "profile-1",
+            remainingSeconds = 600
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isSleepTimerExpired).isFalse()
+    }
+
+    @Test
+    fun `sleep timer expired for different profile does not set isSleepTimerExpired`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        sleepTimerStateFlow.value = SleepTimerState(
+            status = SleepTimerStatus.EXPIRED,
+            profileId = "profile-OTHER",
+            remainingSeconds = 0
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isSleepTimerExpired).isFalse()
+    }
+
+    @Test
+    fun `sleep timer IDLE does not set isSleepTimerExpired`() = runTest(testDispatcher) {
+        every { kidProfileRepository.getProfileById("profile-1") } returns flowOf(testProfile)
+        every { whitelistRepository.getChannelsByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getVideosByProfile("profile-1") } returns flowOf(emptyList())
+        every { whitelistRepository.getPlaylistsByProfile("profile-1") } returns flowOf(emptyList())
+        setupDefaultTimeLimitChecker()
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isSleepTimerExpired).isFalse()
     }
 
     @Test

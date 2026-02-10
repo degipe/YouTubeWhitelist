@@ -52,7 +52,7 @@ interface WhitelistItemDao {
     @Query("SELECT * FROM whitelist_items WHERE kidProfileId = :profileId AND type = 'VIDEO' AND channelTitle = :channelTitle ORDER BY addedAt DESC")
     fun getVideosByChannelTitle(profileId: String, channelTitle: String): Flow<List<WhitelistItemEntity>>
 
-    @Query("SELECT * FROM whitelist_items WHERE kidProfileId = :profileId AND title LIKE '%' || :query || '%' ORDER BY type ASC, title ASC")
+    @Query("SELECT * FROM whitelist_items WHERE kidProfileId = :profileId AND (title LIKE '%' || :query || '%' OR channelTitle LIKE '%' || :query || '%') ORDER BY type ASC, title ASC")
     fun searchItems(profileId: String, query: String): Flow<List<WhitelistItemEntity>>
 
     @Query("SELECT * FROM whitelist_items WHERE id = :itemId LIMIT 1")

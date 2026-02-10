@@ -1,9 +1,12 @@
 package io.github.degipe.youtubewhitelist.feature.kid.ui.player
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -11,6 +14,8 @@ import android.webkit.WebSettings
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
 import androidx.annotation.Keep
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,6 +35,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -45,15 +51,22 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import io.github.degipe.youtubewhitelist.core.data.model.WhitelistItem
@@ -66,6 +79,43 @@ fun VideoPlayerScreen(
     onParentAccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? Activity
+    var fullscreenView by remember { mutableStateOf<View?>(null) }
+    var fullscreenCallback by remember { mutableStateOf<WebChromeClient.CustomViewCallback?>(null) }
+
+    val exitFullscreen: () -> Unit = {
+        fullscreenView?.let { view ->
+            (activity?.window?.decorView as? FrameLayout)?.removeView(view)
+        }
+        fullscreenCallback?.onCustomViewHidden()
+        fullscreenView = null
+        fullscreenCallback = null
+        activity?.let { act ->
+            act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            WindowCompat.setDecorFitsSystemWindows(act.window, true)
+            WindowInsetsControllerCompat(act.window, act.window.decorView).show(
+                WindowInsetsCompat.Type.systemBars()
+            )
+        }
+    }
+
+    BackHandler(enabled = fullscreenView != null) {
+        exitFullscreen()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if (fullscreenView != null) exitFullscreen()
+        }
+    }
+
+    // When overlay appears (sleep timer or time limit), exit fullscreen
+    val shouldBlock = uiState.isSleepTimerExpired || uiState.isTimeLimitReached
+    LaunchedEffect(shouldBlock) {
+        if (shouldBlock && fullscreenView != null) {
+            exitFullscreen()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -120,8 +170,30 @@ fun VideoPlayerScreen(
                     // YouTube Player WebView
                     YouTubePlayer(
                         youtubeId = uiState.youtubeId,
+                        shouldPause = uiState.isSleepTimerExpired || uiState.isTimeLimitReached,
                         onVideoEnded = { viewModel.playNext() },
                         onEmbedError = { viewModel.playNext() },
+                        onEnterFullscreen = { view, callback ->
+                            fullscreenView = view
+                            fullscreenCallback = callback
+                            activity?.let { act ->
+                                view.setBackgroundColor(android.graphics.Color.BLACK)
+                                (act.window.decorView as? FrameLayout)?.addView(
+                                    view,
+                                    FrameLayout.LayoutParams(
+                                        FrameLayout.LayoutParams.MATCH_PARENT,
+                                        FrameLayout.LayoutParams.MATCH_PARENT
+                                    )
+                                )
+                                act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                                WindowCompat.setDecorFitsSystemWindows(act.window, false)
+                                WindowInsetsControllerCompat(act.window, act.window.decorView).apply {
+                                    hide(WindowInsetsCompat.Type.systemBars())
+                                    systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                                }
+                            }
+                        },
+                        onExitFullscreen = exitFullscreen,
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(16f / 9f)
@@ -234,6 +306,50 @@ fun VideoPlayerScreen(
                     }
                 }
             }
+
+            // Good Night overlay (sleep timer expired)
+            if (uiState.isSleepTimerExpired) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF0A0A1A).copy(alpha = 0.98f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bedtime,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = Color(0xFF7B68EE)
+                        )
+                        Text(
+                            text = "Good Night!",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = Color(0xFFB0B0D0)
+                        )
+                        Text(
+                            text = "Time to sleep.\nSweet dreams!",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = Color(0xFFB0B0D0).copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        FloatingActionButton(
+                            onClick = onParentAccess,
+                            containerColor = Color(0xFF7B68EE)
+                        ) {
+                            Icon(
+                                Icons.Default.Lock,
+                                contentDescription = "Parent Mode",
+                                tint = Color.White
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -334,11 +450,26 @@ private fun buildYouTubePlayerHtml(videoId: String, origin: String, showControls
 @Composable
 private fun YouTubePlayer(
     youtubeId: String,
+    shouldPause: Boolean = false,
     onVideoEnded: () -> Unit,
     onEmbedError: () -> Unit = {},
+    onEnterFullscreen: (View, WebChromeClient.CustomViewCallback) -> Unit,
+    onExitFullscreen: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
+
+    // Pause video when overlay blocks playback (sleep timer / time limit)
+    LaunchedEffect(shouldPause) {
+        if (shouldPause) {
+            webViewRef.value?.post {
+                webViewRef.value?.evaluateJavascript(
+                    "if(player && player.pauseVideo) player.pauseVideo();",
+                    null
+                )
+            }
+        }
+    }
 
     DisposableEffect(youtubeId) {
         onDispose {
@@ -377,6 +508,16 @@ private fun YouTubePlayer(
                     override fun getDefaultVideoPoster(): Bitmap? {
                         return super.getDefaultVideoPoster()
                             ?: Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565)
+                    }
+
+                    override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                        if (view != null && callback != null) {
+                            onEnterFullscreen(view, callback)
+                        }
+                    }
+
+                    override fun onHideCustomView() {
+                        onExitFullscreen()
                     }
                 }
                 webViewClient = object : WebViewClient() {

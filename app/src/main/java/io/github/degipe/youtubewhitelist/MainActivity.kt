@@ -7,11 +7,17 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerManager
 import io.github.degipe.youtubewhitelist.navigation.AppNavigation
 import io.github.degipe.youtubewhitelist.ui.theme.YouTubeWhitelistTheme
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var sleepTimerManager: SleepTimerManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
@@ -20,7 +26,7 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             YouTubeWhitelistTheme {
-                AppNavigation()
+                AppNavigation(sleepTimerManager = sleepTimerManager)
             }
         }
     }

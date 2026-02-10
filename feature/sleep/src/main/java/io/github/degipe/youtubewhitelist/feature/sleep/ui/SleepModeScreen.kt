@@ -1,24 +1,11 @@
 package io.github.degipe.youtubewhitelist.feature.sleep.ui
 
-import android.annotation.SuppressLint
-import android.graphics.Bitmap
-import android.os.Handler
-import android.os.Looper
-import android.webkit.CookieManager
-import android.webkit.JavascriptInterface
-import android.webkit.WebChromeClient
-import android.webkit.WebSettings
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.annotation.Keep
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,30 +18,26 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.degipe.youtubewhitelist.core.data.sleep.SleepTimerStatus
 
 private val sleepDarkColors = darkColorScheme(
     background = Color(0xFF0A0A1A),
@@ -69,7 +52,8 @@ private val sleepDarkColors = darkColorScheme(
 @Composable
 fun SleepModeScreen(
     viewModel: SleepModeViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onStartTimer: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -92,10 +76,7 @@ fun SleepModeScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = {
-                            viewModel.stopTimer()
-                            onNavigateBack()
-                        }) {
+                        IconButton(onClick = onNavigateBack) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back"
@@ -117,36 +98,28 @@ fun SleepModeScreen(
                     .background(sleepDarkColors.background)
             ) {
                 when {
-                    uiState.isLoading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = sleepDarkColors.primary)
-                        }
-                    }
-                    uiState.videos.isEmpty() -> {
-                        EmptySleepContent()
-                    }
-                    uiState.timerState == TimerState.SELECTING -> {
-                        TimerSelectionContent(
-                            selectedDuration = uiState.selectedDurationMinutes,
-                            onSelectDuration = viewModel::selectDuration,
-                            onStart = viewModel::startTimer
+                    uiState.isTimerForThisProfile && uiState.timerStatus == SleepTimerStatus.RUNNING -> {
+                        TimerRunningContent(
+                            remainingSeconds = uiState.remainingSeconds,
+                            formattedRemaining = uiState.formattedRemaining,
+                            onStop = { viewModel.stopTimer() }
                         )
                     }
-                    uiState.timerState == TimerState.RUNNING -> {
-                        SleepPlaybackContent(
-                            uiState = uiState,
-                            onVideoEnded = viewModel::onVideoEnded,
-                            onStop = viewModel::stopTimer
-                        )
-                    }
-                    uiState.timerState == TimerState.EXPIRED -> {
+                    uiState.isTimerForThisProfile && uiState.timerStatus == SleepTimerStatus.EXPIRED -> {
                         TimerExpiredContent(
                             onDismiss = {
                                 viewModel.stopTimer()
                                 onNavigateBack()
+                            }
+                        )
+                    }
+                    else -> {
+                        TimerSelectionContent(
+                            selectedMinutes = uiState.selectedDurationMinutes,
+                            onSelectDuration = viewModel::selectDuration,
+                            onStart = {
+                                viewModel.startTimer()
+                                onStartTimer()
                             }
                         )
                     }
@@ -157,37 +130,8 @@ fun SleepModeScreen(
 }
 
 @Composable
-private fun EmptySleepContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Default.Bedtime,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = sleepDarkColors.primary
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "No videos available",
-                style = MaterialTheme.typography.titleMedium,
-                color = sleepDarkColors.onBackground
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Add some videos first, then come back for sleep mode",
-                style = MaterialTheme.typography.bodyMedium,
-                color = sleepDarkColors.onBackground.copy(alpha = 0.7f)
-            )
-        }
-    }
-}
-
-@Composable
 private fun TimerSelectionContent(
-    selectedDuration: Int,
+    selectedMinutes: Int,
     onSelectDuration: (Int) -> Unit,
     onStart: () -> Unit
 ) {
@@ -213,26 +157,53 @@ private fun TimerSelectionContent(
             color = sleepDarkColors.onBackground
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
+        // Duration display
+        Text(
+            text = formatDuration(selectedMinutes),
+            style = MaterialTheme.typography.displayMedium.copy(
+                fontSize = 48.sp,
+                letterSpacing = 2.sp
+            ),
+            color = sleepDarkColors.primary
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Slider
+        Slider(
+            value = selectedMinutes.toFloat(),
+            onValueChange = { onSelectDuration(it.toInt()) },
+            valueRange = 5f..600f,
+            steps = 118, // (600 - 5) / 5 - 1 = 118 intermediate steps
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            colors = SliderDefaults.colors(
+                thumbColor = sleepDarkColors.primary,
+                activeTrackColor = sleepDarkColors.primary,
+                inactiveTrackColor = sleepDarkColors.surface
+            )
+        )
+
+        // Min/Max labels
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            listOf(15, 30, 45, 60).forEach { minutes ->
-                FilterChip(
-                    selected = selectedDuration == minutes,
-                    onClick = { onSelectDuration(minutes) },
-                    label = {
-                        Text("${minutes}m")
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = sleepDarkColors.primary,
-                        selectedLabelColor = sleepDarkColors.onPrimary,
-                        containerColor = sleepDarkColors.surface,
-                        labelColor = sleepDarkColors.onSurface
-                    )
-                )
-            }
+            Text(
+                text = "5m",
+                style = MaterialTheme.typography.labelSmall,
+                color = sleepDarkColors.onBackground.copy(alpha = 0.5f)
+            )
+            Text(
+                text = "10h",
+                style = MaterialTheme.typography.labelSmall,
+                color = sleepDarkColors.onBackground.copy(alpha = 0.5f)
+            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -249,84 +220,78 @@ private fun TimerSelectionContent(
                 contentDescription = null,
                 modifier = Modifier.size(24.dp)
             )
-            Text("  Start Sleep Mode")
+            Text("  Start Sleep Timer")
         }
     }
 }
 
 @Composable
-private fun SleepPlaybackContent(
-    uiState: SleepModeUiState,
-    onVideoEnded: () -> Unit,
+private fun TimerRunningContent(
+    remainingSeconds: Long,
+    formattedRemaining: String,
     onStop: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        // Timer display
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            contentAlignment = Alignment.Center
+        Icon(
+            imageVector = Icons.Default.Bedtime,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = sleepDarkColors.primary
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Timer Running",
+            style = MaterialTheme.typography.headlineMedium,
+            color = sleepDarkColors.onBackground
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Countdown
+        val minutes = remainingSeconds / 60
+        val seconds = remainingSeconds % 60
+        Text(
+            text = "%d:%02d".format(minutes, seconds),
+            style = MaterialTheme.typography.displayMedium.copy(
+                fontSize = 56.sp,
+                letterSpacing = 4.sp
+            ),
+            color = if (remainingSeconds <= 120)
+                sleepDarkColors.primary.copy(alpha = 0.7f)
+            else
+                sleepDarkColors.onBackground
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = formattedRemaining,
+            style = MaterialTheme.typography.bodyMedium,
+            color = sleepDarkColors.onBackground.copy(alpha = 0.6f)
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = onStop,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = sleepDarkColors.surface,
+                contentColor = sleepDarkColors.onSurface
+            )
         ) {
-            val minutes = uiState.remainingSeconds / 60
-            val seconds = uiState.remainingSeconds % 60
-            Text(
-                text = "%d:%02d".format(minutes, seconds),
-                style = MaterialTheme.typography.displayMedium.copy(
-                    fontSize = 48.sp,
-                    letterSpacing = 4.sp
-                ),
-                color = if (uiState.remainingSeconds <= 120)
-                    sleepDarkColors.primary.copy(alpha = 0.7f)
-                else
-                    sleepDarkColors.onBackground
+            Icon(
+                imageVector = Icons.Default.Stop,
+                contentDescription = null
             )
-        }
-
-        // Video player
-        uiState.currentVideo?.let { video ->
-            SleepYouTubePlayer(
-                youtubeId = video.youtubeId,
-                onVideoEnded = onVideoEnded,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = video.title,
-                style = MaterialTheme.typography.titleSmall,
-                color = sleepDarkColors.onBackground.copy(alpha = 0.8f),
-                maxLines = 1
-            )
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Stop button
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            Button(
-                onClick = onStop,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = sleepDarkColors.surface,
-                    contentColor = sleepDarkColors.onSurface
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Stop,
-                    contentDescription = null
-                )
-                Text("  Stop")
-            }
+            Text("  Cancel Timer")
         }
     }
 }
@@ -346,9 +311,15 @@ private fun TimerExpiredContent(onDismiss: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Good night!",
+                text = "Timer Expired",
                 style = MaterialTheme.typography.headlineMedium,
                 color = sleepDarkColors.onBackground
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "The sleep timer has finished.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = sleepDarkColors.onBackground.copy(alpha = 0.7f)
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(
@@ -358,166 +329,14 @@ private fun TimerExpiredContent(onDismiss: () -> Unit) {
                     contentColor = sleepDarkColors.onPrimary
                 )
             ) {
-                Text("Done")
+                Text("Dismiss")
             }
         }
     }
 }
 
-@Keep
-private class SleepVideoEndedBridge(
-    private val onVideoEnded: () -> Unit,
-    private val onEmbedError: () -> Unit
-) {
-    private val handler = Handler(Looper.getMainLooper())
-
-    @JavascriptInterface
-    fun onStateChange(state: Int) {
-        // YT.PlayerState.ENDED == 0
-        if (state == 0) {
-            handler.post { onVideoEnded() }
-        }
-    }
-
-    @JavascriptInterface
-    fun onError(errorCode: Int) {
-        // 101, 150 = embedding disabled by video owner
-        if (errorCode == 101 || errorCode == 150) {
-            handler.post { onEmbedError() }
-        }
-    }
-
-    @JavascriptInterface
-    fun onReady() { }
-}
-
-private fun buildSleepPlayerHtml(videoId: String, origin: String): String {
-    return """
-        <!DOCTYPE html>
-        <html>
-        <style type="text/css">
-            html, body {
-                height: 100%;
-                width: 100%;
-                margin: 0;
-                padding: 0;
-                background-color: #000000;
-                overflow: hidden;
-                position: fixed;
-            }
-        </style>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <script defer src="https://www.youtube.com/iframe_api"></script>
-        </head>
-        <body>
-            <div id="player"></div>
-        </body>
-        <script type="text/javascript">
-            var player;
-            function onYouTubeIframeAPIReady() {
-                player = new YT.Player('player', {
-                    height: '100%',
-                    width: '100%',
-                    videoId: '$videoId',
-                    playerVars: {
-                        autoplay: 1,
-                        controls: 0,
-                        enablejsapi: 1,
-                        fs: 0,
-                        origin: '$origin',
-                        rel: 0,
-                        iv_load_policy: 3,
-                        modestbranding: 1,
-                        playsinline: 1
-                    },
-                    events: {
-                        onReady: function(event) {
-                            if (typeof AndroidBridge !== 'undefined') {
-                                AndroidBridge.onReady();
-                            }
-                        },
-                        onStateChange: function(event) {
-                            if (typeof AndroidBridge !== 'undefined') {
-                                AndroidBridge.onStateChange(event.data);
-                            }
-                        },
-                        onError: function(event) {
-                            if (typeof AndroidBridge !== 'undefined') {
-                                AndroidBridge.onError(event.data);
-                            }
-                        }
-                    }
-                });
-            }
-        </script>
-        </html>
-    """.trimIndent()
-}
-
-@SuppressLint("SetJavaScriptEnabled")
-@Composable
-private fun SleepYouTubePlayer(
-    youtubeId: String,
-    onVideoEnded: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val webViewRef = remember { mutableStateOf<WebView?>(null) }
-
-    DisposableEffect(youtubeId) {
-        onDispose {
-            webViewRef.value?.let { wv ->
-                wv.loadUrl("about:blank")
-                wv.stopLoading()
-                wv.clearHistory()
-                wv.destroy()
-            }
-            webViewRef.value = null
-        }
-    }
-
-    AndroidView(
-        factory = { context ->
-            WebView(context).apply {
-                webViewRef.value = this
-
-                val origin = "https://${context.packageName}"
-
-                settings.javaScriptEnabled = true
-                settings.mediaPlaybackRequiresUserGesture = false
-                settings.domStorageEnabled = true
-                settings.cacheMode = WebSettings.LOAD_DEFAULT
-
-                val cookieManager = CookieManager.getInstance()
-                cookieManager.setAcceptCookie(true)
-                cookieManager.setAcceptThirdPartyCookies(this, true)
-
-                addJavascriptInterface(
-                    SleepVideoEndedBridge(onVideoEnded, onVideoEnded),
-                    "AndroidBridge"
-                )
-
-                webChromeClient = object : WebChromeClient() {
-                    override fun getDefaultVideoPoster(): Bitmap? {
-                        return super.getDefaultVideoPoster()
-                            ?: Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565)
-                    }
-                }
-                webViewClient = object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView?,
-                        request: WebResourceRequest?
-                    ): Boolean {
-                        // Block all navigation to prevent escaping the app
-                        return true
-                    }
-                }
-
-                val html = buildSleepPlayerHtml(youtubeId, origin)
-                loadDataWithBaseURL(origin, html, "text/html", "utf-8", null)
-            }
-        },
-        update = { /* Re-creation handled by DisposableEffect keyed on youtubeId */ },
-        modifier = modifier
-    )
+private fun formatDuration(minutes: Int): String {
+    val h = minutes / 60
+    val m = minutes % 60
+    return if (h > 0) "${h}h ${m}m" else "${m}m"
 }

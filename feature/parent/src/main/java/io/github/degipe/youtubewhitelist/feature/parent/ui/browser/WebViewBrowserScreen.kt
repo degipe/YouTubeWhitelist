@@ -1,13 +1,18 @@
 package io.github.degipe.youtubewhitelist.feature.parent.ui.browser
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.os.Build
+import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -40,7 +45,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.degipe.youtubewhitelist.core.common.youtube.YouTubeContentType
 
@@ -54,6 +63,35 @@ fun WebViewBrowserScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var pageProgress by remember { mutableIntStateOf(100) }
+    val activity = LocalContext.current as? Activity
+    var fullscreenView by remember { mutableStateOf<View?>(null) }
+    var fullscreenCallback by remember { mutableStateOf<WebChromeClient.CustomViewCallback?>(null) }
+
+    val exitFullscreen: () -> Unit = {
+        fullscreenView?.let { view ->
+            (activity?.window?.decorView as? FrameLayout)?.removeView(view)
+        }
+        fullscreenCallback?.onCustomViewHidden()
+        fullscreenView = null
+        fullscreenCallback = null
+        activity?.let { act ->
+            act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            WindowCompat.setDecorFitsSystemWindows(act.window, true)
+            WindowInsetsControllerCompat(act.window, act.window.decorView).show(
+                WindowInsetsCompat.Type.systemBars()
+            )
+        }
+    }
+
+    BackHandler(enabled = fullscreenView != null) {
+        exitFullscreen()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if (fullscreenView != null) exitFullscreen()
+        }
+    }
 
     LaunchedEffect(uiState.addResult) {
         when (val result = uiState.addResult) {
@@ -123,7 +161,28 @@ fun WebViewBrowserScreen(
             YouTubeWebView(
                 initialUrl = uiState.currentUrl,
                 onUrlChanged = viewModel::onUrlChanged,
-                onProgressChanged = { pageProgress = it }
+                onProgressChanged = { pageProgress = it },
+                onEnterFullscreen = { view, callback ->
+                    fullscreenView = view
+                    fullscreenCallback = callback
+                    activity?.let { act ->
+                        view.setBackgroundColor(android.graphics.Color.BLACK)
+                        (act.window.decorView as? FrameLayout)?.addView(
+                            view,
+                            FrameLayout.LayoutParams(
+                                FrameLayout.LayoutParams.MATCH_PARENT,
+                                FrameLayout.LayoutParams.MATCH_PARENT
+                            )
+                        )
+                        act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        WindowCompat.setDecorFitsSystemWindows(act.window, false)
+                        WindowInsetsControllerCompat(act.window, act.window.decorView).apply {
+                            hide(WindowInsetsCompat.Type.systemBars())
+                            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        }
+                    }
+                },
+                onExitFullscreen = exitFullscreen
             )
 
             if (uiState.isAdding) {
@@ -140,7 +199,9 @@ fun WebViewBrowserScreen(
 private fun YouTubeWebView(
     initialUrl: String,
     onUrlChanged: (String) -> Unit,
-    onProgressChanged: (Int) -> Unit
+    onProgressChanged: (Int) -> Unit,
+    onEnterFullscreen: (View, WebChromeClient.CustomViewCallback) -> Unit,
+    onExitFullscreen: () -> Unit
 ) {
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
 
@@ -183,6 +244,16 @@ private fun YouTubeWebView(
                 webChromeClient = object : WebChromeClient() {
                     override fun onProgressChanged(view: WebView?, newProgress: Int) {
                         onProgressChanged(newProgress)
+                    }
+
+                    override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                        if (view != null && callback != null) {
+                            onEnterFullscreen(view, callback)
+                        }
+                    }
+
+                    override fun onHideCustomView() {
+                        onExitFullscreen()
                     }
                 }
 

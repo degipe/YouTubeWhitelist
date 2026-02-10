@@ -17,14 +17,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
@@ -41,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -138,6 +137,50 @@ fun KidHomeScreen(
                     }
                 }
             }
+
+            // Good Night overlay (sleep timer expired)
+            if (uiState.isSleepTimerExpired) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF0A0A1A).copy(alpha = 0.98f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bedtime,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = Color(0xFF7B68EE)
+                        )
+                        Text(
+                            text = "Good Night!",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = Color(0xFFB0B0D0)
+                        )
+                        Text(
+                            text = "Time to sleep.\nSweet dreams!",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            color = Color(0xFFB0B0D0).copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        FloatingActionButton(
+                            onClick = onParentAccess,
+                            containerColor = Color(0xFF7B68EE)
+                        ) {
+                            Icon(
+                                Icons.Default.Lock,
+                                contentDescription = "Parent Mode",
+                                tint = Color.White
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -223,20 +266,27 @@ private fun KidHomeContent(
                 text = "Channels",
                 style = MaterialTheme.typography.titleMedium
             )
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(((uiState.channels.size + 1) / 2 * 130).dp),
-                userScrollEnabled = false
+                modifier = Modifier.fillMaxWidth()
             ) {
-                items(uiState.channels, key = { it.id }) { channel ->
-                    ChannelCard(
-                        channel = channel,
-                        onClick = { onChannelClick(channel.youtubeId, channel.title, channel.thumbnailUrl) }
-                    )
+                uiState.channels.chunked(2).forEach { rowItems ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        rowItems.forEach { channel ->
+                            ChannelCard(
+                                channel = channel,
+                                onClick = { onChannelClick(channel.youtubeId, channel.title, channel.thumbnailUrl) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        // Fill empty space if odd number
+                        if (rowItems.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }
@@ -286,11 +336,11 @@ private fun KidHomeContent(
 @Composable
 private fun ChannelCard(
     channel: WhitelistItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .clickable(onClick = onClick)
     ) {
         Column(
