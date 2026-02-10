@@ -85,3 +85,6 @@ PRD_temp.txt
 
 # Word temp files
 ~$*
+
+# Internal strategy documents (not for publication)
+YOUTUBE_API_STRATEGY.md
