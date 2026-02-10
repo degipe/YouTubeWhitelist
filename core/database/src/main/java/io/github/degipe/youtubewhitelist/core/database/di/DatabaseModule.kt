@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.degipe.youtubewhitelist.core.database.YouTubeWhitelistDatabase
+import io.github.degipe.youtubewhitelist.core.database.dao.CachedChannelVideoDao
 import io.github.degipe.youtubewhitelist.core.database.dao.KidProfileDao
 import io.github.degipe.youtubewhitelist.core.database.dao.ParentAccountDao
 import io.github.degipe.youtubewhitelist.core.database.dao.WatchHistoryDao
@@ -40,4 +41,7 @@ object DatabaseModule {
 
     @Provides
     fun provideWatchHistoryDao(db: YouTubeWhitelistDatabase): WatchHistoryDao = db.watchHistoryDao()
+
+    @Provides
+    fun provideCachedChannelVideoDao(db: YouTubeWhitelistDatabase): CachedChannelVideoDao = db.cachedChannelVideoDao()
 }

@@ -8,7 +8,10 @@ import io.github.degipe.youtubewhitelist.core.network.dto.ChannelDto
 import io.github.degipe.youtubewhitelist.core.network.dto.ChannelSnippet
 import io.github.degipe.youtubewhitelist.core.network.dto.ChannelStatistics
 import io.github.degipe.youtubewhitelist.core.network.dto.PlaylistDto
+import io.github.degipe.youtubewhitelist.core.network.dto.PlaylistItemDto
+import io.github.degipe.youtubewhitelist.core.network.dto.PlaylistItemSnippet
 import io.github.degipe.youtubewhitelist.core.network.dto.PlaylistSnippet
+import io.github.degipe.youtubewhitelist.core.network.dto.ResourceId
 import io.github.degipe.youtubewhitelist.core.network.dto.RelatedPlaylists
 import io.github.degipe.youtubewhitelist.core.network.dto.Thumbnail
 import io.github.degipe.youtubewhitelist.core.network.dto.ThumbnailSet
@@ -324,5 +327,117 @@ class HybridYouTubeRepositoryImplTest {
         val result = repository.getPlaylistItems("PLabc")
 
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
+    }
+
+    // === getPlaylistItemsPage ===
+
+    @Test
+    fun `getPlaylistItemsPage - first page with null token tries RSS first`() = runTest(testDispatcher) {
+        coEvery { rssFeedParser.fetchChannelVideos("UC123") } returns listOf(
+            RssVideoEntry("v1", "Video 1", "https://thumb/v1", "Channel", "2026-01-01"),
+            RssVideoEntry("v2", "Video 2", "https://thumb/v2", "Channel", "2026-01-02")
+        )
+
+        val result = repository.getPlaylistItemsPage("UU123", pageToken = null)
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        val data = (result as AppResult.Success).data
+        assertThat(data.videos).hasSize(2)
+        assertThat(data.nextPageToken).isNull() // RSS has no pagination
+    }
+
+    @Test
+    fun `getPlaylistItemsPage - RSS fails, API returns videos with nextPageToken`() = runTest(testDispatcher) {
+        coEvery { rssFeedParser.fetchChannelVideos(any()) } returns emptyList()
+        coEvery { apiService.getPlaylistItems(any(), eq("UU123"), any(), isNull()) } returns Response.success(
+            YouTubeListResponse(
+                items = listOf(
+                    PlaylistItemDto(
+                        snippet = PlaylistItemSnippet(
+                            title = "Video 1",
+                            channelTitle = "Channel",
+                            thumbnails = testThumbnails,
+                            position = 0,
+                            resourceId = ResourceId(videoId = "v1")
+                        )
+                    )
+                ),
+                nextPageToken = "PAGE2_TOKEN"
+            )
+        )
+
+        val result = repository.getPlaylistItemsPage("UU123", pageToken = null)
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        val data = (result as AppResult.Success).data
+        assertThat(data.videos).hasSize(1)
+        assertThat(data.videos[0].videoId).isEqualTo("v1")
+        assertThat(data.nextPageToken).isEqualTo("PAGE2_TOKEN")
+    }
+
+    @Test
+    fun `getPlaylistItemsPage - continuation with non-null token skips RSS`() = runTest(testDispatcher) {
+        // Should NOT call RSS for continuation pages
+        coEvery { apiService.getPlaylistItems(any(), eq("UU123"), any(), eq("PAGE2")) } returns Response.success(
+            YouTubeListResponse(
+                items = listOf(
+                    PlaylistItemDto(
+                        snippet = PlaylistItemSnippet(
+                            title = "Video 2",
+                            channelTitle = "Channel",
+                            thumbnails = testThumbnails,
+                            position = 50,
+                            resourceId = ResourceId(videoId = "v2")
+                        )
+                    )
+                ),
+                nextPageToken = null // last page
+            )
+        )
+
+        val result = repository.getPlaylistItemsPage("UU123", pageToken = "PAGE2")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        val data = (result as AppResult.Success).data
+        assertThat(data.videos).hasSize(1)
+        assertThat(data.videos[0].position).isEqualTo(50)
+        assertThat(data.nextPageToken).isNull()
+    }
+
+    @Test
+    fun `getPlaylistItemsPage - last page returns null nextPageToken`() = runTest(testDispatcher) {
+        coEvery { apiService.getPlaylistItems(any(), eq("PLabc"), any(), eq("LAST")) } returns Response.success(
+            YouTubeListResponse(
+                items = listOf(
+                    PlaylistItemDto(
+                        snippet = PlaylistItemSnippet(
+                            title = "Final Video",
+                            channelTitle = "Channel",
+                            thumbnails = testThumbnails,
+                            position = 100,
+                            resourceId = ResourceId(videoId = "v3")
+                        )
+                    )
+                ),
+                nextPageToken = null
+            )
+        )
+
+        val result = repository.getPlaylistItemsPage("PLabc", pageToken = "LAST")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        val data = (result as AppResult.Success).data
+        assertThat(data.nextPageToken).isNull()
+    }
+
+    @Test
+    fun `getPlaylistItemsPage - all sources fail returns error`() = runTest(testDispatcher) {
+        coEvery { rssFeedParser.fetchChannelVideos(any()) } returns emptyList()
+        coEvery { apiService.getPlaylistItems(any(), any(), any(), any()) } throws IOException("API down")
+        every { invidiousInstanceManager.getHealthyInstance() } returns null
+
+        val result = repository.getPlaylistItemsPage("UU123", pageToken = null)
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
     }
 }

@@ -2,6 +2,7 @@ package io.github.degipe.youtubewhitelist.core.data.repository.impl
 
 import io.github.degipe.youtubewhitelist.core.common.di.IoDispatcher
 import io.github.degipe.youtubewhitelist.core.common.result.AppResult
+import io.github.degipe.youtubewhitelist.core.data.model.PaginatedPlaylistResult
 import io.github.degipe.youtubewhitelist.core.data.model.PlaylistVideo
 import io.github.degipe.youtubewhitelist.core.data.model.YouTubeMetadata
 import io.github.degipe.youtubewhitelist.core.data.repository.YouTubeApiRepository
@@ -94,6 +95,35 @@ class YouTubeApiRepositoryImpl @Inject constructor(
                 AppResult.Success(videos)
             }
         }
+
+    override suspend fun getPlaylistItemsPage(
+        playlistId: String,
+        pageToken: String?
+    ): AppResult<PaginatedPlaylistResult> = withContext(ioDispatcher) {
+        safeApiCall {
+            val response = youTubeApiService.getPlaylistItems(
+                playlistId = playlistId,
+                pageToken = pageToken
+            )
+            if (!response.isSuccessful) {
+                return@safeApiCall AppResult.Error("API error: ${response.code()}")
+            }
+            val body = response.body()
+            val items = body?.items.orEmpty()
+            val videos = items.mapNotNull { item ->
+                val snippet = item.snippet ?: return@mapNotNull null
+                val videoId = snippet.resourceId?.videoId ?: return@mapNotNull null
+                PlaylistVideo(
+                    videoId = videoId,
+                    title = snippet.title,
+                    thumbnailUrl = snippet.thumbnails.bestUrl(),
+                    channelTitle = snippet.channelTitle,
+                    position = snippet.position
+                )
+            }
+            AppResult.Success(PaginatedPlaylistResult(videos = videos, nextPageToken = body?.nextPageToken))
+        }
+    }
 
     override suspend fun searchVideosInChannel(
         channelId: String,

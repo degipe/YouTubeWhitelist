@@ -1,32 +1,30 @@
-# Session 20 Starting Prompt
+# Session 21 Starting Prompt
 
-Ez a 20. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 21. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Előző Session (19) Összefoglaló
+## Előző Session (20) Összefoglaló
 
-Strategy E (Hybrid + Invidious fallback) implementáció:
-- **oEmbed service**: ingyenes video/playlist metadata (no API key, no quota)
-- **RSS feed parser**: ingyenes csatorna videó lista (max 15, no API key)
-- **Invidious fallback**: nyílt forráskódú YouTube proxy (instance rotation + health tracking)
-- **HybridYouTubeRepositoryImpl**: fallback chain (oEmbed/RSS → YouTube API → Invidious)
-- **Beépített API kulcs**: `app/build.gradle.kts`-ben, F-Droid build-ekhez is működik
-- **ProGuard szabályok**: oEmbed + Invidious DTO-k + OEmbedService
-- **Code review javítások**: XXE védelem, thread safety, IOException szűrés
-- 413 teszt, mind zöld
+Channel video lazy loading + Room cache + helyi keresés implementáció:
+- **CachedChannelVideoEntity + DAO**: Room cache, composite PK, LIKE keresés
+- **PaginatedPlaylistResult**: videók + nextPageToken wrapper
+- **HybridYouTubeRepositoryImpl.getPlaylistItemsPage()**: RSS → API → Invidious fallback
+- **ChannelVideoCacheRepository**: cache interface + implementation (Entity↔PlaylistVideo mapping)
+- **ChannelDetailViewModel**: teljes átírás — Room Single Source of Truth, debounce+flatMapLatest keresés, loadMore paginálás
+- **ChannelDetailScreen**: search bar (TopAppBar toggle), infinite scroll (LaunchedEffect), loading spinner
+- Room DB v3, ~401 teszt, mind zöld
 
 ## Mi van kész
 
-- App teljesen működőképes (413 teszt, mind zöld)
+- App teljesen működőképes (~401 teszt, mind zöld)
 - Strategy E implementálva: Hybrid + Invidious fallback
+- Channel lazy loading + Room cache + helyi keresés (0 quota)
 - Release APK + AAB
 - GitHub Release v1.0.0
 - Privacy Policy (GitHub Pages)
-- GCP API key: YouTube Data API v3 only restriction (nincs Android restriction)
+- GCP API key: YouTube Data API v3 only restriction
 - OAuth consent screen: Production mode
 - Teljes SDLC dokumentáció (7 doksi)
 - 7 Play Store screenshot
-- Kid mode keresés: csak lokális (0 API quota)
-- YouTubeApiRepository interfész változatlan (ViewModelek nem módosultak)
 
 ## Mi maradt
 
@@ -34,8 +32,8 @@ Strategy E (Hybrid + Invidious fallback) implementáció:
 2. **F-Droid RFP** (most már OK — beépített API kulcs + hybrid)
 3. **Feature graphic** (1024x500 banner, Play Store kötelező)
 4. **App icon** (512x512 PNG, Play Store kötelező)
-5. **Device tesztelés** (új hybrid implementáció valós YouTube tartalommal)
-6. **YOUTUBE_API_STRATEGY.md** frissítés (Strategy E kiválasztva + implementálva)
+5. **Device tesztelés** (lazy loading + search valós YouTube tartalommal)
+6. **YOUTUBE_API_STRATEGY.md** frissítés (Strategy E + lazy loading)
 
 ### Megjegyzések
 

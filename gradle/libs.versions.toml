@@ -127,6 +127,7 @@ arch-core-testing = { group = "androidx.arch.core", name = "core-testing", versi
 compose-ui-test = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+androidx-test-core = { group = "androidx.test", name = "core", version = "1.6.1" }
 room-testing-lib = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 
 [plugins]

@@ -67,75 +67,6 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 
 ## Session Logs
 
-### Session 15 - 2026-02-10: SDLC Documentation Completion (Onboarding, User Manual, PRD Translation)
-
-**Objectives**: Create comprehensive developer onboarding guide, detailed user manual, and translate Hungarian PRD to English markdown.
-
-**Completed**:
-- **Developer Onboarding Guide** (`docs/DEVELOPER_ONBOARDING.md` — ~750 lines):
-  - 18 chapters covering full developer ramp-up
-  - Prerequisites, environment setup (macOS + Android SDK + JDK 17)
-  - Project structure walkthrough (all 10 modules with responsibilities)
-  - Architecture deep-dive (MVVM + Clean Architecture layers)
-  - Module-by-module guide with key classes and patterns
-  - Navigation system (type-safe routes, 18 screens)
-  - Database schema (4 entities, relationships, DAOs)
-  - Hilt DI setup (7 modules, qualifier annotations, AssistedInject)
-  - YouTube API integration (5 endpoints, quota management, ApiKeyInterceptor)
-  - Auth & security (OAuth 2.0 flow, PIN/PBKDF2, EncryptedSharedPreferences, WebView security)
-  - 5 state management patterns with code examples
-  - Testing guide (378+ tests, JUnit + MockK + Truth + Turbine patterns)
-  - Build & release (debug/release, APK/AAB, ProGuard, signing)
-  - Code conventions, common pitfalls, contribution workflow, quick reference card
-
-- **User Manual** (`docs/USER_MANUAL.md` — ~500 lines):
-  - 15 chapters covering all app functionality for end users
-  - Installation (Play Store, F-Droid, GitHub, sideloading)
-  - First-time setup (PIN creation, profile, Google sign-in)
-  - Kid Mode (home screen, video player, channels, playlists, search)
-  - Parent Mode (dashboard, whitelist management, Browse YouTube)
-  - Profiles, daily time limits, sleep mode
-  - Watch statistics, export/import
-  - PIN management, kiosk mode
-  - FAQ (15+ questions), troubleshooting, privacy & security
-
-- **PRD Translation** (`docs/PRD.md` — ~732 lines):
-  - Full English translation of Hungarian PRD v1.1
-  - 19 sections: executive summary, problem description, goals/KPIs, personas, user stories, 35 functional requirements, NFRs, UI/UX, technical architecture, data model, API integrations, security, legal/compliance, store listing, competitor analysis, risks, timeline, testing, future development
-  - Original `YouTubeWhitelist_PRD_v1.1.docx` deleted (no longer needed)
-  - pandoc installed via Homebrew for docx→md conversion
-
-**Decisions Made**:
-- Developer onboarding structured as progressive learning path (setup → architecture → modules → patterns → testing)
-- User manual organized by user role (kid mode → parent mode → advanced features)
-- PRD kept as faithful translation — markdown version is the canonical reference
-- Original docx deleted after translation
-
-**Files Created**:
-- `docs/DEVELOPER_ONBOARDING.md` (~750 lines)
-- `docs/USER_MANUAL.md` (~500 lines)
-- `docs/PRD.md` (~732 lines)
-
-**Files Deleted**:
-- `YouTubeWhitelist_PRD_v1.1.docx` (replaced by docs/PRD.md)
-- `~$uTubeWhitelist_PRD_v1.1.docx` (Word temp file)
-
-**Files Modified**:
-- `CLAUDE.md` (PRD reference updated, Session 10 archived, Session 15 added)
-- `CLAUDE_ARCHIVE_1.md` (Session 10 archived, now contains sessions 1-10)
-- `ARCHITECTURE.md` (Session 15 entry + archive update)
-- `NEXT_SESSION_PROMPT.md` (updated for Session 16)
-
-**Test Stats**: 378+ tests, all green (no changes to code — documentation only session)
-
-**Notes**:
-- Total documentation suite: BRD, FS, HLD, LLD, PRD, Developer Onboarding, User Manual (7 docs in docs/)
-- pandoc v3.9 installed via Homebrew for docx conversion
-- Explored codebase with 2 parallel agents for comprehensive documentation
-- Session 10 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-10)
-
-**Next Session Focus**: Store submission + final polish (GitHub Release + v1.0.0 tag, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission).
-
 ### Session 16 - 2026-02-10: Store Submission + Final Polish
 
 **Objectives**: GitHub Release v1.0.0, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission, Play Store guide.
@@ -433,3 +364,94 @@ YouTubeApiRepository (interface — unchanged)
 - Only @handle resolution and direct channel lookup use API quota (1 unit each)
 - Invidious fallback activates on IOException only — parsing errors don't penalize instances
 - XXE protection: 6 security features disabled in DocumentBuilderFactory
+
+### Session 20 - 2026-02-10: Channel Video Lazy Loading + Room Cache + Search
+
+**Objectives**: Implement infinite scroll (lazy loading) for channel detail, Room cache as single source of truth, local search in cached videos (0 API quota).
+
+**Completed**:
+- **Phase 1: Database Layer** (core:database):
+  - `CachedChannelVideoEntity` — Room entity with composite PK `(channelId, videoId)`, index on channelId
+  - `CachedChannelVideoDao` — getVideosByChannel (Flow), searchVideosInChannel (LIKE query, Flow), upsertAll, deleteByChannel, getMaxPosition
+  - Room DB version 2→3 (`fallbackToDestructiveMigration()`)
+  - DatabaseModule updated with DAO provider
+  - 5 Robolectric DAO tests (insert+get, search match, search no match, delete, upsert duplicate)
+
+- **Phase 2: Repository Layer** (core:data):
+  - `PaginatedPlaylistResult` data class (videos + nextPageToken)
+  - `YouTubeApiRepository.getPlaylistItemsPage()` — new interface method
+  - `HybridYouTubeRepositoryImpl.getPlaylistItemsPage()` — RSS (first page only) → YouTube API (pageToken) → Invidious fallback
+  - `ChannelVideoCacheRepository` interface + `ChannelVideoCacheRepositoryImpl` — maps Entity↔PlaylistVideo
+  - `YouTubeApiRepositoryImpl.getPlaylistItemsPage()` implementation
+  - DataModule binding for ChannelVideoCacheRepository
+  - 5 HybridYouTubeRepositoryImpl pagination tests
+
+- **Phase 3: ViewModel Rewrite** (feature:kid):
+  - `ChannelDetailViewModel` fully rewritten:
+    - Room cache as Single Source of Truth (UI reads from Room Flow, API writes to Room)
+    - `_searchQuery` MutableStateFlow + `debounce(300)` + `flatMapLatest` → Room query switching
+    - `_controlState` for loading/error/hasMorePages (separate from videos)
+    - `combine(videosFlow, _controlState)` → `stateIn(Eagerly)` for uiState
+    - `loadMore()` — fetches next page → caches → Room Flow auto-updates
+    - `onSearchQueryChanged()`, `onClearSearch()` for search bar
+  - 13 ViewModel tests (9 rewritten + 4 new: hasMorePages, loadMore, search, clear search, loadMore error)
+
+- **Phase 4: UI Update** (feature:kid):
+  - `ChannelDetailScreen` — search bar toggle in TopAppBar (TextField + FocusRequester + keyboard control)
+  - Back button: exits search mode when active, navigates back otherwise
+  - Clear button in search mode when query non-empty
+  - Infinite scroll: `LaunchedEffect(Unit)` in trailing `item{}` when `hasMorePages = true`
+  - Loading spinner at list bottom during page fetch
+  - Empty state: "No videos found" (search) vs "No videos in this channel yet" (no videos)
+  - Error state: only shows full-screen error when no videos loaded (loadMore error preserves existing videos)
+
+**Architecture**:
+```
+ChannelDetailViewModel
+  ├── YouTubeApiRepository.getPlaylistItemsPage(playlistId, pageToken)
+  │     └── HybridYouTubeRepositoryImpl (RSS → YouTube API → Invidious)
+  └── ChannelVideoCacheRepository (Room cache)
+        └── CachedChannelVideoDao → cached_channel_videos table
+
+UI observes: Room Flow → auto-updates on cache changes
+API writes: fetch page → cacheVideos() → Room Flow emits → UI updates
+Search: Room SQL LIKE query (0 API quota)
+```
+
+**Decisions Made**:
+- Composite PK `(channelId, videoId)` instead of auto-generated ID — required for `@Upsert` to work correctly
+- Room cache cleared on each channel open (fresh data per visit)
+- RSS only for first page (no pagination support), YouTube API for continuation pages
+- Error state shows inline only if existing videos are loaded (loadMore error doesn't clear list)
+- `Dispatchers.resetMain()` must be LAST in `tearDown()` — StateFlow.setValue after resetMain throws IllegalStateException
+
+**Files Created** (5 source + 1 test):
+- `core/database/.../entity/CachedChannelVideoEntity.kt`
+- `core/database/.../dao/CachedChannelVideoDao.kt`
+- `core/data/.../model/PaginatedPlaylistResult.kt`
+- `core/data/.../repository/ChannelVideoCacheRepository.kt`
+- `core/data/.../repository/impl/ChannelVideoCacheRepositoryImpl.kt`
+- `core/database/src/test/.../dao/CachedChannelVideoDaoTest.kt` (5 tests)
+
+**Files Modified** (8 source + 2 test):
+- `core/database/.../YouTubeWhitelistDatabase.kt` (entity + version 3 + DAO getter)
+- `core/database/.../di/DatabaseModule.kt` (DAO provider)
+- `core/database/build.gradle.kts` (androidx-test-core dep)
+- `gradle/libs.versions.toml` (androidx-test-core entry)
+- `core/data/.../repository/YouTubeApiRepository.kt` (+getPlaylistItemsPage)
+- `core/data/.../repository/impl/HybridYouTubeRepositoryImpl.kt` (+paginated methods)
+- `core/data/.../repository/impl/YouTubeApiRepositoryImpl.kt` (+getPlaylistItemsPage)
+- `core/data/.../di/DataModule.kt` (+ChannelVideoCacheRepository binding)
+- `feature/kid/.../channel/ChannelDetailViewModel.kt` (full rewrite)
+- `feature/kid/.../channel/ChannelDetailScreen.kt` (search bar + infinite scroll)
+- `core/data/src/test/.../HybridYouTubeRepositoryImplTest.kt` (+5 pagination tests)
+- `feature/kid/src/test/.../channel/ChannelDetailViewModelTest.kt` (9→13 tests, full rewrite)
+
+**Test Stats**: ~401 tests, all green (378 existing + 5 DAO + 5 repo + 13 VM = ~401)
+
+**Notes**:
+- Quota impact: `playlistItems.list` = 1 unit per 50 videos. 200 videos = 4 units. In-channel search = 0 units.
+- `@Upsert` matches on PRIMARY KEY, not unique indices — composite PK required for proper upsert
+- `Dispatchers.resetMain()` in tearDown must be LAST — setting StateFlow.value dispatches to Main
+- `advanceTimeBy(301)` for debounce(300) boundary-exclusive testing
+- Session 15 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-15)

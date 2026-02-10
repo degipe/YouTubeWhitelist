@@ -4,6 +4,7 @@ import io.github.degipe.youtubewhitelist.core.common.di.IoDispatcher
 import io.github.degipe.youtubewhitelist.core.common.result.AppResult
 import io.github.degipe.youtubewhitelist.core.data.mapper.InvidiousMapper
 import io.github.degipe.youtubewhitelist.core.data.mapper.OEmbedMapper
+import io.github.degipe.youtubewhitelist.core.data.model.PaginatedPlaylistResult
 import io.github.degipe.youtubewhitelist.core.data.model.PlaylistVideo
 import io.github.degipe.youtubewhitelist.core.data.model.YouTubeMetadata
 import io.github.degipe.youtubewhitelist.core.data.repository.YouTubeApiRepository
@@ -76,6 +77,22 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
                 ?: AppResult.Error("Failed to fetch playlist items from all sources")
         }
 
+    override suspend fun getPlaylistItemsPage(
+        playlistId: String,
+        pageToken: String?
+    ): AppResult<PaginatedPlaylistResult> = withContext(ioDispatcher) {
+        // pageToken != null means continuation — skip RSS (no pagination support)
+        if (pageToken == null) {
+            val channelId = extractChannelIdFromUploadsPlaylist(playlistId)
+            val rssResult = if (channelId != null) tryRssFeedPaginated(channelId) else null
+            if (rssResult != null) return@withContext rssResult
+        }
+
+        tryApiPlaylistItemsPage(playlistId, pageToken)
+            ?: tryInvidiousPlaylistItemsPage(playlistId)
+            ?: AppResult.Error("Failed to fetch playlist items from all sources")
+    }
+
     override suspend fun searchVideosInChannel(
         channelId: String,
         query: String
@@ -121,6 +138,18 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
             val entries = rssFeedParser.fetchChannelVideos(channelId)
             if (entries.isNotEmpty()) {
                 AppResult.Success(entries.mapIndexed { index, entry -> entry.toPlaylistVideo(index) })
+            } else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun tryRssFeedPaginated(channelId: String): AppResult<PaginatedPlaylistResult>? {
+        return try {
+            val entries = rssFeedParser.fetchChannelVideos(channelId)
+            if (entries.isNotEmpty()) {
+                val videos = entries.mapIndexed { index, entry -> entry.toPlaylistVideo(index) }
+                AppResult.Success(PaginatedPlaylistResult(videos = videos, nextPageToken = null))
             } else null
         } catch (_: Exception) {
             null
@@ -234,6 +263,34 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
         }
     }
 
+    private suspend fun tryApiPlaylistItemsPage(
+        playlistId: String,
+        pageToken: String?
+    ): AppResult<PaginatedPlaylistResult>? {
+        return try {
+            val response = youTubeApiService.getPlaylistItems(
+                playlistId = playlistId,
+                pageToken = pageToken
+            )
+            if (!response.isSuccessful) return null
+            val body = response.body() ?: return null
+            val videos = body.items.mapNotNull { item ->
+                val snippet = item.snippet ?: return@mapNotNull null
+                val videoId = snippet.resourceId?.videoId ?: return@mapNotNull null
+                PlaylistVideo(
+                    videoId = videoId,
+                    title = snippet.title,
+                    thumbnailUrl = snippet.thumbnails.bestUrl(),
+                    channelTitle = snippet.channelTitle,
+                    position = snippet.position
+                )
+            }
+            AppResult.Success(PaginatedPlaylistResult(videos = videos, nextPageToken = body.nextPageToken))
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private suspend fun tryApiSearch(channelId: String, query: String): AppResult<List<PlaylistVideo>>? {
         return try {
             val response = youTubeApiService.search(channelId = channelId, query = query, maxResults = 10)
@@ -284,6 +341,22 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
             val channelId = invidiousApiService.resolveChannel(baseUrl, handle)
             val dto = invidiousApiService.getChannel(baseUrl, channelId)
             AppResult.Success(InvidiousMapper.toChannel(dto))
+        }
+    }
+
+    private suspend fun tryInvidiousPlaylistItemsPage(playlistId: String): AppResult<PaginatedPlaylistResult>? {
+        val channelId = extractChannelIdFromUploadsPlaylist(playlistId)
+        if (channelId != null) {
+            return withInvidiousFallback { baseUrl ->
+                val dto = invidiousApiService.getChannel(baseUrl, channelId)
+                val videos = InvidiousMapper.channelVideosToPlaylistVideos(dto)
+                AppResult.Success(PaginatedPlaylistResult(videos = videos, nextPageToken = null))
+            }
+        }
+        return withInvidiousFallback { baseUrl ->
+            val dto = invidiousApiService.getPlaylist(baseUrl, playlistId)
+            val videos = InvidiousMapper.playlistVideosToPlaylistVideos(dto)
+            AppResult.Success(PaginatedPlaylistResult(videos = videos, nextPageToken = null))
         }
     }
 
