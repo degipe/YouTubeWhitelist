@@ -43,3 +43,32 @@
 - Release builds: `app/build/outputs/apk/release/app-release.apk` (2.4 MB), `app/build/outputs/bundle/release/app-release.aab` (5.2 MB)
 
 **Next Session Focus**: Real device testing (sideload APK, test full user flow), bug fixes if needed, Play Store screenshots, GitHub Release + tag, F-Droid submission, Privacy Policy page.
+
+### Session 12 - 2026-02-10: Device Testing, WebView Security Fix, Cookie Persistence
+
+**Objectives**: Real device + emulator testing, fix embed-disabled video security issue, fix YouTube Premium cookie persistence in Browse YouTube.
+
+**Completed**:
+- **WebView Navigation Security Fix (VideoPlayerScreen + SleepModeScreen)**:
+  - Added `shouldOverrideUrlLoading` returning `true` to block ALL navigation in video player WebViews
+  - Prevents kids from escaping the app via "Watch on YouTube" links on embed-disabled videos
+  - Added `onEmbedError` callback to `VideoEndedBridge` JavaScript bridge — handles YouTube IFrame Player error codes 101/150
+  - Auto-skips to next video when embed error detected
+  - Same fixes applied to `SleepModeScreen`'s `SleepVideoEndedBridge`
+
+- **Browse YouTube Cookie Persistence Fix**:
+  - Added `CookieManager` setup to `WebViewBrowserScreen`'s `YouTubeWebView`
+  - `CookieManager.setAcceptCookie(true)` + `setAcceptThirdPartyCookies(this, true)`
+  - `CookieManager.flush()` in `DisposableEffect.onDispose` persists cookies to disk
+  - YouTube Premium now recognized in Browse YouTube
+
+- **Attempted WebView OAuth (reverted)**: Google blocks OAuth in embedded WebViews since 2016
+- **Emulator + Real Device Testing**: Release APK verified on both
+
+**Decisions Made**:
+- `shouldOverrideUrlLoading` returns `true` unconditionally in player WebViews
+- Error codes 101/150 trigger auto-skip — seamless UX for kids
+- Chrome Custom Tabs remains the only OAuth option
+- Users sign in twice (Chrome Custom Tabs + Browse YouTube WebView — separate cookie stores)
+
+**Test Stats**: 355 tests, all green

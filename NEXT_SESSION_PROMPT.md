@@ -1,18 +1,13 @@
-# Session 17 Starting Prompt
+# Session 18 Starting Prompt
 
-Ez a 17. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 18. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Előző Session (16) Összefoglaló
+## Előző Session (17) Összefoglaló
 
-Store submission + final polish kész:
-- GitHub Release v1.0.0 (tag + APK csatolva)
-- Privacy Policy GitHub Pages-en + repo-ban
-- AboutScreen v1.0.0 + Privacy Policy link
-- GCP API key korlátozva (Android + YouTube Data API v3 only)
-- OAuth consent screen published to Production
-- 5 Play Store screenshot emulátorról
-- F-Droid RFP tartalom előkészítve (manuális GitLab beküldés kell)
-- Play Store Submission Guide elkészítve
+Screenshots újracsinálva valódi YouTube thumbnailekkel:
+- 7 screenshot kész (profil választó, kid home, PIN, parent dashboard, whitelist manager, sleep mode, export/import)
+- Release APK az emulátoron (nem debug), valódi Google bejelentkezéssel
+- Valódi YouTube videók thumbnailjai (Peppa Pig, Cocomelon, Sesame Street, Baby Shark, MrBeast)
 
 ## Mi van kész
 
@@ -22,16 +17,16 @@ Store submission + final polish kész:
 - Privacy Policy: https://degipe.github.io/YouTubeWhitelist/privacy-policy/
 - GCP API key korlátozva, OAuth consent published
 - Teljes SDLC dokumentáció (BRD, FS, HLD, LLD, PRD, Developer Onboarding, User Manual)
-- Play Store screenshots (5 db) fastlane metadata-ban
+- 7 Play Store screenshot fastlane metadata-ban (valódi YouTube thumbnailekkel)
 - Play Store Submission Guide (`docs/PLAY_STORE_SUBMISSION.md`)
+- F-Droid RFP tartalom előkészítve (`/tmp/fdroid-rfp-issue.md` — újragenerálni kell)
 
 ## Mi maradt a publikáláshoz
 
 1. **Play Store beküldés**: Kövesd a `docs/PLAY_STORE_SUBMISSION.md` guide-ot, AAB feltöltés, content rating kitöltés
-2. **F-Droid RFP**: Manuálisan beküldeni GitLab-ra (tartalom: `docs/PLAY_STORE_SUBMISSION.md` alapján vagy újragenerálni)
+2. **F-Droid RFP**: GitLab account szükséges (GitHub bejelentkezés 422 errort adott — password reset kell)
 3. **Feature graphic**: 1024x500 banner a Play Store-hoz (kötelező)
 4. **App icon**: 512x512 PNG export a Play Store-hoz (kötelező)
-5. **Jobb screenshotok**: Valódi eszközről, valódi YouTube thumbnailokkal (opcionális)
 
 ## Opcionális fejlesztések
 
@@ -39,6 +34,7 @@ Store submission + final polish kész:
 - CI/CD (GitHub Actions: build + teszt)
 - Magyar nyelvű store listing screenshotok
 - Értékelés kérő dialog (in-app review API)
+- Jobb screenshotok valódi eszközről (opcionális)
 
 ### Megjegyzések
 

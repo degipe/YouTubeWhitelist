@@ -67,65 +67,6 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 
 ## Session Logs
 
-### Session 12 - 2026-02-10: Device Testing, WebView Security Fix, Cookie Persistence
-
-**Objectives**: Real device + emulator testing, fix embed-disabled video security issue, fix YouTube Premium cookie persistence in Browse YouTube.
-
-**Completed**:
-- **WebView Navigation Security Fix (VideoPlayerScreen + SleepModeScreen)**:
-  - Added `shouldOverrideUrlLoading` returning `true` to block ALL navigation in video player WebViews
-  - Prevents kids from escaping the app via "Watch on YouTube" links on embed-disabled videos
-  - Added `onEmbedError` callback to `VideoEndedBridge` JavaScript bridge — handles YouTube IFrame Player error codes 101/150 (embedding disabled by video owner)
-  - Auto-skips to next video when embed error detected (`viewModel.playNext()`)
-  - Same fixes applied to `SleepModeScreen`'s `SleepVideoEndedBridge`
-
-- **Browse YouTube Cookie Persistence Fix**:
-  - Added `CookieManager` setup to `WebViewBrowserScreen`'s `YouTubeWebView`
-  - `CookieManager.setAcceptCookie(true)` + `setAcceptThirdPartyCookies(this, true)` enables YouTube login session persistence
-  - `CookieManager.flush()` in `DisposableEffect.onDispose` persists cookies to disk before WebView destruction
-  - YouTube Premium now recognized in Browse YouTube — no ads, no sign-in prompts
-
-- **Attempted WebView OAuth (reverted)**:
-  - Created `OAuthWebViewActivity` to share cookie store between OAuth and Browse YouTube WebViews
-  - Goal: single sign-in experience (sign in once, Premium recognized everywhere)
-  - **Google blocked it** — Google's policy since 2016 prohibits OAuth in embedded WebViews (error: "access denied")
-  - Fully reverted to Chrome Custom Tabs + OAuthLoopbackServer implementation
-  - Deleted `OAuthWebViewActivity`, restored `androidx.browser` dependency
-
-- **Emulator Testing**:
-  - Installed release APK on Android 14 emulator, verified video playback with IFrame Player
-  - Navigation blocking confirmed — no "Watch on YouTube" escape links
-  - Video navigation (Next/Previous) working correctly
-  - Inserted test data directly via `adb shell run-as ... sqlite3` (emulator gesture navigation zone blocked FAB taps)
-
-- **Real Device Testing**:
-  - User confirmed fix works on real device ("szuper, most megy frankón")
-  - YouTube Premium recognized after CookieManager fix
-
-**Decisions Made**:
-- `shouldOverrideUrlLoading` returns `true` unconditionally in player WebViews — no legitimate navigation needed
-- Error codes 101/150 trigger auto-skip (not error message) — seamless UX for kids
-- Chrome Custom Tabs remains the only OAuth option — Google blocks embedded WebView OAuth
-- Users must sign in twice: once for app (Chrome Custom Tabs OAuth), once in Browse YouTube WebView — separate cookie stores, both sessions persist
-- CookieManager.flush() on dispose ensures YouTube login survives app restarts
-
-**Files Modified**:
-- `feature/kid/src/main/java/.../player/VideoPlayerScreen.kt` (navigation blocking + embed error handling)
-- `feature/sleep/src/main/java/.../ui/SleepModeScreen.kt` (same security fixes)
-- `feature/parent/src/main/java/.../browser/WebViewBrowserScreen.kt` (CookieManager setup + flush)
-- `core/auth/build.gradle.kts` (comment updated about Chrome Custom Tabs requirement)
-
-**Test Stats**: 355 tests, all green (no new tests — runtime security fixes verified on device/emulator)
-
-**Notes**:
-- Google blocks OAuth in embedded WebViews since 2016 — must use Chrome Custom Tabs or system browser
-- Chrome Custom Tabs cookie store is completely separate from app's WebView CookieManager
-- CookieManager is global across all WebViews within the app — Browse YouTube login persists across sessions
-- Emulator gesture navigation zone can swallow taps near screen bottom — use `adb shell run-as` + `sqlite3` for direct DB testing
-- Session 7 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-7)
-
-**Next Session Focus**: Play Store screenshots, GitHub Release + tag v1.0.0, F-Droid submission, Privacy Policy page, API key restriction.
-
 ### Session 13 - 2026-02-10: Sleep Mode Refactoring + Device Testing Bug Fixes + Channel Video Search
 
 **Objectives**: Refactor Sleep Mode from standalone video player to background timer, device testing with bug fixes, implement channel video search in kid mode.
@@ -417,3 +358,56 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 - API key restricted: Android only + YouTube Data API v3 — curl from macOS returns 403
 - Emulator screenshots required: normal GPU mode (not swiftshader), `exec-out screencap -p` instead of `screencap -p /sdcard/`, real thumbnail URLs in DB (fake yt3.ggpht.com URLs return 400)
 - F-Droid GitLab submission requires manual paste (Cloudflare blocks automation)
+
+### Session 17 - 2026-02-10: Improved Screenshots with Real YouTube Thumbnails
+
+**Objectives**: Replace fake-looking emulator screenshots with authentic ones using real YouTube thumbnail URLs, add Sleep Mode and Export/Import screenshots.
+
+**Completed**:
+- **Screenshot Overhaul (7 screenshots, 1080x2400)**:
+  - Installed release APK on emulator (not debug — API key restricted to release package)
+  - User signed into the app on emulator (Google OAuth via Chrome Custom Tabs)
+  - Created 2 profiles (Emma with 60min daily limit, Max with 90min)
+  - Inserted whitelist items with REAL YouTube video thumbnails:
+    - Peppa Pig Official Channel (DysgBIOiIwE) — actual Peppa Pig cartoon
+    - Cocomelon Nursery Rhymes (e_04ZrNroTo) — Wheels on the Bus with Cocomelon logo
+    - Sesame Street (aqUefNVhsNM) — ABC compilation with Elmo
+    - Baby Shark Dance (XqZsoesa55w) — Pinkfong "Most Viewed" thumbnail
+    - MrBeast (0e3GPea1Tyg) — Squid Game recreation
+    - Peppa Pig Full Episodes playlist (amNTw2cbxyY) — birthday party scene
+  - All thumbnail URLs verified with HTTP 200 before insertion
+  - Screenshots taken after toast messages dismissed (clean, no overlays)
+
+- **7 Screenshots saved to fastlane metadata**:
+  1. `01_profile_selector.png` (60KB) — "Who's watching?" with Emma + Max
+  2. `02_kid_home.png` (728KB) — Kid Home with real thumbnails, "Time remaining: 1h 0m"
+  3. `03_pin_entry.png` (71KB) — 6-digit PIN entry numpad
+  4. `04_parent_dashboard.png` (144KB) — Parent Dashboard with all actions
+  5. `05_whitelist_manager.png` (410KB) — Whitelist Manager with real thumbnails
+  6. `06_sleep_mode.png` (64KB) — Sleep Mode timer (30m slider + Start button)
+  7. `07_export_import.png` (83KB) — Export/Import screen
+
+- **Archive**: Session 12 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-12)
+
+**Decisions Made**:
+- Release APK on emulator (not debug) — API key restricted to `io.github.degipe.youtubewhitelist` package
+- Root access on emulator (`adb root`) to modify release app's database directly
+- Real YouTube video thumbnails via `i.ytimg.com/vi/{videoId}/hqdefault.jpg` format
+- `uiautomator dump` for precise tap coordinates (not visual estimation)
+
+**Files Modified**:
+- `fastlane/metadata/android/en-US/images/phoneScreenshots/01-07_*.png` (7 screenshots)
+- `CLAUDE.md` (Session 12 archived, Session 17 added)
+- `CLAUDE_ARCHIVE_2.md` (Session 12 added)
+- `ARCHITECTURE.md` (Session 17 entry)
+- `NEXT_SESSION_PROMPT.md` (updated for Session 18)
+
+**Test Stats**: 378+ tests, all green (no code changes)
+
+**Notes**:
+- Thumbnail URL format `https://i.ytimg.com/vi/{videoId}/hqdefault.jpg` always works for valid video IDs
+- Channel avatar URLs (yt3.ggpht.com) are unique tokens — can't be fabricated, use video thumbnails instead
+- `adb root` works on emulator (Google APIs, not Google Play) — allows DB access for release builds
+- `uiautomator dump` returns exact XML bounds for all UI elements — reliable for adb tap automation
+- "App is pinned" / "App unpinned" toasts appear on kiosk mode transitions — wait 5 seconds before screenshotting
+- API error for many-image requests: max 2000px dimension per image — avoid reading too many screenshots in one conversation
