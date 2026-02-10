@@ -132,3 +132,18 @@
 **Files Created**: `docs/DEVELOPER_ONBOARDING.md`, `docs/USER_MANUAL.md`, `docs/PRD.md`
 
 **Test Stats**: 378+ tests, all green (documentation only session)
+
+### Session 16 - 2026-02-10: Store Submission + Final Polish
+
+**Objectives**: GitHub Release v1.0.0, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission, Play Store guide.
+
+**Completed**:
+- **Privacy Policy** (GitHub Pages + repo): `docs/privacy-policy.md` (Jekyll), `docs/PRIVACY_POLICY.md` (repo), `docs/_config.yml`
+- **AboutScreen v1.0.0 Update**: Version bumped, Privacy Policy link added
+- **GitHub Release v1.0.0**: Tag + Release + APK attached
+- **API Key Restriction**: Android apps + YouTube Data API v3 only, OAuth consent → Production
+- **F-Droid Submission**: RFP content prepared, GitLab blocked by Cloudflare
+- **Play Store Screenshots**: 5 screenshots (1080x2400) in fastlane metadata
+- **Play Store Submission Guide**: `docs/PLAY_STORE_SUBMISSION.md`
+
+**Test Stats**: 378+ tests, all green

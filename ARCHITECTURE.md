@@ -26,11 +26,12 @@ This file tracks where session logs are stored across CLAUDE.md and archive file
 | 18      | 2026-02-10 | CLAUDE.md           | F-Droid/API strategy analysis, removed YouTube Search API from kid mode, GCP API key restriction fix |
 | 19      | 2026-02-10 | CLAUDE.md           | Strategy E: Hybrid + Invidious fallback (oEmbed, RSS, Invidious, built-in API key) |
 | 20      | 2026-02-10 | CLAUDE.md           | Channel video lazy loading + Room cache + local search (infinite scroll, 0 quota search) |
+| 21      | 2026-02-10 | CLAUDE.md           | Emulator testing: lazy loading (400 videos, 8 pages) + local search verification |
 
 ## Archive Files
 
 - **CLAUDE_ARCHIVE_1.md**: Sessions 1-10
-- **CLAUDE_ARCHIVE_2.md**: Sessions 11-15
+- **CLAUDE_ARCHIVE_2.md**: Sessions 11-16
 
 <!--
 Archive naming convention:

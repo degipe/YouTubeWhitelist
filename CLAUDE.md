@@ -67,79 +67,6 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 
 ## Session Logs
 
-### Session 16 - 2026-02-10: Store Submission + Final Polish
-
-**Objectives**: GitHub Release v1.0.0, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission, Play Store guide.
-
-**Completed**:
-- **Privacy Policy** (GitHub Pages + repo):
-  - `docs/privacy-policy.md` — Jekyll version with front matter, served at `https://degipe.github.io/YouTubeWhitelist/privacy-policy/`
-  - `docs/PRIVACY_POLICY.md` — repo-visible markdown version
-  - `docs/_config.yml` — Jekyll config (minima theme, baseurl)
-  - GitHub Pages enabled from `/docs` folder on main branch
-
-- **AboutScreen v1.0.0 Update**:
-  - Version bumped from v0.1.0 to v1.0.0
-  - Added Privacy Policy section with clickable link to GitHub Pages URL
-
-- **GitHub Release v1.0.0**:
-  - Created annotated git tag `v1.0.0`
-  - GitHub Release with CHANGELOG content + release APK attached
-  - URL: https://github.com/degipe/YouTubeWhitelist/releases/tag/v1.0.0
-
-- **API Key Restriction (GCP Console via Playwright)**:
-  - Application restriction: Android apps (package `io.github.degipe.youtubewhitelist` + SHA-1 `B7:4F:49:A4:26:83:7B:EE:A6:D0:11:63:AB:1E:18:F1:8C:7E:05:81`)
-  - API restriction: YouTube Data API v3 only
-  - OAuth consent screen: Published from Testing → Production mode
-
-- **F-Droid Submission**:
-  - RFP issue content prepared in `/tmp/fdroid-rfp-issue.md`
-  - GitLab blocked Playwright (Cloudflare) — content provided for manual submission
-
-- **Play Store Screenshots** (5 screenshots, 1080x2400):
-  - `01_profile_selector.png` — "Who's watching?" with Emma/Max profiles
-  - `02_kid_home.png` — Kid Home with channels (thumbnails), videos, playlists, time limit
-  - `03_pin_entry.png` — 6-digit PIN entry screen
-  - `04_parent_dashboard.png` — Parent Dashboard with all actions
-  - `05_whitelist_manager.png` — Whitelist Manager with content list + thumbnails
-  - Saved to `fastlane/metadata/android/en-US/images/phoneScreenshots/`
-
-- **Play Store Submission Guide** (`docs/PLAY_STORE_SUBMISSION.md`):
-  - Step-by-step guide: app creation, store listing, content rating, data safety, release upload
-  - References existing fastlane metadata for descriptions
-
-- **Archive**: Session 11 archived to CLAUDE_ARCHIVE_2.md (sessions 11+)
-
-**Decisions Made**:
-- Privacy Policy hosted on GitHub Pages (Jekyll minima theme) + repo copy
-- API key fully restricted to Android + YouTube Data API v3 only
-- OAuth consent screen published to Production (no longer Testing-only)
-- Screenshots taken on emulator with debug build (visually identical to release)
-- Competitor apps (WhitelistVideo) pose no legal risk — different name, approach, and license
-
-**Files Created**:
-- `docs/privacy-policy.md` (GitHub Pages)
-- `docs/PRIVACY_POLICY.md` (repo)
-- `docs/_config.yml` (Jekyll)
-- `docs/PLAY_STORE_SUBMISSION.md`
-- `CLAUDE_ARCHIVE_2.md` (Session 11)
-- `fastlane/metadata/android/en-US/images/phoneScreenshots/01-05_*.png`
-
-**Files Modified**:
-- `feature/parent/.../about/AboutScreen.kt` (v1.0.0 + Privacy Policy link)
-- `CLAUDE.md` (Session 11 archived, Session 16 added)
-- `ARCHITECTURE.md` (Session 16 entry + archive update)
-- `NEXT_SESSION_PROMPT.md` (updated for Session 17)
-
-**Test Stats**: 378+ tests, all green (no code changes affecting tests)
-
-**Notes**:
-- GitHub Release: https://github.com/degipe/YouTubeWhitelist/releases/tag/v1.0.0
-- Privacy Policy: https://degipe.github.io/YouTubeWhitelist/privacy-policy/
-- API key restricted: Android only + YouTube Data API v3 — curl from macOS returns 403
-- Emulator screenshots required: normal GPU mode (not swiftshader), `exec-out screencap -p` instead of `screencap -p /sdcard/`, real thumbnail URLs in DB (fake yt3.ggpht.com URLs return 400)
-- F-Droid GitLab submission requires manual paste (Cloudflare blocks automation)
-
 ### Session 17 - 2026-02-10: Improved Screenshots with Real YouTube Thumbnails
 
 **Objectives**: Replace fake-looking emulator screenshots with authentic ones using real YouTube thumbnail URLs, add Sleep Mode and Export/Import screenshots.
@@ -455,3 +382,38 @@ Search: Room SQL LIKE query (0 API quota)
 - `Dispatchers.resetMain()` in tearDown must be LAST — setting StateFlow.value dispatches to Main
 - `advanceTimeBy(301)` for debounce(300) boundary-exclusive testing
 - Session 15 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-15)
+
+### Session 21 - 2026-02-10: Emulator Testing - Lazy Loading + Search Verification
+
+**Objectives**: Verify lazy loading (infinite scroll) and local search on emulator with real YouTube content (MrBeast channel).
+
+**Completed**:
+- **Lazy Loading Verification** (MrBeast channel — UCX6OQ3DkcsbYNE6H8uQQuVA):
+  - Opened MrBeast channel detail screen from Kid Home
+  - Scrolled through ~400 videos across 8 pages (8 × 50 = 400)
+  - Infinite scroll worked flawlessly — loading spinner appeared at bottom, next page loaded automatically
+  - Videos ranged from newest ("Guess What Age Punched You") to older ("$456,000 Squid Game In Real Life!")
+  - Room cache confirmed: `SELECT COUNT(*) FROM cached_channel_videos` → **400 videos**
+  - Total API cost: 8 units (8 pages × 1 unit/page)
+
+- **Local Search Verification** (Room cache, 0 API quota):
+  - Tapped search icon → TextField with "Search videos..." placeholder appeared
+  - Searched "Squid" → 1 result: "$456,000 Squid Game In Real Life!"
+  - Cleared search → all 400 videos restored
+  - Searched "Lamborghini" → 4 results: "How Much Tape To Stop A Lamborghini?", "Stop This Train, Win a Lamborghini", "Lamborghini Vs World's Largest Shredder", "Hydraulic Press Vs Lamborghini"
+  - Search is instant (Room SQL LIKE query, 0 API quota)
+
+- **Archive**: Session 16 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-16)
+
+**Decisions Made**:
+- No code changes needed — lazy loading + search works perfectly on real device
+- 400 videos confirmed loaded via Room DB query
+
+**Test Stats**: ~401 tests, all green (no code changes)
+
+**Notes**:
+- DB file is `youtubewhitelist.db` (not `youtube_whitelist_db`)
+- `adb root` required for DB access on release builds
+- MrBeast has 800+ videos — only loaded 400 (8 pages) during test, more would load on continued scrolling
+- Search UI: TopAppBar toggles between title and TextField, back arrow exits search mode
+- Quota savings: 400 videos = 8 API units. In-channel search = 0 units (vs 100 units/search with YouTube Search API)
