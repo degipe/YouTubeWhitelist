@@ -1,4 +1,4 @@
-# YouTubeWhitelist - Session Archive 1 (Sessions 1-9)
+# YouTubeWhitelist - Session Archive 1 (Sessions 1-10)
 
 ### Session 1 - 2026-02-09: Project Initialization
 
@@ -436,3 +436,83 @@
 - Ko-fi link: `https://ko-fi.com/peterdegi`, widget ID: `X8X71TWXEN`
 - About screen is static (no ViewModel needed) — only uses `LocalContext.current` for Intent launching
 - Short session — focused solely on Ko-fi integration and store preparation
+
+### Session 10 - 2026-02-09: M7 - Publication Preparation
+
+**Objectives**: Complete M7 milestone: ProGuard/R8 finalization, release signing, F-Droid metadata, version bump, CHANGELOG, release build verification.
+
+**Completed**:
+- **ProGuard/R8 Rules Finalization**:
+  - Comprehensive `proguard-rules.pro` rewrite covering all project-specific concerns
+  - kotlinx-serialization: keep serializers, Companion objects, generated `$$serializer` classes
+  - Navigation Compose: keep Route sealed interface + all subclasses (type-safe nav needs runtime serialization)
+  - Export DTOs + YouTube API DTOs: keep entire packages
+  - WebView JavaScript bridges: explicit `-keepclassmembers` for `@JavascriptInterface` methods + `JavascriptInterface` attribute
+  - Retrofit: keep `YouTubeApiService` interface methods + annotation attributes (Signature, Exceptions, RuntimeVisibleAnnotations)
+  - OkHttp: `-dontwarn` for platform-specific classes (conscrypt, bouncycastle, openjsse)
+  - Room: keep entity + DAO classes
+  - Tink/Security Crypto: `-dontwarn` for ErrorProne annotations (CanIgnoreReturnValue, CheckReturnValue, Immutable, RestrictedApi)
+  - Kotlin: keep `kotlin.Metadata`
+
+- **Release Signing Configuration**:
+  - Generated `release-keystore.jks` (RSA 2048, 10000 days validity, CN=Peter Degi, O=degipe, L=Budapest, C=HU)
+  - Added `signingConfigs { create("release") }` block to `app/build.gradle.kts` reading from `local.properties`
+  - Release buildType linked to release signing config
+  - Keystore path + credentials in `local.properties` (git-ignored)
+  - `.gitignore` updated: uncommented `*.jks` and `*.keystore`
+
+- **F-Droid Metadata (Triple-T format)**:
+  - Created `fastlane/metadata/android/en-US/` directory structure
+  - `title.txt`, `short_description.txt`, `full_description.txt` (from STORE_LISTING.md content)
+  - `changelogs/1.txt` for versionCode 1
+  - Created `fastlane/metadata/android/hu-HU/` Hungarian locale
+  - `title.txt`, `short_description.txt`, `full_description.txt` Hungarian translations
+  - `changelogs/1.txt` Hungarian changelog
+
+- **Version Bump + CHANGELOG**:
+  - `versionName` bumped from "0.1.0" to "1.0.0"
+  - `versionCode` stays at 1 (first release)
+  - Created `CHANGELOG.md` following Keep a Changelog format
+  - All 18 features documented in [1.0.0] release entry
+
+- **Build Verification**:
+  - All 355 tests passing
+  - Release APK build successful with R8 minification + resource shrinking
+  - Release APK signed with release keystore
+  - **APK size: 2.4 MB** (excellent for the feature set)
+  - First R8 failure resolved: Tink ErrorProne annotation `-dontwarn` rules added
+
+**Decisions Made**:
+- Comprehensive ProGuard rules as belt-and-suspenders (explicit rules even when @Keep annotations exist)
+- JKS keystore format (standard, compatible with all Android tools)
+- Keystore credentials in `local.properties` (not in build.gradle.kts, not in git)
+- Triple-T metadata format (standard for F-Droid + Play Store via fastlane)
+- Bilingual metadata: en-US + hu-HU
+
+**Files Created**:
+- `CHANGELOG.md`
+- `release-keystore.jks` (git-ignored)
+- `fastlane/metadata/android/en-US/title.txt`
+- `fastlane/metadata/android/en-US/short_description.txt`
+- `fastlane/metadata/android/en-US/full_description.txt`
+- `fastlane/metadata/android/en-US/changelogs/1.txt`
+- `fastlane/metadata/android/hu-HU/title.txt`
+- `fastlane/metadata/android/hu-HU/short_description.txt`
+- `fastlane/metadata/android/hu-HU/full_description.txt`
+- `fastlane/metadata/android/hu-HU/changelogs/1.txt`
+
+**Files Modified**:
+- `app/proguard-rules.pro` (comprehensive rewrite)
+- `app/build.gradle.kts` (signing config + version bump)
+- `.gitignore` (uncommented keystore exclusion)
+- `local.properties` (signing credentials + GOOGLE_CLIENT_ID placeholder)
+
+**Test Stats**: 355 tests, all green (no new tests — publication preparation session)
+
+**Notes**:
+- Release APK at `app/build/outputs/apk/release/app-release.apk` (2.4 MB)
+- Keystore password: stored in local.properties only, change before production use
+- Session 5 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-5)
+- Google Cloud Console API key + OAuth client ID still needed for runtime testing
+- GitHub Release + APK upload is manual step (needs git push first)
+- Play Store screenshots + feature graphic still needed before store submission

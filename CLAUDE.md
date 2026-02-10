@@ -52,7 +52,7 @@ At end of each session:
 - ARCHITECTURE.md: index of all archives, kept up to date
 
 ## PRD Reference
-Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
+Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 
 ## Key PRD Milestones
 - M1 (Wk 1-4): Infrastructure - project setup, OAuth, PIN, Room DB, basic navigation
@@ -66,88 +66,6 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 ---
 
 ## Session Logs
-
-### Session 10 - 2026-02-09: M7 - Publication Preparation
-
-**Objectives**: Complete M7 milestone: ProGuard/R8 finalization, release signing, F-Droid metadata, version bump, CHANGELOG, release build verification.
-
-**Completed**:
-- **ProGuard/R8 Rules Finalization**:
-  - Comprehensive `proguard-rules.pro` rewrite covering all project-specific concerns
-  - kotlinx-serialization: keep serializers, Companion objects, generated `$$serializer` classes
-  - Navigation Compose: keep Route sealed interface + all subclasses (type-safe nav needs runtime serialization)
-  - Export DTOs + YouTube API DTOs: keep entire packages
-  - WebView JavaScript bridges: explicit `-keepclassmembers` for `@JavascriptInterface` methods + `JavascriptInterface` attribute
-  - Retrofit: keep `YouTubeApiService` interface methods + annotation attributes (Signature, Exceptions, RuntimeVisibleAnnotations)
-  - OkHttp: `-dontwarn` for platform-specific classes (conscrypt, bouncycastle, openjsse)
-  - Room: keep entity + DAO classes
-  - Tink/Security Crypto: `-dontwarn` for ErrorProne annotations (CanIgnoreReturnValue, CheckReturnValue, Immutable, RestrictedApi)
-  - Kotlin: keep `kotlin.Metadata`
-
-- **Release Signing Configuration**:
-  - Generated `release-keystore.jks` (RSA 2048, 10000 days validity, CN=Peter Degi, O=degipe, L=Budapest, C=HU)
-  - Added `signingConfigs { create("release") }` block to `app/build.gradle.kts` reading from `local.properties`
-  - Release buildType linked to release signing config
-  - Keystore path + credentials in `local.properties` (git-ignored)
-  - `.gitignore` updated: uncommented `*.jks` and `*.keystore`
-
-- **F-Droid Metadata (Triple-T format)**:
-  - Created `fastlane/metadata/android/en-US/` directory structure
-  - `title.txt`, `short_description.txt`, `full_description.txt` (from STORE_LISTING.md content)
-  - `changelogs/1.txt` for versionCode 1
-  - Created `fastlane/metadata/android/hu-HU/` Hungarian locale
-  - `title.txt`, `short_description.txt`, `full_description.txt` Hungarian translations
-  - `changelogs/1.txt` Hungarian changelog
-
-- **Version Bump + CHANGELOG**:
-  - `versionName` bumped from "0.1.0" to "1.0.0"
-  - `versionCode` stays at 1 (first release)
-  - Created `CHANGELOG.md` following Keep a Changelog format
-  - All 18 features documented in [1.0.0] release entry
-
-- **Build Verification**:
-  - All 355 tests passing
-  - Release APK build successful with R8 minification + resource shrinking
-  - Release APK signed with release keystore
-  - **APK size: 2.4 MB** (excellent for the feature set)
-  - First R8 failure resolved: Tink ErrorProne annotation `-dontwarn` rules added
-
-**Decisions Made**:
-- Comprehensive ProGuard rules as belt-and-suspenders (explicit rules even when @Keep annotations exist)
-- JKS keystore format (standard, compatible with all Android tools)
-- Keystore credentials in `local.properties` (not in build.gradle.kts, not in git)
-- Triple-T metadata format (standard for F-Droid + Play Store via fastlane)
-- Bilingual metadata: en-US + hu-HU
-
-**Files Created**:
-- `CHANGELOG.md`
-- `release-keystore.jks` (git-ignored)
-- `fastlane/metadata/android/en-US/title.txt`
-- `fastlane/metadata/android/en-US/short_description.txt`
-- `fastlane/metadata/android/en-US/full_description.txt`
-- `fastlane/metadata/android/en-US/changelogs/1.txt`
-- `fastlane/metadata/android/hu-HU/title.txt`
-- `fastlane/metadata/android/hu-HU/short_description.txt`
-- `fastlane/metadata/android/hu-HU/full_description.txt`
-- `fastlane/metadata/android/hu-HU/changelogs/1.txt`
-
-**Files Modified**:
-- `app/proguard-rules.pro` (comprehensive rewrite)
-- `app/build.gradle.kts` (signing config + version bump)
-- `.gitignore` (uncommented keystore exclusion)
-- `local.properties` (signing credentials + GOOGLE_CLIENT_ID placeholder)
-
-**Test Stats**: 355 tests, all green (no new tests — publication preparation session)
-
-**Notes**:
-- Release APK at `app/build/outputs/apk/release/app-release.apk` (2.4 MB)
-- Keystore password: stored in local.properties only, change before production use
-- Session 5 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-5)
-- Google Cloud Console API key + OAuth client ID still needed for runtime testing
-- GitHub Release + APK upload is manual step (needs git push first)
-- Play Store screenshots + feature graphic still needed before store submission
-
-**Next Session Focus**: Real device testing with actual Google API credentials, Play Store screenshots, GitHub Release creation, F-Droid submission preparation.
 
 ### Session 11 - 2026-02-09: M7 - Google Cloud Setup + AAB Build
 
@@ -401,3 +319,72 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
 - Session 9 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-9)
 
 **Next Session Focus**: Store submission + final polish (GitHub Release, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission).
+
+### Session 15 - 2026-02-10: SDLC Documentation Completion (Onboarding, User Manual, PRD Translation)
+
+**Objectives**: Create comprehensive developer onboarding guide, detailed user manual, and translate Hungarian PRD to English markdown.
+
+**Completed**:
+- **Developer Onboarding Guide** (`docs/DEVELOPER_ONBOARDING.md` — ~750 lines):
+  - 18 chapters covering full developer ramp-up
+  - Prerequisites, environment setup (macOS + Android SDK + JDK 17)
+  - Project structure walkthrough (all 10 modules with responsibilities)
+  - Architecture deep-dive (MVVM + Clean Architecture layers)
+  - Module-by-module guide with key classes and patterns
+  - Navigation system (type-safe routes, 18 screens)
+  - Database schema (4 entities, relationships, DAOs)
+  - Hilt DI setup (7 modules, qualifier annotations, AssistedInject)
+  - YouTube API integration (5 endpoints, quota management, ApiKeyInterceptor)
+  - Auth & security (OAuth 2.0 flow, PIN/PBKDF2, EncryptedSharedPreferences, WebView security)
+  - 5 state management patterns with code examples
+  - Testing guide (378+ tests, JUnit + MockK + Truth + Turbine patterns)
+  - Build & release (debug/release, APK/AAB, ProGuard, signing)
+  - Code conventions, common pitfalls, contribution workflow, quick reference card
+
+- **User Manual** (`docs/USER_MANUAL.md` — ~500 lines):
+  - 15 chapters covering all app functionality for end users
+  - Installation (Play Store, F-Droid, GitHub, sideloading)
+  - First-time setup (PIN creation, profile, Google sign-in)
+  - Kid Mode (home screen, video player, channels, playlists, search)
+  - Parent Mode (dashboard, whitelist management, Browse YouTube)
+  - Profiles, daily time limits, sleep mode
+  - Watch statistics, export/import
+  - PIN management, kiosk mode
+  - FAQ (15+ questions), troubleshooting, privacy & security
+
+- **PRD Translation** (`docs/PRD.md` — ~732 lines):
+  - Full English translation of Hungarian PRD v1.1
+  - 19 sections: executive summary, problem description, goals/KPIs, personas, user stories, 35 functional requirements, NFRs, UI/UX, technical architecture, data model, API integrations, security, legal/compliance, store listing, competitor analysis, risks, timeline, testing, future development
+  - Original `YouTubeWhitelist_PRD_v1.1.docx` deleted (no longer needed)
+  - pandoc installed via Homebrew for docx→md conversion
+
+**Decisions Made**:
+- Developer onboarding structured as progressive learning path (setup → architecture → modules → patterns → testing)
+- User manual organized by user role (kid mode → parent mode → advanced features)
+- PRD kept as faithful translation — markdown version is the canonical reference
+- Original docx deleted after translation
+
+**Files Created**:
+- `docs/DEVELOPER_ONBOARDING.md` (~750 lines)
+- `docs/USER_MANUAL.md` (~500 lines)
+- `docs/PRD.md` (~732 lines)
+
+**Files Deleted**:
+- `YouTubeWhitelist_PRD_v1.1.docx` (replaced by docs/PRD.md)
+- `~$uTubeWhitelist_PRD_v1.1.docx` (Word temp file)
+
+**Files Modified**:
+- `CLAUDE.md` (PRD reference updated, Session 10 archived, Session 15 added)
+- `CLAUDE_ARCHIVE_1.md` (Session 10 archived, now contains sessions 1-10)
+- `ARCHITECTURE.md` (Session 15 entry + archive update)
+- `NEXT_SESSION_PROMPT.md` (updated for Session 16)
+
+**Test Stats**: 378+ tests, all green (no changes to code — documentation only session)
+
+**Notes**:
+- Total documentation suite: BRD, FS, HLD, LLD, PRD, Developer Onboarding, User Manual (7 docs in docs/)
+- pandoc v3.9 installed via Homebrew for docx conversion
+- Explored codebase with 2 parallel agents for comprehensive documentation
+- Session 10 archived to CLAUDE_ARCHIVE_1.md (now contains sessions 1-10)
+
+**Next Session Focus**: Store submission + final polish (GitHub Release + v1.0.0 tag, Privacy Policy, Play Store screenshots, API key restriction, F-Droid submission).

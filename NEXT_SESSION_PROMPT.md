@@ -1,6 +1,6 @@
-# Session 15 Starting Prompt
+# Session 16 Starting Prompt
 
-Ez a 15. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 16. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
 ## Fókusz: Store Submission + Final Polish
 
@@ -42,7 +42,7 @@ Ez a 15. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextush
 
 ### Megjegyzések
 
-- **SDLC dokumentáció kész**: `docs/BRD.md`, `docs/FS.md`, `docs/HLD.md`, `docs/LLD.md` — 2138 sor, 18 Mermaid diagram, mind validálva
+- **Teljes dokumentáció kész** (`docs/` mappa): BRD, FS, HLD, LLD, PRD, Developer Onboarding, User Manual — 7 dokumentum
 - **ADB path**: `/opt/homebrew/share/android-commandlinetools/platform-tools/adb`
 - **Build parancsok**:
   - APK: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew assembleRelease`
