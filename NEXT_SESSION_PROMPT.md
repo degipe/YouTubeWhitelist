@@ -49,7 +49,7 @@ Ez a 14. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextush
 - **378+ teszt** van, mind zöld
 - **Release builds**: APK 2.4 MB, AAB 5.2 MB
 - **GCP Project**: `youtubewhitelist-486917`
-- **OAuth**: Testing mode, test user: `degi.peter@gmail.com`
+- **OAuth**: Testing mode (test user configured in GCP Console)
 - **Sleep mode**: Háttér timer, KidHome + VideoPlayer overlay, max 600 perc
 - **Channel video search**: YouTube Search API (max 3 csatorna, 100 unit/keresés, 10k napi limit)
 - Kommunikáció magyarul, dokumentáció angolul

@@ -202,7 +202,7 @@ Full PRD: `YouTubeWhitelist_PRD_v1.1.docx` in project root
   - Created API Key (unrestricted — restrict later for production)
   - Configured OAuth consent screen (External, Testing mode)
   - Created OAuth 2.0 Client ID (Web application type, redirect URI: `http://localhost/callback`)
-  - Added `degi.peter@gmail.com` as test user
+  - Added test user to OAuth consent screen
   - Updated `local.properties` with real API key and OAuth client ID
 
 - **AAB Build for Play Store**:
