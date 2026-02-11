@@ -1,16 +1,15 @@
-# Session 23 Starting Prompt
+# Session 24 Starting Prompt
 
-Ez a 23. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 24. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Előző Session (22) Összefoglaló
+## Előző Session (23) Összefoglaló
 
-v1.1.0 release build + store asset-ek + SDLC doksi frissítés:
+GitHub Release v1.1.0 + F-Droid RFP + Play Store regisztráció:
 
-- **Feature graphic**: 1024x500 PNG (Gemini AI + ImageMagick), `fastlane/metadata/android/en-US/images/featureGraphic.png`
-- **App icon**: 512x512 PNG (Gemini AI + resize), `fastlane/metadata/android/en-US/images/icon.png`
-- **v1.1.0 release**: versionCode 2, APK 2.4MB, AAB 5.3MB, ~401 teszt mind zöld
-- **SDLC frissítés**: Mind 5 SDLC doksi frissítve (BRD, FS, HLD, LLD, Developer Onboarding) — Strategy E hybrid + lazy loading + helyi keresés
-- **Changelog**: EN + HU fastlane changelogs for versionCode 2
+- **GitHub Release v1.1.0**: https://github.com/degipe/YouTubeWhitelist/releases/tag/v1.1.0 (tag + APK)
+- **F-Droid RFP #3794**: https://gitlab.com/fdroid/fdroiddata/-/issues/3794 (beadva)
+- **Play Console fiók**: Peter Degi, személyes fiók, $25 fizetve, ID: 4768413512690805008
+- **Device verification BLOCKED**: /e/OS (microG) + emulátor sem megy — fizikai Google-ös Android telefon kell
 
 ## Mi van kész
 
@@ -18,27 +17,36 @@ v1.1.0 release build + store asset-ek + SDLC doksi frissítés:
 - v1.1.0 release build (APK + AAB)
 - Strategy E (Hybrid + Invidious fallback) implementálva
 - Channel lazy loading + Room cache + helyi keresés — emulátoron verifikálva
-- GitHub Release v1.0.0
+- GitHub Release v1.0.0 + v1.1.0
+- F-Droid RFP #3794 beadva
+- Play Console fiók létrehozva (device verification pending)
 - Privacy Policy (GitHub Pages)
 - GCP API key: YouTube Data API v3 only restriction
 - OAuth consent screen: Production mode
 - Teljes SDLC dokumentáció (7 doksi, frissítve v1.1.0-ra)
 - 7 Play Store screenshot + feature graphic + app icon
 - Fastlane changelogs (EN + HU)
+- Play Store Submission Guide frissítve v1.1.0-ra
 
 ## Mi maradt
 
-1. **Play Store beküldés** (AAB feltöltés, content rating, data safety)
-2. **F-Droid RFP** (most már OK — beépített API kulcs + hybrid)
-3. **GitHub Release v1.1.0** (tag + release + APK csatolás)
+1. **Play Store device verification** — fizikai Google-ös Android telefon beszerzése, majd:
+   - Device verification elvégzése
+   - Phone number verification
+   - Identity verification (személyi/útlevél)
+2. **Play Store app submission** — a verification után:
+   - App létrehozás, store listing, content rating, data safety
+   - AAB feltöltés, publish
+3. **F-Droid RFP nyomon követés** — várni az F-Droid maintainerek válaszát
 
 ### Megjegyzések
 
+- **Emulator AVD**: átállítva Play Store image-re (`google_apis_playstore`, Android 34)
 - **ADB path**: `/opt/homebrew/share/android-commandlinetools/platform-tools/adb`
 - **Build parancsok**:
   - APK: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew assembleRelease`
   - AAB: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew bundleRelease`
 - **GCP Project**: `youtubewhitelist-486917`
-- **DB fájl**: `youtubewhitelist.db` (nem `youtube_whitelist_db`)
+- **Play Console fiók ID**: 4768413512690805008
 - Kommunikáció magyarul, dokumentáció angolul
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push

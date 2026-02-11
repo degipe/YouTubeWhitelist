@@ -67,75 +67,6 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 
 ## Session Logs
 
-### Session 18 - 2026-02-10: F-Droid/API Strategy Analysis + Remove API Search from Kid Mode
-
-**Objectives**: Analyze F-Droid inclusion policy compliance, research API-free YouTube endpoints, remove expensive YouTube Search API from kid mode.
-
-**Completed**:
-- **F-Droid Inclusion Policy Analysis**:
-  - Reviewed full inclusion criteria against project
-  - All FLOSS requirements met (GPLv3, no proprietary deps, no Play Services, no tracking)
-  - Identified critical issue: "F-Droid does not sign up for any API keys" — app needs YouTube API key
-  - F-Droid builds from source → `local.properties` not available → empty API keys → broken app
-
-- **YouTube API-Free Endpoints Research** (parallel agents):
-  - **oEmbed API** (`youtube.com/oembed`): returns title, author_name, thumbnail for videos/playlists (NOT channels). No API key, no quota, no rate limit.
-  - **RSS/Atom feeds** (`youtube.com/feeds/videos.xml`): returns last 15 videos per channel/playlist with full metadata. No API key. NOT compatible with @handles.
-  - **Direct thumbnails** (`i.ytimg.com/vi/{id}/mqdefault.jpg`): always available, no API needed
-  - **Invidious/Piped**: open-source YouTube proxy with full API, no key needed, but unreliable instances
-
-- **Current API Usage Inventory** (code analysis):
-  - 5 endpoints: channels.list, videos.list, playlists.list, playlistItems.list, search.list
-  - **95% of quota consumed by search.list** (100-300 units/query vs 1-2 units for everything else)
-  - Shared API key supports max ~3 concurrent intensive users (10k daily limit)
-
-- **Strategy Document** (`/tmp/YOUTUBE_API_STRATEGY.md`):
-  - 5 strategies compared (Hybrid, Zero-API, Built-in key, Invidious, Hybrid+Invidious)
-  - Detailed quota math for each scenario
-  - 3-phase implementation roadmap proposed
-  - NOT published to GitHub (internal analysis only)
-
-- **GCP API Key Restriction Fix**:
-  - Removed Android app restriction (was blocking daughter's phone with 403)
-  - Kept API restriction: YouTube Data API v3 only
-  - Before: Android apps (`io.github.degipe.youtubewhitelist` + SHA-1) + YouTube Data API v3
-  - After: No application restriction + YouTube Data API v3 only
-
-- **Removed YouTube Search API from Kid Mode**:
-  - `KidSearchViewModel`: removed `YouTubeApiRepository` dependency, `_channelVideoResults`, `channelSearchJob`, `searchChannels()`, `combine()` logic
-  - Search now only queries local Room DB (whitelist items by title/channelTitle)
-  - 120 → 68 lines of code (43% reduction)
-  - 5 API search tests removed, 10 local search tests remain (all green)
-  - **Quota impact**: Kid search now 0 API units (was 100-300 per query). Daily limit supports ~5000 users.
-
-**Decisions Made**:
-- Remove YouTube Search API from kid mode (95% of quota consumption) — local search only
-- GCP API key: remove Android restriction, keep API restriction only (needed for multi-device support)
-- F-Droid submission deferred until API strategy finalized (oEmbed/RSS hybrid vs built-in key)
-- Play Store submission also deferred pending API strategy decision
-
-**Files Modified**:
-- `feature/kid/.../search/KidSearchViewModel.kt` (removed YouTubeApiRepository, simplified to local-only search)
-- `feature/kid/src/test/.../search/KidSearchViewModelTest.kt` (removed 5 API search tests)
-
-**Session Files**:
-- `CLAUDE.md` (Session 13 archived, Session 18 added)
-- `CLAUDE_ARCHIVE_2.md` (Session 13 added, now contains sessions 11-13)
-- `ARCHITECTURE.md` (Session 18 entry)
-- `NEXT_SESSION_PROMPT.md` (updated for Session 19)
-
-**Test Stats**: 373+ tests, all green (378 - 5 removed API search tests)
-
-**Notes**:
-- `/tmp/YOUTUBE_API_STRATEGY.md` contains full analysis (12 sections, quota math, implementation details) — NOT for GitHub
-- oEmbed can replace videos.list and playlists.list (0 quota vs 1 unit each)
-- RSS can replace channel video listing (0 quota, but max 15 videos vs 50)
-- @handle → channelId resolution still needs YouTube API (no free alternative)
-- Invidious is unreliable (instances go down, YouTube blocks them) — only as last-resort fallback
-- Kid search removal alone makes the app viable for ~5000 concurrent users on single API key
-
-**Next Session Focus**: Decide on API strategy (built-in key + oEmbed/RSS hybrid recommended), implement chosen strategy, then proceed to store submissions.
-
 ### Session 19 - 2026-02-10: Strategy E Implementation (Hybrid + Invidious Fallback)
 
 **Objectives**: Implement Strategy E — oEmbed/RSS free endpoints + YouTube API + Invidious fallback. Built-in API key for F-Droid compatibility.
@@ -430,3 +361,60 @@ Search: Room SQL LIKE query (0 API quota)
 - `sips` (macOS built-in) also available but ImageMagick more flexible
 - Feature graphic composition: gradient bg → shield icon → text overlay = professional result
 - All 7 SDLC docs now reflect v1.1.0 hybrid architecture accurately
+
+### Session 23 - 2026-02-11: GitHub Release v1.1.0 + F-Droid RFP + Play Store Registration
+
+**Objectives**: Create GitHub Release v1.1.0, submit F-Droid RFP, register for Google Play Developer account, submit app to Play Store.
+
+**Completed**:
+- **GitHub Release v1.1.0**:
+  - Tag `v1.1.0` created, release notes from CHANGELOG.md
+  - APK attached as `YouTubeWhitelist-v1.1.0.apk` (2.5 MB)
+  - URL: https://github.com/degipe/YouTubeWhitelist/releases/tag/v1.1.0
+
+- **F-Droid RFP (Request for Packaging)**:
+  - Issue #3794 submitted on GitLab fdroiddata repo via Playwright browser automation
+  - Includes: app name, source code, license (GPL-3.0-only), description, features, anti-features (NonFreeNet), build info
+  - URL: https://gitlab.com/fdroid/fdroiddata/-/issues/3794
+
+- **Google Play Developer Account**:
+  - Registration started at play.google.com/console/signup
+  - Account type: Personal ("Saját magadnak")
+  - Developer name: "Peter Degi"
+  - $25 registration fee paid
+  - Account created (Fiókazonosító: 4768413512690805008)
+
+- **Play Store Submission Guide** updated:
+  - `docs/PLAY_STORE_SUBMISSION.md` updated for v1.1.0 (7 screenshots, feature graphic, icon, versionCode 2)
+
+- **Device Verification Attempt** (BLOCKED):
+  - Play Console app requires Google Play Services — not available on Fairphone 3 with /e/OS (microG)
+  - Emulator with Play Store image: app detects emulator, refuses verification
+  - Attempted: Play Store image download, AVD reconfiguration, APK sideload to Fairphone, emulator property spoofing
+  - Resolution: deferred — user needs a Google Play Services-capable Android phone (physical device)
+
+**Decisions Made**:
+- GitHub Release v1.1.0 with APK attachment (not just tag)
+- F-Droid RFP as Issue type (not Task) on GitLab
+- Play Store developer name: "Peter Degi" (English order, no accents)
+- Device verification deferred — need physical Android phone with Google Play Services
+- Emulator AVD changed to Play Store image (google_apis_playstore) — kept for future use
+
+**Files Modified**:
+- `docs/PLAY_STORE_SUBMISSION.md` (updated for v1.1.0: screenshots, icon, feature graphic, release info, API key note)
+
+**Session Files**:
+- `CLAUDE.md` (Session 18 archived, Session 23 added)
+- `CLAUDE_ARCHIVE_2.md` (Session 18 added, now contains sessions 11-18)
+- `ARCHITECTURE.md` (Session 23 entry)
+- `NEXT_SESSION_PROMPT.md` (updated for Session 24)
+
+**Test Stats**: ~401 tests, all green (no code changes)
+
+**Notes**:
+- Playwright browser can't launch when Chrome is already running — need to close Chrome first or install separate browser
+- /e/OS microG doesn't support Google Play Console app (loads but can't communicate with Google servers)
+- Emulator `ro.` properties are read-only — can't spoof device identity at runtime
+- Play Console app split APKs: `install-multiple` command needed for sideloading
+- Google Play developer verification chain: device → phone number → identity (sequential, can't skip)
+- Emulator AVD config: `PlayStore.enabled=yes`, `tag.id=google_apis_playstore`, `image.sysdir.1=system-images/android-34/google_apis_playstore/arm64-v8a/`

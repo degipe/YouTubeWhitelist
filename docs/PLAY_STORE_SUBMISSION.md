@@ -6,7 +6,9 @@ Step-by-step guide for publishing YouTubeWhitelist on Google Play Store.
 
 - [x] Google Play Developer account ($25 one-time fee)
 - [x] Signed AAB file: `app/build/outputs/bundle/release/app-release.aab`
-- [x] 5 screenshots (1080x2400) in `fastlane/metadata/android/en-US/images/phoneScreenshots/`
+- [x] 7 screenshots (1080x2400) in `fastlane/metadata/android/en-US/images/phoneScreenshots/`
+- [x] Feature graphic (1024x500) in `fastlane/metadata/android/en-US/images/featureGraphic.png`
+- [x] App icon (512x512) in `fastlane/metadata/android/en-US/images/icon.png`
 - [x] Privacy Policy URL: https://degipe.github.io/YouTubeWhitelist/privacy-policy/
 - [x] App source code: https://github.com/degipe/YouTubeWhitelist
 
@@ -34,14 +36,16 @@ Step-by-step guide for publishing YouTubeWhitelist on Google Play Store.
 
 ### Graphics
 
-- **App icon**: 512x512 PNG (use the app launcher icon, export from `app/src/main/res/mipmap-xxxhdpi/`)
-- **Feature graphic**: 1024x500 PNG (create a simple banner with app name + tagline)
-- **Phone screenshots**: Upload the 5 PNGs from `fastlane/metadata/android/en-US/images/phoneScreenshots/`
+- **App icon**: `fastlane/metadata/android/en-US/images/icon.png` (512x512 PNG, ready)
+- **Feature graphic**: `fastlane/metadata/android/en-US/images/featureGraphic.png` (1024x500 PNG, ready)
+- **Phone screenshots**: Upload all 7 PNGs from `fastlane/metadata/android/en-US/images/phoneScreenshots/`
   1. `01_profile_selector.png` — Profile selector
   2. `02_kid_home.png` — Kid home screen
   3. `03_pin_entry.png` — PIN entry
   4. `04_parent_dashboard.png` — Parent dashboard
   5. `05_whitelist_manager.png` — Whitelist manager
+  6. `06_sleep_mode.png` — Sleep mode
+  7. `07_export_import.png` — Export/Import
 
 ### Hungarian Listing (optional)
 
@@ -111,9 +115,9 @@ Fill in the data safety form:
 1. Go to **Production** → **Create new release**
 2. **App signing**: Let Google manage app signing (recommended)
    - Upload your app signing key on first release
-3. **Upload AAB**: Upload `app-release.aab` (5.5 MB)
-4. **Release name**: `1.0.0`
-5. **Release notes**: Copy from `fastlane/metadata/android/en-US/changelogs/1.txt`
+3. **Upload AAB**: Upload `app-release.aab` (5.3 MB)
+4. **Release name**: `1.1.0` (versionCode 2)
+5. **Release notes**: Copy from `fastlane/metadata/android/en-US/changelogs/2.txt`
 
 ### Countries and Regions
 
@@ -138,24 +142,13 @@ Fill in the data safety form:
 
 - The app uses YouTube Data API v3 which requires an API key built into the APK
 - OAuth consent screen has been published to Production mode in GCP Console
-- API key is restricted to Android apps (package: `io.github.degipe.youtubewhitelist`, SHA-1 from release keystore) and YouTube Data API v3 only
-- For F-Droid: separate submission process via GitLab RFP issue (already prepared)
+- API key is restricted to YouTube Data API v3 only (no application restriction — needed for multi-device support)
+- F-Droid RFP submitted: https://gitlab.com/fdroid/fdroiddata/-/issues/3794
+- GitHub Release v1.1.0: https://github.com/degipe/YouTubeWhitelist/releases/tag/v1.1.0
 
-## App Icon Export
+## Assets Ready
 
-To create the 512x512 icon for Play Store:
-
-```bash
-# The app icon is at app/src/main/res/
-# Use Android Studio's Image Asset Studio to export, or:
-# Find the highest resolution icon and upscale/recreate at 512x512
-```
-
-## Feature Graphic
-
-Create a 1024x500 PNG banner. Suggested content:
-- Dark background (matching app theme)
-- App name: "YouTubeWhitelist"
-- Tagline: "Safe YouTube for Kids"
-- Optional: simplified screenshot or icon
-- Tools: Figma, Canva, or any graphics editor
+All graphics are generated and ready to upload:
+- **App icon**: `fastlane/metadata/android/en-US/images/icon.png` (512x512)
+- **Feature graphic**: `fastlane/metadata/android/en-US/images/featureGraphic.png` (1024x500)
+- **Screenshots**: 7 PNGs in `fastlane/metadata/android/en-US/images/phoneScreenshots/`

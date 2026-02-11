@@ -1,4 +1,4 @@
-# YouTubeWhitelist - Session Archive 2 (Sessions 11-17)
+# YouTubeWhitelist - Session Archive 2 (Sessions 11-18)
 
 ### Session 11 - 2026-02-09: M7 - Google Cloud Setup + AAB Build
 
@@ -157,3 +157,25 @@
 - Release APK on emulator, adb root for DB access, uiautomator dump for precise taps
 
 **Test Stats**: 378+ tests, all green (no code changes)
+
+### Session 18 - 2026-02-10: F-Droid/API Strategy Analysis + Remove API Search from Kid Mode
+
+**Objectives**: Analyze F-Droid inclusion policy compliance, research API-free YouTube endpoints, remove expensive YouTube Search API from kid mode.
+
+**Completed**:
+- **F-Droid Inclusion Policy Analysis**:
+  - Reviewed full inclusion criteria against project
+  - All FLOSS requirements met (GPLv3, no proprietary deps, no Play Services, no tracking)
+  - Identified critical issue: "F-Droid does not sign up for any API keys" — app needs YouTube API key
+  - F-Droid builds from source → `local.properties` not available → empty API keys → broken app
+
+- **YouTube API-Free Endpoints Research** (parallel agents):
+  - **oEmbed API** (`youtube.com/oembed`): returns title, author_name, thumbnail for videos/playlists (NOT channels). No API key, no quota, no rate limit.
+  - **RSS/Atom feeds** (`youtube.com/feeds/videos.xml`): returns last 15 videos per channel/playlist with full metadata. No API key. NOT compatible with @handles.
+  - **Direct thumbnails** (`i.ytimg.com/vi/{id}/mqdefault.jpg`): always available, no API needed
+  - **Invidious/Piped**: open-source YouTube proxy with full API, no key needed, but unreliable instances
+
+- **Removed YouTube Search API from Kid Mode**: local-only search, 0 API quota
+- **GCP API Key Restriction Fix**: removed Android app restriction, kept YouTube Data API v3 only
+
+**Test Stats**: 373+ tests, all green
