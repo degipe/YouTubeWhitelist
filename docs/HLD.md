@@ -1,7 +1,7 @@
 # High-Level Design (HLD)
 
 **Project**: YouTubeWhitelist
-**Version**: 1.0.0
+**Version**: 1.1.0
 **Last Updated**: 2026-02-10
 
 ---
@@ -58,8 +58,11 @@ graph TB
     REPO_IMPL -.->|implements| REPO_IF
     REPO_IMPL --> ROOM
     REPO_IMPL --> RETROFIT
+    REPO_IMPL --> OEMBED["oEmbed/RSS (Free)"]
+    REPO_IMPL --> INVIDIOUS["Invidious (Fallback)"]
     REPO_IMPL --> PREFS
     RETROFIT --> YT_API
+    OEMBED --> YT_API
     PREFS --> GOOGLE_OAUTH
 ```
 
@@ -90,7 +93,7 @@ graph TD
         CC[":core:common<br/>AppResult, Theme, URL Parser,<br/>Dispatchers"]
         CD[":core:data<br/>Repositories, Domain Models,<br/>SleepTimer, TimeLimit"]
         CDB[":core:database<br/>Room DB, Entities, DAOs"]
-        CN[":core:network<br/>Retrofit, DTOs, OkHttp"]
+        CN[":core:network<br/>Retrofit, DTOs, OkHttp,<br/>oEmbed, RSS, Invidious"]
         CA[":core:auth<br/>OAuth, PIN, Token Storage"]
         CE[":core:export<br/>JSON Export/Import"]
     end
@@ -118,7 +121,7 @@ graph TD
 | `:core:common` | Core | Shared utilities, error types, enums, URL parser, Compose theme, dispatcher qualifiers |
 | `:core:data` | Core | Repository interfaces + implementations, domain models, business logic managers |
 | `:core:database` | Core | Room database, entity classes, DAO interfaces |
-| `:core:network` | Core | Retrofit service, DTO classes, OkHttp configuration |
+| `:core:network` | Core | Retrofit service, DTO classes, OkHttp configuration, oEmbed service, RSS parser, Invidious API client |
 | `:core:auth` | Core | OAuth flow, PIN security, token storage, brute force protection |
 | `:core:export` | Core | JSON serialization/deserialization for data backup and restore |
 
@@ -348,7 +351,9 @@ flowchart LR
 
 ## 8. External API Integration
 
-### YouTube Data API v3
+### Hybrid Network Architecture (Strategy E)
+
+Since v1.1.0, the app uses a hybrid approach with multiple data sources to minimize YouTube API quota consumption:
 
 ```mermaid
 flowchart TD
@@ -359,32 +364,54 @@ flowchart TD
         SEARCH[Kid Search]
     end
 
-    subgraph API["YouTube Data API v3"]
-        CH[channels.list]
-        VID[videos.list]
-        PL[playlists.list]
-        PLI[playlistItems.list]
-        SR[search.list]
+    subgraph Free["Free Endpoints - 0 quota"]
+        OEMBED[oEmbed API]
+        RSS[RSS/Atom Feeds]
     end
 
-    ADD -->|"1 unit"| CH
-    ADD -->|"1 unit"| VID
-    ADD -->|"1 unit"| PL
-    BROWSE_CH -->|"1 unit/page"| PLI
+    subgraph API["YouTube Data API v3"]
+        CH[channels.list]
+        PLI[playlistItems.list]
+    end
+
+    subgraph Fallback["Invidious Fallback"]
+        INV[Invidious API]
+    end
+
+    ADD -->|"0 units"| OEMBED
+    ADD -->|"1 unit channels only"| CH
+    BROWSE_CH -->|"0 units first page"| RSS
+    BROWSE_CH -->|"1 unit/page subsequent"| PLI
     BROWSE_PL -->|"1 unit/page"| PLI
-    SEARCH -->|"100 units × 3 max"| SR
+    SEARCH -->|"0 units local Room DB"| SEARCH
+
+    OEMBED -.->|"on failure"| API
+    RSS -.->|"on failure"| PLI
+    API -.->|"on failure"| INV
 ```
+
+### Fallback Chain
+
+| Operation | Free | YouTube API | Invidious |
+|-----------|------|-------------|-----------|
+| Get video metadata | oEmbed | videos.list | /api/v1/videos |
+| Get playlist metadata | oEmbed | playlists.list | /api/v1/playlists |
+| Get channel metadata | — | channels.list | /api/v1/channels |
+| Resolve @handle | — | channels.list (forHandle) | /api/v1/resolveurl |
+| List channel videos | RSS (first page, max 15) | playlistItems.list | /api/v1/channels |
+| Kid search | Room DB (local-only) | — | — |
 
 ### Quota Management Strategy
 
 - **Daily quota**: 10,000 units
-- **Expensive operation**: `search.list` at 100 units/call
+- **Most operations now cost 0 units** (oEmbed/RSS free endpoints)
+- **Kid search**: Local Room DB only (0 quota, removed YouTube Search API in v1.1.0)
+- **Channel browsing**: First page via RSS (0 quota), subsequent pages via API (1 unit/page)
 - **Mitigations**:
-  - Check DB for duplicates BEFORE calling API (saves wasted calls)
-  - Limit channel video search to max 3 channels per query (300 units)
-  - Search results capped at 10 per channel
+  - Check DB for duplicates BEFORE calling API
   - `getYoutubeIdsByType()` returns only IDs for lightweight duplicate checks
-  - All other endpoints cost only 1 unit each
+  - Built-in fallback API key for F-Droid builds
+  - Invidious fallback on API failure (round-robin instances, health tracking)
 
 ---
 

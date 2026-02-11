@@ -1,0 +1,6 @@
+• Hibrid API stratégia: oEmbed + RSS ingyenes végpontok ~95%-kal csökkentik a kvótát
+• Invidious tartalék, ha a YouTube API nem elérhető
+• Csatorna videók lusta betöltése végtelen görgetéssel (50 videó/oldal)
+• Csatornán belüli keresés (helyi, 0 API kvóta)
+• Gyerek keresés most csak helyi (gyorsabb, nincs API költség)
+• Beépített API kulcs F-Droid kompatibilitáshoz

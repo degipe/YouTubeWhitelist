@@ -67,59 +67,6 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 
 ## Session Logs
 
-### Session 17 - 2026-02-10: Improved Screenshots with Real YouTube Thumbnails
-
-**Objectives**: Replace fake-looking emulator screenshots with authentic ones using real YouTube thumbnail URLs, add Sleep Mode and Export/Import screenshots.
-
-**Completed**:
-- **Screenshot Overhaul (7 screenshots, 1080x2400)**:
-  - Installed release APK on emulator (not debug — API key restricted to release package)
-  - User signed into the app on emulator (Google OAuth via Chrome Custom Tabs)
-  - Created 2 profiles (Emma with 60min daily limit, Max with 90min)
-  - Inserted whitelist items with REAL YouTube video thumbnails:
-    - Peppa Pig Official Channel (DysgBIOiIwE) — actual Peppa Pig cartoon
-    - Cocomelon Nursery Rhymes (e_04ZrNroTo) — Wheels on the Bus with Cocomelon logo
-    - Sesame Street (aqUefNVhsNM) — ABC compilation with Elmo
-    - Baby Shark Dance (XqZsoesa55w) — Pinkfong "Most Viewed" thumbnail
-    - MrBeast (0e3GPea1Tyg) — Squid Game recreation
-    - Peppa Pig Full Episodes playlist (amNTw2cbxyY) — birthday party scene
-  - All thumbnail URLs verified with HTTP 200 before insertion
-  - Screenshots taken after toast messages dismissed (clean, no overlays)
-
-- **7 Screenshots saved to fastlane metadata**:
-  1. `01_profile_selector.png` (60KB) — "Who's watching?" with Emma + Max
-  2. `02_kid_home.png` (728KB) — Kid Home with real thumbnails, "Time remaining: 1h 0m"
-  3. `03_pin_entry.png` (71KB) — 6-digit PIN entry numpad
-  4. `04_parent_dashboard.png` (144KB) — Parent Dashboard with all actions
-  5. `05_whitelist_manager.png` (410KB) — Whitelist Manager with real thumbnails
-  6. `06_sleep_mode.png` (64KB) — Sleep Mode timer (30m slider + Start button)
-  7. `07_export_import.png` (83KB) — Export/Import screen
-
-- **Archive**: Session 12 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-12)
-
-**Decisions Made**:
-- Release APK on emulator (not debug) — API key restricted to `io.github.degipe.youtubewhitelist` package
-- Root access on emulator (`adb root`) to modify release app's database directly
-- Real YouTube video thumbnails via `i.ytimg.com/vi/{videoId}/hqdefault.jpg` format
-- `uiautomator dump` for precise tap coordinates (not visual estimation)
-
-**Files Modified**:
-- `fastlane/metadata/android/en-US/images/phoneScreenshots/01-07_*.png` (7 screenshots)
-- `CLAUDE.md` (Session 12 archived, Session 17 added)
-- `CLAUDE_ARCHIVE_2.md` (Session 12 added)
-- `ARCHITECTURE.md` (Session 17 entry)
-- `NEXT_SESSION_PROMPT.md` (updated for Session 18)
-
-**Test Stats**: 378+ tests, all green (no code changes)
-
-**Notes**:
-- Thumbnail URL format `https://i.ytimg.com/vi/{videoId}/hqdefault.jpg` always works for valid video IDs
-- Channel avatar URLs (yt3.ggpht.com) are unique tokens — can't be fabricated, use video thumbnails instead
-- `adb root` works on emulator (Google APIs, not Google Play) — allows DB access for release builds
-- `uiautomator dump` returns exact XML bounds for all UI elements — reliable for adb tap automation
-- "App is pinned" / "App unpinned" toasts appear on kiosk mode transitions — wait 5 seconds before screenshotting
-- API error for many-image requests: max 2000px dimension per image — avoid reading too many screenshots in one conversation
-
 ### Session 18 - 2026-02-10: F-Droid/API Strategy Analysis + Remove API Search from Kid Mode
 
 **Objectives**: Analyze F-Droid inclusion policy compliance, research API-free YouTube endpoints, remove expensive YouTube Search API from kid mode.
@@ -417,3 +364,69 @@ Search: Room SQL LIKE query (0 API quota)
 - MrBeast has 800+ videos — only loaded 400 (8 pages) during test, more would load on continued scrolling
 - Search UI: TopAppBar toggles between title and TextField, back arrow exits search mode
 - Quota savings: 400 videos = 8 API units. In-channel search = 0 units (vs 100 units/search with YouTube Search API)
+
+### Session 22 - 2026-02-11: v1.1.0 Release Build + Store Assets + SDLC Docs Update
+
+**Objectives**: Generate Play Store assets (feature graphic, app icon), build v1.1.0 release, update SDLC documentation for Strategy E + lazy loading changes.
+
+**Completed**:
+- **Feature Graphic** (1024x500 PNG):
+  - Generated shield+play button icon with Gemini AI, composed with ImageMagick
+  - Light blue gradient background, app icon left, "YouTubeWhitelist / Safe YouTube for Kids" text right
+  - Saved to `fastlane/metadata/android/en-US/images/featureGraphic.png`
+
+- **App Icon** (512x512 PNG):
+  - Generated with Gemini AI: blue background, white play button, shield+checkmark badge
+  - Resized from 1024x1024 with ImageMagick
+  - Saved to `fastlane/metadata/android/en-US/images/icon.png`
+
+- **v1.1.0 Release Build**:
+  - `versionCode` 1→2, `versionName` 1.0.0→1.1.0
+  - CHANGELOG.md updated with all v1.1.0 changes
+  - Fastlane changelogs (EN + HU) for versionCode 2
+  - Release APK: 2.4 MB, Release AAB: 5.3 MB
+  - All tests pass (~401)
+
+- **SDLC Documentation Update** (5 files, comprehensive):
+  - **BRD.md**: Version 1.1.0, test count 401+, entity count 5, hybrid quota strategy
+  - **FS.md**: Version 1.1.0, FR-07 (kid search local-only), FR-08 (lazy loading + in-channel search), search flow diagram simplified
+  - **HLD.md**: Version 1.1.0, architecture diagram (oEmbed/RSS/Invidious), network module description, new External API Integration section (Strategy E hybrid + fallback chain table + quota strategy)
+  - **LLD.md**: Version 1.1.0, DB version 3, 5 entities/DAOs, CachedChannelVideoEntity + DAO, YouTubeApiRepository (+getPlaylistItemsPage), ChannelVideoCacheRepository, Hybrid Network Layer section (oEmbed/RSS/Invidious), dual OkHttp clients, API quota table (free alternatives), DI qualifiers (9), NetworkModule + DataModule updated
+  - **DEVELOPER_ONBOARDING.md**: Test count 401+, 5 entities/DAOs, core:network (oEmbed/RSS/Invidious), core:database (version 3), Network Layer §10 completely rewritten (Strategy E), API quota table with free alternatives, Room cache SSOT pattern added, YouTube API pitfalls updated
+
+- **Archive**: Session 17 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-17)
+
+**Decisions Made**:
+- Feature graphic: text-free AI generation + ImageMagick text overlay (Gemini can't spell "Whitelist" correctly)
+- App icon: AI-generated shield+play button+checkmark (consistent with existing vector launcher icon concept)
+- v1.1.0 (not v2.0.0) — significant improvements but backward-compatible, no breaking changes
+
+**Files Created**:
+- `fastlane/metadata/android/en-US/images/featureGraphic.png` (1024x500)
+- `fastlane/metadata/android/en-US/images/icon.png` (512x512)
+- `fastlane/metadata/android/en-US/changelogs/2.txt`
+- `fastlane/metadata/android/hu-HU/changelogs/2.txt`
+
+**Files Modified**:
+- `app/build.gradle.kts` (versionCode 2, versionName 1.1.0)
+- `CHANGELOG.md` (v1.1.0 section)
+- `docs/BRD.md` (version, tests, entities, quota)
+- `docs/FS.md` (version, FR-07, FR-08, search flow, KidSearchUiState)
+- `docs/HLD.md` (version, architecture diagram, module desc, API integration, quota)
+- `docs/LLD.md` (version, DB schema, ER diagram, entity, DAO, repositories, network layer, DI, quota)
+- `docs/DEVELOPER_ONBOARDING.md` (tests, entities, network, database, API quota, patterns, pitfalls)
+
+**Session Files**:
+- `CLAUDE.md` (Session 17 archived, Session 22 added)
+- `CLAUDE_ARCHIVE_2.md` (Session 17 added, now contains sessions 11-17)
+- `ARCHITECTURE.md` (Session 22 entry)
+- `NEXT_SESSION_PROMPT.md` (updated for Session 23)
+
+**Test Stats**: ~401 tests, all green
+
+**Notes**:
+- Gemini AI consistently misspells "Whitelist" (Whtislist, Whitlisnt) — use text-free generation + ImageMagick for text overlay
+- ImageMagick `magick` available via Homebrew on macOS — useful for compositing, resizing, text overlay
+- `sips` (macOS built-in) also available but ImageMagick more flexible
+- Feature graphic composition: gradient bg → shield icon → text overlay = professional result
+- All 7 SDLC docs now reflect v1.1.0 hybrid architecture accurately

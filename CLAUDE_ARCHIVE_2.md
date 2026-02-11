@@ -1,4 +1,4 @@
-# YouTubeWhitelist - Session Archive 2 (Sessions 11-20)
+# YouTubeWhitelist - Session Archive 2 (Sessions 11-17)
 
 ### Session 11 - 2026-02-09: M7 - Google Cloud Setup + AAB Build
 
@@ -147,3 +147,13 @@
 - **Play Store Submission Guide**: `docs/PLAY_STORE_SUBMISSION.md`
 
 **Test Stats**: 378+ tests, all green
+
+### Session 17 - 2026-02-10: Improved Screenshots with Real YouTube Thumbnails
+
+**Objectives**: Replace fake-looking emulator screenshots with authentic ones using real YouTube thumbnail URLs, add Sleep Mode and Export/Import screenshots.
+
+**Completed**:
+- 7 screenshots (1080x2400) with real YouTube thumbnails (Peppa Pig, Cocomelon, Sesame Street, Baby Shark, MrBeast)
+- Release APK on emulator, adb root for DB access, uiautomator dump for precise taps
+
+**Test Stats**: 378+ tests, all green (no code changes)

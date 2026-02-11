@@ -1,7 +1,7 @@
 # Low-Level Design (LLD)
 
 **Project**: YouTubeWhitelist
-**Version**: 1.0.0
+**Version**: 1.1.0
 **Last Updated**: 2026-02-10
 
 ---
@@ -98,10 +98,10 @@ graph TD
 ### Overview
 
 - **Database name**: `youtubewhitelist.db`
-- **Room version**: 2
+- **Room version**: 3
 - **Migration strategy**: `fallbackToDestructiveMigration()` (no explicit migrations)
-- **Entities**: 4
-- **DAOs**: 4
+- **Entities**: 5 (4 domain + 1 cache)
+- **DAOs**: 5
 
 ### ER Diagram
 
@@ -145,6 +145,15 @@ erDiagram
         TEXT videoTitle
         INTEGER watchedSeconds
         INTEGER watchedAt
+    }
+
+    CACHED_CHANNEL_VIDEOS {
+        TEXT channelId PK
+        TEXT videoId PK
+        TEXT title
+        TEXT thumbnailUrl
+        TEXT channelTitle
+        INTEGER position
     }
 
     PARENT_ACCOUNTS ||--o{ KID_PROFILES : "has"
@@ -213,6 +222,22 @@ erDiagram
 - `kidProfileId` (simple)
 - `(kidProfileId, watchedAt)` (composite, for time-range queries)
 
+#### CachedChannelVideoEntity
+
+| Column | Type | Nullable | Default | Notes |
+|--------|------|----------|---------|-------|
+| `channelId` | TEXT | No | — | **Composite PK** part 1 |
+| `videoId` | TEXT | No | — | **Composite PK** part 2 |
+| `title` | TEXT | No | — | Video title |
+| `thumbnailUrl` | TEXT | No | — | Thumbnail image URL |
+| `channelTitle` | TEXT | No | — | Channel name |
+| `position` | INTEGER | No | — | Sort position in playlist |
+
+**Primary Key**: `(channelId, videoId)` — composite, required for `@Upsert` to work correctly
+**Indices**: `channelId` (for efficient per-channel queries)
+
+> **Note**: This is a cache table — no foreign keys, cleared on each channel open, used for lazy loading + in-channel search.
+
 ### DAO Method Inventory
 
 #### ParentAccountDao (5 methods)
@@ -270,6 +295,16 @@ erDiagram
 | `getVideosWatchedCount(profileId, sinceTimestamp)` | `suspend Int` | COUNT DISTINCT videoId | |
 | `getDailyWatchTime(profileId, sinceTimestamp)` | `suspend List<DailyWatchAggregate>` | GROUP BY day | Day = `watchedAt / 86400000 * 86400000` |
 | `getTotalWatchedSecondsFlow(profileId, sinceTimestamp)` | `Flow<Int>` | COALESCE(SUM, 0) | Non-nullable Flow |
+
+#### CachedChannelVideoDao (6 methods)
+
+| Method | Return Type | Query Type | Notes |
+|--------|-------------|------------|-------|
+| `getVideosByChannel(channelId)` | `Flow<List<...>>` | SELECT ORDER BY position | Reactive |
+| `searchVideosInChannel(channelId, query)` | `Flow<List<...>>` | SELECT LIKE title | In-channel search |
+| `upsertAll(videos)` | `suspend Unit` | UPSERT | Batch insert/update |
+| `deleteByChannel(channelId)` | `suspend Unit` | DELETE WHERE channelId | Clear cache |
+| `getMaxPosition(channelId)` | `suspend Int?` | MAX(position) | For pagination offset |
 
 ---
 
@@ -378,7 +413,21 @@ interface YouTubeApiRepository {
     suspend fun getVideoById(videoId: String): AppResult<YouTubeMetadata.Video>
     suspend fun getPlaylistById(playlistId: String): AppResult<YouTubeMetadata.Playlist>
     suspend fun getPlaylistItems(playlistId: String): AppResult<List<PlaylistVideo>>
+    suspend fun getPlaylistItemsPage(playlistId: String, pageToken: String? = null): AppResult<PaginatedPlaylistResult>
     suspend fun searchVideosInChannel(channelId: String, query: String): AppResult<List<PlaylistVideo>>
+}
+```
+
+> **Implementation**: `HybridYouTubeRepositoryImpl` (since v1.1.0) — uses fallback chain: oEmbed/RSS → YouTube API → Invidious
+
+#### ChannelVideoCacheRepository
+```kotlin
+interface ChannelVideoCacheRepository {
+    fun getVideosByChannel(channelId: String): Flow<List<PlaylistVideo>>
+    fun searchVideosInChannel(channelId: String, query: String): Flow<List<PlaylistVideo>>
+    suspend fun cacheVideos(channelId: String, videos: List<PlaylistVideo>)
+    suspend fun clearCache(channelId: String)
+    suspend fun getMaxPosition(channelId: String): Int
 }
 ```
 
@@ -519,14 +568,37 @@ ThumbnailSet
 └── maxres: Thumbnail? (1280×720)
 ```
 
+### Hybrid Network Layer (Strategy E, v1.1.0)
+
+In addition to the YouTube API service, the network layer includes free and fallback data sources:
+
+#### OEmbedService (Free, 0 quota)
+
+Base URL: `https://www.youtube.com/oembed`
+
+Returns video/playlist metadata (title, author, thumbnail) without API key. Cannot resolve channels.
+
+#### RssFeedParser (Free, 0 quota)
+
+URL: `https://www.youtube.com/feeds/videos.xml?channel_id={channelId}`
+
+Returns last 15 videos per channel. Namespace-aware XML parser with XXE protection (6 security features disabled). Only works with channel IDs (not @handles).
+
+#### InvidiousApiService (Fallback, 0 quota)
+
+Dynamic base URL (round-robin instances). Full YouTube API equivalent without API key. Used as last-resort fallback.
+
+**InvidiousInstanceManager**: Round-robin rotation, health tracking (max 2 failures → skip, 5 min reset), thread-safe (`@Synchronized`). Instances: vid.puffyan.us, yewtu.be, invidious.namazso.eu, inv.nadeko.net.
+
 ### OkHttp Configuration
 
 ```
-OkHttpClient
-├── ApiKeyInterceptor (always active)
-│   └── Adds ?key={YOUTUBE_API_KEY} to every request
+@YouTubeApiOkHttp OkHttpClient
+├── ApiKeyInterceptor (adds ?key={YOUTUBE_API_KEY})
 └── HttpLoggingInterceptor (debug only, Level.BASIC)
-    └── Disabled in release to prevent API key leaks in logs
+
+@PlainOkHttp OkHttpClient
+└── No interceptors (used for oEmbed, RSS, Invidious)
 ```
 
 ### Serialization Configuration
@@ -542,15 +614,15 @@ Converter: `kotlinx-serialization` via `json.asConverterFactory("application/jso
 
 ### API Quota Table
 
-| Endpoint | Quota Cost | Max Results | Notes |
-|----------|-----------|-------------|-------|
-| `channels` | 1 unit | — | By ID or forHandle |
-| `videos` | 1 unit | — | Comma-separated IDs |
-| `playlists` | 1 unit | — | Comma-separated IDs |
-| `playlistItems` | 1 unit | 50/page | Paginated |
-| `search` | **100 units** | 25 default, 10 for channel search | Expensive! |
+| Endpoint | Quota Cost | Free Alternative | Notes |
+|----------|-----------|------------------|-------|
+| `channels` | 1 unit | Invidious (fallback) | Only for channel resolution + @handle |
+| `videos` | 1 unit | **oEmbed (0 cost)** | oEmbed used as primary source |
+| `playlists` | 1 unit | **oEmbed (0 cost)** | oEmbed used as primary source |
+| `playlistItems` | 1 unit/page | **RSS (0 cost, first page)** | RSS for first 15 videos, API for rest |
+| `search` | ~~100 units~~ | **Removed from kid mode** | Local Room DB search only (v1.1.0) |
 
-**Daily quota**: 10,000 units. Channel video search limited to max 3 channels per query (300 units max).
+**Daily quota**: 10,000 units. Most operations cost 0 units via oEmbed/RSS. Built-in fallback API key for F-Droid.
 
 ---
 
@@ -663,13 +735,18 @@ object ApiKeyModule {
 
 #### NetworkModule (`core:network`)
 - `@Provides @Singleton Json` — ignoreUnknownKeys, coerceInputValues
-- `@Provides @Singleton OkHttpClient` — ApiKeyInterceptor + debug-only logging
+- `@Provides @Singleton @YouTubeApiOkHttp OkHttpClient` — ApiKeyInterceptor + debug-only logging
+- `@Provides @Singleton @PlainOkHttp OkHttpClient` — No interceptors (oEmbed, RSS, Invidious)
 - `@Provides @Singleton Retrofit` — base URL + kotlinx-serialization converter
 - `@Provides @Singleton YouTubeApiService` — Retrofit proxy
+- `@Provides @Singleton OEmbedService` — Retrofit proxy (base URL: youtube.com/oembed)
+- `@Provides @Singleton RssFeedParser` — XML parser with @PlainOkHttp
+- `@Provides @Singleton InvidiousApiService` — HTTP client with @PlainOkHttp + Json
+- `@Provides @Singleton InvidiousInstanceManager` — Round-robin instance management
 
 #### DatabaseModule (`core:database`)
 - `@Provides @Singleton YouTubeWhitelistDatabase` — Room.databaseBuilder + fallbackToDestructiveMigration
-- `@Provides ParentAccountDao, KidProfileDao, WhitelistItemDao, WatchHistoryDao`
+- `@Provides ParentAccountDao, KidProfileDao, WhitelistItemDao, WatchHistoryDao, CachedChannelVideoDao`
 
 #### AuthModule (`core:auth`)
 - `@Binds AuthRepository ← AuthRepositoryImpl`
@@ -681,13 +758,15 @@ object ApiKeyModule {
 - `@Provides BruteForceProtection` — with SharedPreferences("pin_brute_force")
 
 #### DataModule (`core:data`)
-- `@Binds YouTubeApiRepository, WhitelistRepository, KidProfileRepository, WatchHistoryRepository, TimeLimitChecker`
+- `@Binds YouTubeApiRepository ← HybridYouTubeRepositoryImpl` (fallback chain: oEmbed/RSS → API → Invidious)
+- `@Binds ChannelVideoCacheRepository ← ChannelVideoCacheRepositoryImpl`
+- `@Binds WhitelistRepository, KidProfileRepository, WatchHistoryRepository, TimeLimitChecker`
 - `@Provides @Singleton SleepTimerManager` — with `CoroutineScope(SupervisorJob() + Dispatchers.Default)`
 
 #### ExportModule (`core:export`)
 - `@Binds ExportImportService ← ExportImportServiceImpl`
 
-### Qualifier Annotations (7 total)
+### Qualifier Annotations (9 total)
 
 | Qualifier | Module | Type |
 |-----------|--------|------|
@@ -697,6 +776,8 @@ object ApiKeyModule {
 | `@YouTubeApiKey` | `core:network` | `String` |
 | `@GoogleClientId` | `core:auth` | `String` |
 | `@GoogleClientSecret` | `core:auth` | `String` |
+| `@PlainOkHttp` | `core:network` | `OkHttpClient` |
+| `@YouTubeApiOkHttp` | `core:network` | `OkHttpClient` |
 
 ### AssistedInject Pattern
 

@@ -46,7 +46,7 @@ Welcome to the YouTubeWhitelist project! This guide will help you get up and run
 | Target SDK | 35 (Android 15) |
 | Modules | 10 (1 app + 3 feature + 6 core) |
 | Screens | 20 |
-| Tests | 378+ |
+| Tests | 401+ |
 | Release APK | 2.4 MB |
 | License | GPLv3 |
 
@@ -209,17 +209,20 @@ YouTubeWhitelist/
 │   │
 │   ├── database/                 # Room database
 │   │   └── src/main/java/.../
-│   │       ├── entity/           # 4 Room entities
-│   │       ├── dao/              # 4 DAO interfaces (38 methods total)
+│   │       ├── entity/           # 5 Room entities
+│   │       ├── dao/              # 5 DAO interfaces
 │   │       ├── converter/        # Room type converters
 │   │       └── di/               # DatabaseModule (Hilt)
 │   │
-│   ├── network/                  # YouTube API client
+│   ├── network/                  # YouTube API client + free endpoints
 │   │   └── src/main/java/.../
 │   │       ├── api/              # YouTubeApiService (Retrofit interface)
 │   │       ├── dto/              # API response DTOs
+│   │       ├── oembed/           # OEmbedService + OEmbedResponse (free endpoint)
+│   │       ├── rss/              # RssFeedParser + RssVideoEntry (free endpoint)
+│   │       ├── invidious/        # InvidiousApiService, InvidiousInstanceManager, DTOs (fallback)
 │   │       ├── interceptor/      # ApiKeyInterceptor
-│   │       └── di/               # NetworkModule (Hilt)
+│   │       └── di/               # NetworkModule, @PlainOkHttp, @YouTubeApiOkHttp (Hilt)
 │   │
 │   ├── auth/                     # Authentication & PIN management
 │   │   └── src/main/java/.../
@@ -395,19 +398,25 @@ The domain layer. Contains:
 ### core:database
 
 Room database layer:
-- `YouTubeWhitelistDatabase` (version 2, 4 entities)
-- 4 DAOs with 38 methods total
+- `YouTubeWhitelistDatabase` (version 3, 5 entities)
+- 5 DAOs (ParentAccount, KidProfile, WhitelistItem, WatchHistory, CachedChannelVideo)
 - Type converters for enums
 - Composite indices for performance
+- `CachedChannelVideoEntity` — composite PK `(channelId, videoId)` for lazy loading cache
 - `fallbackToDestructiveMigration` (appropriate for pre-production)
 
 ### core:network
 
-YouTube API client:
-- `YouTubeApiService` — 5 Retrofit endpoints
+YouTube API client + free endpoints (Hybrid Strategy E):
+- `YouTubeApiService` — 5 Retrofit endpoints (YouTube Data API v3)
+- `OEmbedService` — Free video/playlist metadata (youtube.com/oembed, 0 quota)
+- `RssFeedParser` — Free channel video listing (RSS/Atom feeds, 0 quota, XXE-protected)
+- `InvidiousApiService` + `InvidiousInstanceManager` — Fallback API (round-robin instances, health tracking)
 - DTOs with `@Serializable` (kotlinx-serialization)
-- `ApiKeyInterceptor` — Appends API key to all requests
+- `ApiKeyInterceptor` — Appends API key to YouTube API requests only (`@YouTubeApiOkHttp`)
+- `@PlainOkHttp` — Clean OkHttpClient for oEmbed/RSS/Invidious (no API key)
 - HTTP logging interceptor (debug builds only!)
+- Built-in fallback API key for F-Droid compatibility
 
 ### core:auth
 
@@ -570,7 +579,29 @@ abstract class DataModule {
 
 ---
 
-## 10. Network Layer (YouTube API)
+## 10. Network Layer (Hybrid Strategy E)
+
+### Architecture
+
+Since v1.1.0, the app uses a hybrid network strategy with multiple data sources:
+
+```
+HybridYouTubeRepositoryImpl (main binding for YouTubeApiRepository)
+├── OEmbedService (free, 0 quota) — video/playlist metadata
+├── RssFeedParser (free, 0 quota) — channel video listing (first page)
+├── YouTubeApiService (1 unit/call) — channels, pagination
+└── InvidiousApiService (free fallback) — all operations when API fails
+```
+
+**Fallback chain per operation:**
+| Operation | 1st (Free) | 2nd (API) | 3rd (Fallback) |
+|-----------|-----------|-----------|----------------|
+| Video metadata | oEmbed | videos.list | Invidious |
+| Playlist metadata | oEmbed | playlists.list | Invidious |
+| Channel metadata | — | channels.list | Invidious |
+| Channel videos (page 1) | RSS | playlistItems.list | Invidious |
+| Channel videos (page 2+) | — | playlistItems.list | Invidious |
+| Kid search | Room DB (local) | — | — |
 
 ### API Service (Retrofit)
 
@@ -586,26 +617,28 @@ interface YouTubeApiService {
 
 ### API Quota Management
 
-YouTube Data API v3 has a **10,000 units/day** quota:
+YouTube Data API v3 has a **10,000 units/day** quota. Most operations now cost **0 units** via free endpoints:
 
-| Endpoint | Cost | Notes |
-|----------|------|-------|
-| `channels.list` | 1 unit | Per channel lookup |
-| `videos.list` | 1 unit | Per video lookup |
-| `playlists.list` | 1 unit | Per playlist lookup |
-| `playlistItems.list` | 1 unit | Per page (50 items) |
-| `search.list` | **100 units** | Expensive! |
+| Endpoint | Cost | Free Alternative | Notes |
+|----------|------|------------------|-------|
+| `channels.list` | 1 unit | Invidious (fallback) | Only for channel + @handle resolution |
+| `videos.list` | 1 unit | **oEmbed (0 cost)** | oEmbed is primary source |
+| `playlists.list` | 1 unit | **oEmbed (0 cost)** | oEmbed is primary source |
+| `playlistItems.list` | 1 unit/page | **RSS (0 cost, first page)** | RSS for first 15 videos |
+| `search.list` | ~~100 units~~ | **Removed from kid mode** | Local Room DB only (v1.1.0) |
 
 **Quota protection measures:**
+- oEmbed/RSS handle ~90% of operations at 0 quota cost
+- Kid search is local-only (Room DB, 0 quota)
 - Check for duplicates BEFORE making API calls
-- Channel video search limited to max 3 channels per query (300 units max)
-- No unnecessary re-fetches
+- Built-in fallback API key for F-Droid builds
 
 ### OkHttp Configuration
 
-- `ApiKeyInterceptor` appends `key=API_KEY` query parameter to all requests
-- HTTP logging interceptor added **only in debug builds** (API key appears in URL!)
-- Base URL: `https://www.googleapis.com/youtube/v3/`
+Two OkHttpClient instances:
+- `@YouTubeApiOkHttp` — `ApiKeyInterceptor` + debug-only logging (for YouTube API)
+- `@PlainOkHttp` — No interceptors (for oEmbed, RSS, Invidious)
+- YouTube API base URL: `https://www.googleapis.com/youtube/v3/`
 
 ### URL Parser
 
@@ -742,7 +775,34 @@ fun signIn() {
 }
 ```
 
-### Pattern 5: Fire-and-Forget with Job Tracking
+### Pattern 5: Room Cache as Single Source of Truth (Lazy Loading)
+
+Used for channel detail — API writes to Room, UI reads from Room Flow:
+
+```kotlin
+// Room Flow auto-updates UI when new videos are cached
+val videosFlow = _searchQuery
+    .debounce(300)
+    .flatMapLatest { query ->
+        if (query.isBlank()) cacheRepository.getVideosByChannel(channelId)
+        else cacheRepository.searchVideosInChannel(channelId, query)
+    }
+
+// API fetches write to Room, Flow auto-emits
+fun loadMore() {
+    viewModelScope.launch {
+        val result = apiRepository.getPlaylistItemsPage(playlistId, nextPageToken)
+        if (result is AppResult.Success) {
+            cacheRepository.cacheVideos(channelId, result.data.videos)
+            // Room Flow auto-updates → UI receives new videos
+        }
+    }
+}
+```
+
+**Infinite scroll**: `LaunchedEffect(Unit)` in trailing `item{}` triggers `loadMore()` when visible.
+
+### Pattern 6: Fire-and-Forget with Job Tracking
 
 When mixing reactive Flow collection with one-shot API calls:
 
@@ -1024,12 +1084,16 @@ Key rules in `app/proguard-rules.pro`:
 - **DisposableEffect key should match content ID** (e.g., `youtubeId`) for cleanup on navigation
 - **WebView ref: use `mutableStateOf<WebView?>(null)`**, NOT `mutableListOf` (accumulates on recomposition)
 
-### YouTube API
+### YouTube API / Hybrid Network
 
+- **oEmbed/RSS free endpoints** handle most operations at 0 quota cost (v1.1.0)
+- **Kid search is local-only** (Room DB) — YouTube Search API removed from kid mode
 - **Check duplicates BEFORE API calls** — saves quota
-- **YouTube Search API costs 100 units/call** — limit channel searches to max 3 per query
 - **`/c/CustomName` URLs** → use `forHandle` API (YouTube maps these to `@handles`)
 - **URL-decode query parameters** in URL parser using `java.net.URLDecoder`
+- **Invidious fallback**: Only penalize instances on IOException, not parsing errors
+- **RSS**: Only works with channel IDs (not @handles), max 15 videos, no pagination
+- **`@Upsert` in Room** matches on PRIMARY KEY only — use composite PK for cache table
 
 ### Hilt/DI
 

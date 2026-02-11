@@ -1,0 +1,6 @@
+• Hybrid API strategy: oEmbed + RSS free endpoints reduce quota by ~95%
+• Invidious fallback when YouTube API unavailable
+• Channel lazy loading with infinite scroll (50 videos/page)
+• In-channel search (local, 0 API quota)
+• Kid search now local-only (faster, no API cost)
+• Built-in API key for F-Droid compatibility

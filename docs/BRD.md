@@ -1,7 +1,7 @@
 # Business Requirements Document (BRD)
 
 **Project**: YouTubeWhitelist
-**Version**: 1.0.0
+**Version**: 1.1.0
 **Last Updated**: 2026-02-10
 
 ---
@@ -192,7 +192,7 @@ The app must be available across multiple distribution channels.
 
 | Constraint | Impact | Mitigation |
 |-----------|--------|------------|
-| YouTube Data API v3 quota: 10,000 units/day | Limits number of API calls | Duplicate checks before API calls; search limited to 3 channels; cache results in Room |
+| YouTube Data API v3 quota: 10,000 units/day | Limits number of API calls | Hybrid strategy: oEmbed/RSS free endpoints for most operations; kid search is local-only (0 quota); Invidious fallback; built-in API key |
 | Google blocks OAuth in embedded WebViews | Cannot use WebView for sign-in | Chrome Custom Tabs (standard browser approach) |
 | YouTube IFrame Player API for playback | No native player control | JavaScript bridges for player events |
 | No backend server | No push notifications, no cloud sync | All data local; export/import for data portability |
@@ -216,12 +216,12 @@ The app must be available across multiple distribution channels.
 
 | Metric | Target | Actual |
 |--------|--------|--------|
-| Unit tests | Comprehensive coverage | 378+ tests, all green |
+| Unit tests | Comprehensive coverage | 401+ tests, all green |
 | Release APK size | < 5 MB | 2.4 MB |
 | Release AAB size | < 10 MB | 5.2 MB |
 | Feature completeness | All M1–M6 milestones | 100% complete |
 | Supported URL formats | All major YouTube URL patterns | 10+ patterns |
-| Database entities | Match PRD data model | 4 entities, exact match |
+| Database entities | Match PRD data model | 5 entities (4 domain + 1 cache) |
 | Module count | Clean Architecture separation | 10 modules |
 
 ### User-Facing Metrics (post-launch)

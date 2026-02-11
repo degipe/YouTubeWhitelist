@@ -1,7 +1,7 @@
 # Functional Specification (FS)
 
 **Project**: YouTubeWhitelist
-**Version**: 1.0.0
+**Version**: 1.1.0
 **Last Updated**: 2026-02-10
 
 ---
@@ -158,21 +158,20 @@
 | ID | Requirement |
 |----|------------|
 | FR-07.1 | Search input with 300ms debounce |
-| FR-07.2 | Local search: matches whitelist item titles and channel titles (SQL LIKE) |
-| FR-07.3 | API search: searches within whitelisted channels' videos via YouTube Search API |
-| FR-07.4 | Maximum 3 channels searched per query (quota protection: 300 units max) |
-| FR-07.5 | Results deduplicated by YouTube ID (local takes precedence) |
-| FR-07.6 | API search results displayed with "search-" ID prefix to prevent key conflicts |
-| FR-07.7 | TextField shows immediate input state; results use debounced state |
+| FR-07.2 | **Kid Search**: Local-only — matches whitelist item titles and channel titles (Room SQL LIKE, 0 API quota) |
+| FR-07.3 | **Channel Detail Search**: Local search within cached channel videos (Room SQL LIKE, 0 API quota) |
+| FR-07.4 | TextField shows immediate input state; results use debounced state |
 
 ### FR-08: Channel & Playlist Browsing
 
 | ID | Requirement |
 |----|------------|
-| FR-08.1 | Channel Detail shows all whitelisted videos from that channel |
-| FR-08.2 | Playlist Detail fetches and displays playlist items via YouTube API |
-| FR-08.3 | Playlist items are paginated (50 per page) |
-| FR-08.4 | Tapping any item navigates to Video Player |
+| FR-08.1 | Channel Detail fetches videos via hybrid fallback chain (RSS → YouTube API → Invidious) |
+| FR-08.2 | Channel videos use infinite scroll (lazy loading, 50 per page) with Room cache as single source of truth |
+| FR-08.3 | Channel Detail includes in-channel search bar (Room SQL LIKE on cached videos, 0 quota) |
+| FR-08.4 | Playlist Detail fetches and displays playlist items via YouTube API |
+| FR-08.5 | Playlist items are paginated (50 per page) |
+| FR-08.6 | Tapping any item navigates to Video Player |
 
 ### FR-09: Sleep Timer
 
@@ -345,14 +344,12 @@ flowchart TD
     A[Kid taps search icon] --> B[Search Screen]
     B --> C[Type query in TextField]
     C --> D[300ms debounce]
-    D --> E[Local DB search: title + channelTitle LIKE]
-    D --> F[API search: up to 3 whitelisted channels]
-    E --> G[Combine results]
-    F --> G
-    G --> H[Deduplicate by youtubeId]
-    H --> I[Display search results grid]
-    I --> J[Tap result → Video Player]
+    D --> E[Local Room DB search: title + channelTitle LIKE]
+    E --> F[Display search results grid]
+    F --> G[Tap result → Video Player]
 ```
+
+> **Note**: Kid search is local-only since v1.1.0 (0 API quota). YouTube Search API was removed from kid mode to reduce quota consumption.
 
 ---
 
@@ -402,8 +399,8 @@ flowchart TD
 | Field | Type | Description |
 |-------|------|-------------|
 | `query` | `String` | Current search text (non-debounced) |
-| `results` | `List<WhitelistItem>` | Combined local + API results |
-| `isSearching` | `Boolean` | API search in progress |
+| `results` | `List<WhitelistItem>` | Local search results (Room DB only) |
+| `isSearching` | `Boolean` | Search in progress |
 
 ### SleepModeUiState
 
