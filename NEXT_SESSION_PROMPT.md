@@ -1,15 +1,13 @@
-# Session 24 Starting Prompt
+# Session 25 Starting Prompt
 
-Ez a 24. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
+Ez a 25. fejlesztési session. Olvasd be a CLAUDE.md fájlt a projekt kontextushoz és az előző sessionök összefoglalójához.
 
-## Előző Session (23) Összefoglaló
+## Előző Session (24) Összefoglaló
 
-GitHub Release v1.1.0 + F-Droid RFP + Play Store regisztráció:
+F-Droid RFP újra beadása a helyes repo-ba:
 
-- **GitHub Release v1.1.0**: https://github.com/degipe/YouTubeWhitelist/releases/tag/v1.1.0 (tag + APK)
-- **F-Droid RFP #3794**: https://gitlab.com/fdroid/fdroiddata/-/issues/3794 (beadva)
-- **Play Console fiók**: Peter Degi, személyes fiók, $25 fizetve, ID: 4768413512690805008
-- **Device verification BLOCKED**: /e/OS (microG) + emulátor sem megy — fizikai Google-ös Android telefon kell
+- **F-Droid RFP #3586**: https://gitlab.com/fdroid/rfp/-/issues/3586 (helyes repo: `fdroid/rfp`)
+- Régi #3794 (`fdroid/fdroiddata`) lezárva — rossz repo volt
 
 ## Mi van kész
 
@@ -18,7 +16,7 @@ GitHub Release v1.1.0 + F-Droid RFP + Play Store regisztráció:
 - Strategy E (Hybrid + Invidious fallback) implementálva
 - Channel lazy loading + Room cache + helyi keresés — emulátoron verifikálva
 - GitHub Release v1.0.0 + v1.1.0
-- F-Droid RFP #3794 beadva
+- F-Droid RFP #3586 beadva (fdroid/rfp, helyes repo)
 - Play Console fiók létrehozva (device verification pending)
 - Privacy Policy (GitHub Pages)
 - GCP API key: YouTube Data API v3 only restriction
@@ -37,7 +35,7 @@ GitHub Release v1.1.0 + F-Droid RFP + Play Store regisztráció:
 2. **Play Store app submission** — a verification után:
    - App létrehozás, store listing, content rating, data safety
    - AAB feltöltés, publish
-3. **F-Droid RFP nyomon követés** — várni az F-Droid maintainerek válaszát
+3. **F-Droid RFP #3586 nyomon követés** — várni az F-Droid maintainerek válaszát (fdroid/rfp)
 
 ### Megjegyzések
 
@@ -48,5 +46,6 @@ GitHub Release v1.1.0 + F-Droid RFP + Play Store regisztráció:
   - AAB: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew bundleRelease`
 - **GCP Project**: `youtubewhitelist-486917`
 - **Play Console fiók ID**: 4768413512690805008
+- **F-Droid repo-k**: `fdroid/rfp` (RFP), `fdroid/fdroiddata` (build recipes) — ne keverd össze!
 - Kommunikáció magyarul, dokumentáció angolul
 - A session végén: CLAUDE.md frissítés, NEXT_SESSION_PROMPT.md frissítés, git push

@@ -67,109 +67,6 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 
 ## Session Logs
 
-### Session 19 - 2026-02-10: Strategy E Implementation (Hybrid + Invidious Fallback)
-
-**Objectives**: Implement Strategy E — oEmbed/RSS free endpoints + YouTube API + Invidious fallback. Built-in API key for F-Droid compatibility.
-
-**Completed**:
-- **Phase 1: oEmbed Service** (FREE video/playlist metadata):
-  - `OEmbedResponse` data class (kotlinx.serialization)
-  - `OEmbedService` Retrofit interface (base URL: `youtube.com/oembed`)
-  - 4 unit tests (video, playlist, channelId extraction, unknown fields)
-
-- **Phase 2: RSS Feed Parser** (FREE channel video list):
-  - `RssVideoEntry` data class (videoId, title, thumbnail, channel, published)
-  - `RssFeedParser` with `javax.xml.parsers.DocumentBuilderFactory` (namespace-aware, XXE-protected)
-  - `fetchChannelVideos(channelId)` → last 15 videos, no API key needed
-  - 5 unit tests (valid XML, empty, malformed, missing videoId, thumbnail URL)
-
-- **Phase 3: Invidious API Service** (fallback):
-  - `InvidiousDto` — 5 @Serializable data classes (Video, Channel, Playlist, PlaylistVideo, Thumbnail)
-  - `InvidiousApiService` — HTTP client with dynamic base URL (getVideo, getChannel, getPlaylist, resolveChannel)
-  - `InvidiousInstanceManager` — round-robin instance rotation, health tracking (max 2 failures, 5 min reset), thread-safe (@Synchronized)
-  - 6 unit tests (healthy instance, round-robin, failure skip, all down, health reset, success reset)
-
-- **Phase 4: HybridYouTubeRepositoryImpl** (fallback chain):
-  - Replaces `YouTubeApiRepositoryImpl` as the Hilt binding for `YouTubeApiRepository`
-  - Fallback chain per method: oEmbed/RSS → YouTube API → Invidious → Error
-  - `OEmbedMapper` — maps oEmbed response to domain models (Video, Playlist)
-  - `InvidiousMapper` — maps Invidious DTOs to domain models (Video, Channel, Playlist, PlaylistVideo)
-  - `extractChannelIdFromUploadsPlaylist()` — converts UU→UC prefix for RSS channel resolution
-  - IOException-specific failure tracking (parsing errors don't penalize Invidious instances)
-  - 13 unit tests covering all fallback chains
-
-- **Phase 5: DI & Build Changes**:
-  - `@PlainOkHttp` and `@YouTubeApiOkHttp` Hilt qualifiers
-  - `NetworkModule` updated: 2 OkHttpClients, oEmbed/RSS/Invidious providers
-  - `DataModule` binding: `HybridYouTubeRepositoryImpl` → `YouTubeApiRepository`
-  - `app/build.gradle.kts`: built-in fallback API key for F-Droid builds
-
-- **Code Review Fixes**:
-  - XXE protection in RssFeedParser (6 security features disabled)
-  - @Synchronized on InvidiousInstanceManager methods (thread safety)
-  - IOException-only failure tracking in withInvidiousFallback (parsing errors don't penalize instances)
-  - ProGuard rules for oEmbed + Invidious DTOs and OEmbedService Retrofit interface
-
-**Architecture**:
-```
-YouTubeApiRepository (interface — unchanged)
-  └── HybridYouTubeRepositoryImpl (NEW)
-        ├── OEmbedService (free, Retrofit)
-        ├── RssFeedParser (free, XML)
-        ├── YouTubeApiService (existing, with quota)
-        └── InvidiousApiService (fallback, dynamic base URL)
-```
-
-**Fallback chain**:
-| Method | Free | API | Invidious |
-|--------|------|-----|-----------|
-| getVideoById | oEmbed | videos.list | /api/v1/videos |
-| getPlaylistById | oEmbed | playlists.list | /api/v1/playlists |
-| getChannelById | — | channels.list | /api/v1/channels |
-| getChannelByHandle | — | channels.list (forHandle) | /api/v1/resolveurl |
-| getPlaylistItems | RSS (UU→UC) | playlistItems.list | /api/v1/channels or /playlists |
-
-**Files Created** (16):
-- `core/network/.../oembed/OEmbedResponse.kt`
-- `core/network/.../oembed/OEmbedService.kt`
-- `core/network/.../rss/RssVideoEntry.kt`
-- `core/network/.../rss/RssFeedParser.kt`
-- `core/network/.../invidious/InvidiousDto.kt`
-- `core/network/.../invidious/InvidiousApiService.kt`
-- `core/network/.../invidious/InvidiousInstanceManager.kt`
-- `core/network/.../di/PlainOkHttp.kt`
-- `core/network/.../di/YouTubeApiOkHttp.kt`
-- `core/data/.../repository/impl/HybridYouTubeRepositoryImpl.kt`
-- `core/data/.../mapper/OEmbedMapper.kt`
-- `core/data/.../mapper/InvidiousMapper.kt`
-- `core/network/src/test/.../oembed/OEmbedResponseTest.kt` (4 tests)
-- `core/network/src/test/.../rss/RssFeedParserTest.kt` (5 tests)
-- `core/network/src/test/.../invidious/InvidiousInstanceManagerTest.kt` (6 tests)
-- `core/data/src/test/.../repository/impl/HybridYouTubeRepositoryImplTest.kt` (13 tests)
-
-**Files Modified** (3):
-- `core/network/.../di/NetworkModule.kt` (qualifiers, 5 new providers)
-- `core/data/.../di/DataModule.kt` (HybridYouTubeRepositoryImpl binding)
-- `app/build.gradle.kts` (built-in fallback API key)
-- `app/proguard-rules.pro` (oEmbed + Invidious ProGuard rules)
-
-**Decisions Made**:
-- `YouTubeApiRepository` interface unchanged — ViewModels don't need modification
-- `YouTubeApiRepositoryImpl` kept as-is (used by WhitelistRepositoryImpl tests)
-- Built-in API key in source code (not secret — visible in every APK)
-- oEmbed returns less data than API (no duration/description/subscriberCount) — empty/null fields
-- RSS only for uploads playlists (UU prefix → UC channel ID conversion)
-- Invidious instance list: vid.puffyan.us, yewtu.be, invidious.namazso.eu, inv.nadeko.net
-
-**Test Stats**: 413 tests, all green (373 existing + 28 new + 12 oEmbed/RSS/Invidious)
-
-**Notes**:
-- Session 14 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-14)
-- Most YouTube operations now cost 0 API units (oEmbed/RSS)
-- Only @handle resolution and direct channel lookup use API quota (1 unit each)
-- Invidious fallback activates on IOException only — parsing errors don't penalize instances
-- XXE protection: 6 security features disabled in DocumentBuilderFactory
-
 ### Session 20 - 2026-02-10: Channel Video Lazy Loading + Room Cache + Search
 
 **Objectives**: Implement infinite scroll (lazy loading) for channel detail, Room cache as single source of truth, local search in cached videos (0 API quota).
@@ -374,8 +271,8 @@ Search: Room SQL LIKE query (0 API quota)
 
 - **F-Droid RFP (Request for Packaging)**:
   - Issue #3794 submitted on GitLab fdroiddata repo via Playwright browser automation
-  - Includes: app name, source code, license (GPL-3.0-only), description, features, anti-features (NonFreeNet), build info
-  - URL: https://gitlab.com/fdroid/fdroiddata/-/issues/3794
+  - **Wrong repo** — linsui closed it, correct repo is `fdroid/rfp` (fixed in Session 24)
+  - URL: https://gitlab.com/fdroid/fdroiddata/-/issues/3794 (CLOSED)
 
 - **Google Play Developer Account**:
   - Registration started at play.google.com/console/signup
@@ -418,3 +315,41 @@ Search: Room SQL LIKE query (0 API quota)
 - Play Console app split APKs: `install-multiple` command needed for sideloading
 - Google Play developer verification chain: device → phone number → identity (sequential, can't skip)
 - Emulator AVD config: `PlayStore.enabled=yes`, `tag.id=google_apis_playstore`, `image.sysdir.1=system-images/android-34/google_apis_playstore/arm64-v8a/`
+
+### Session 24 - 2026-02-12: F-Droid RFP Resubmission (Correct Repo)
+
+**Objectives**: Resubmit F-Droid RFP to the correct repo (`fdroid/rfp`) after the original submission to `fdroid/fdroiddata` was closed by maintainer linsui.
+
+**Completed**:
+- **F-Droid RFP #3586** submitted to correct repo `fdroid/rfp`:
+  - All 3 applicable checkboxes checked (inclusion criteria, not already listed, author notified)
+  - Template sections filled: source code, GitHub Release link, GPL-3.0-only, Internet category
+  - Full description with features, privacy, anti-features (NonFreeNet), build information
+  - URL: https://gitlab.com/fdroid/rfp/-/issues/3586
+
+- **References updated**:
+  - `NEXT_SESSION_PROMPT.md`: F-Droid RFP link updated to #3586
+  - `docs/PLAY_STORE_SUBMISSION.md`: F-Droid RFP link updated to #3586
+
+- **Archive**: Session 19 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-19)
+
+**Decisions Made**:
+- F-Droid RFP goes to `fdroid/rfp` repo (Request for Packaging), NOT `fdroid/fdroiddata` (recipe data)
+- Category: "Internet" (F-Droid standard category for network-dependent apps)
+
+**Files Modified**:
+- `NEXT_SESSION_PROMPT.md` (F-Droid RFP link #3794 → #3586)
+- `docs/PLAY_STORE_SUBMISSION.md` (F-Droid RFP link #3794 → #3586)
+
+**Session Files**:
+- `CLAUDE.md` (Session 19 archived, Session 24 added, Session 23 F-Droid note updated)
+- `CLAUDE_ARCHIVE_2.md` (Session 19 added, now contains sessions 11-19)
+- `ARCHITECTURE.md` (Session 24 entry)
+- `NEXT_SESSION_PROMPT.md` (updated for Session 25)
+
+**Test Stats**: ~401 tests, all green (no code changes)
+
+**Notes**:
+- F-Droid RFP correct repo: `gitlab.com/fdroid/rfp` (NOT `fdroid/fdroiddata`)
+- Old issue #3794 on fdroiddata is closed — new issue #3586 on rfp is the active one
+- Lesson learned: F-Droid has separate repos: `fdroiddata` (build recipes), `rfp` (packaging requests)

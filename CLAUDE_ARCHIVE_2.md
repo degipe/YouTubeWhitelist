@@ -1,4 +1,4 @@
-# YouTubeWhitelist - Session Archive 2 (Sessions 11-18)
+# YouTubeWhitelist - Session Archive 2 (Sessions 11-19)
 
 ### Session 11 - 2026-02-09: M7 - Google Cloud Setup + AAB Build
 
@@ -179,3 +179,22 @@
 - **GCP API Key Restriction Fix**: removed Android app restriction, kept YouTube Data API v3 only
 
 **Test Stats**: 373+ tests, all green
+
+### Session 19 - 2026-02-10: Strategy E Implementation (Hybrid + Invidious Fallback)
+
+**Objectives**: Implement Strategy E — oEmbed/RSS free endpoints + YouTube API + Invidious fallback. Built-in API key for F-Droid compatibility.
+
+**Completed**:
+- **oEmbed Service**: FREE video/playlist metadata via `youtube.com/oembed` (Retrofit, 4 tests)
+- **RSS Feed Parser**: FREE channel video list via XML feeds, XXE-protected (5 tests)
+- **Invidious API Service**: Fallback with round-robin instance rotation, health tracking (6 tests)
+- **HybridYouTubeRepositoryImpl**: Replaces YouTubeApiRepositoryImpl, fallback chain: oEmbed/RSS → YouTube API → Invidious (13 tests)
+- **DI & Build**: `@PlainOkHttp`/`@YouTubeApiOkHttp` qualifiers, built-in fallback API key for F-Droid
+- **Code Review**: XXE protection, @Synchronized, IOException-only failure tracking, ProGuard rules
+
+**Architecture**: `YouTubeApiRepository` → `HybridYouTubeRepositoryImpl` (OEmbedService + RssFeedParser + YouTubeApiService + InvidiousApiService)
+
+**Files Created**: 16 (6 source + 4 mapper + 6 test files)
+**Files Modified**: NetworkModule, DataModule, build.gradle.kts, proguard-rules.pro
+
+**Test Stats**: 413 tests, all green

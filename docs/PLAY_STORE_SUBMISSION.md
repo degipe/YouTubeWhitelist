@@ -143,7 +143,7 @@ Fill in the data safety form:
 - The app uses YouTube Data API v3 which requires an API key built into the APK
 - OAuth consent screen has been published to Production mode in GCP Console
 - API key is restricted to YouTube Data API v3 only (no application restriction — needed for multi-device support)
-- F-Droid RFP submitted: https://gitlab.com/fdroid/fdroiddata/-/issues/3794
+- F-Droid RFP submitted: https://gitlab.com/fdroid/rfp/-/issues/3586
 - GitHub Release v1.1.0: https://github.com/degipe/YouTubeWhitelist/releases/tag/v1.1.0
 
 ## Assets Ready
