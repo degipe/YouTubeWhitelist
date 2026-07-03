@@ -39,6 +39,7 @@ Whitelist-based YouTube client for kids. Android app (Kotlin + Jetpack Compose) 
 - **Test-driven**: Write tests first, implementation second
 - **Ask if uncertain**: Never assume, always clarify
 - **Session-based**: Development proceeds in sessions, each documented
+- **Room migration rule**: Any `@Database version` bump in `core:database` REQUIRES a real `Migration` appended to `Migrations.ALL` (`core/database/.../migration/Migrations.kt`) plus a migration test in `core/database/src/androidTest/.../migration/MigrationTest.kt`. `fallbackToDestructiveMigration()` stays wired as a crash-prevention safety net only — it is NOT a substitute for a real migration (it wipes all user data).
 
 ## Session Workflow
 At end of each session:

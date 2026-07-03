@@ -13,6 +13,7 @@ import io.github.degipe.youtubewhitelist.core.database.dao.KidProfileDao
 import io.github.degipe.youtubewhitelist.core.database.dao.ParentAccountDao
 import io.github.degipe.youtubewhitelist.core.database.dao.WatchHistoryDao
 import io.github.degipe.youtubewhitelist.core.database.dao.WhitelistItemDao
+import io.github.degipe.youtubewhitelist.core.database.migration.Migrations
 import javax.inject.Singleton
 
 @Module
@@ -26,7 +27,9 @@ object DatabaseModule {
             context,
             YouTubeWhitelistDatabase::class.java,
             "youtubewhitelist.db"
-        ).fallbackToDestructiveMigration()
+        )
+            .addMigrations(*Migrations.ALL)
+            .fallbackToDestructiveMigration() // last-resort safety net; every real bump MUST ship a Migration above
             .build()
     }
 

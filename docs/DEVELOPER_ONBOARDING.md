@@ -403,7 +403,9 @@ Room database layer:
 - Type converters for enums
 - Composite indices for performance
 - `CachedChannelVideoEntity` — composite PK `(channelId, videoId)` for lazy loading cache
-- `fallbackToDestructiveMigration` (appropriate for pre-production)
+- Schema export enabled (`room.schemaLocation` → `core/database/schemas/`), `3.json` committed as migration baseline
+- `migration/Migrations.kt` — `Migrations.ALL` array, wired via `.addMigrations(*Migrations.ALL)` before `.fallbackToDestructiveMigration()`
+- **Migration rule: any `@Database version` bump REQUIRES a real `Migration` added to `Migrations.ALL` + a migration test in `androidTest/.../migration/MigrationTest.kt`. `fallbackToDestructiveMigration()` is kept only as a crash-prevention safety net, not a migration strategy — relying on it wipes all user data (whitelists, profiles, watch history).**
 
 ### core:network
 
@@ -536,7 +538,7 @@ ParentAccount (1) ──→ (N) KidProfile (1) ──→ (N) WhitelistItem
 - **Composite unique index** on `(kidProfileId, youtubeId)` in whitelist items prevents duplicates at DB level
 - **CASCADE delete** on foreign keys: deleting a profile removes all its whitelist items and watch history
 - **UUID primary keys**: Generated via `java.util.UUID.randomUUID().toString()`
-- **Version 2** with `fallbackToDestructiveMigration()` — acceptable for pre-production
+- **Version 3**, schema exported to `core/database/schemas/`; real `Migration`s go in `Migrations.ALL`, `fallbackToDestructiveMigration()` retained only as a last-resort safety net (see §core:database above)
 
 ---
 
