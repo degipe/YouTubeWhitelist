@@ -28,7 +28,8 @@ data class ChannelDetailUiState(
     val isLoading: Boolean = true,
     val isLoadingMore: Boolean = false,
     val error: String? = null,
-    val hasMorePages: Boolean = false
+    val hasMorePages: Boolean = false,
+    val loadMoreFailed: Boolean = false
 )
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -58,7 +59,8 @@ class ChannelDetailViewModel @AssistedInject constructor(
         val isLoading: Boolean = true,
         val isLoadingMore: Boolean = false,
         val error: String? = null,
-        val hasMorePages: Boolean = false
+        val hasMorePages: Boolean = false,
+        val loadMoreFailed: Boolean = false
     )
 
     private val _controlState = MutableStateFlow(ControlState())
@@ -83,7 +85,8 @@ class ChannelDetailViewModel @AssistedInject constructor(
             isLoading = ctrl.isLoading,
             isLoadingMore = ctrl.isLoadingMore,
             error = ctrl.error,
-            hasMorePages = ctrl.hasMorePages
+            hasMorePages = ctrl.hasMorePages,
+            loadMoreFailed = ctrl.loadMoreFailed
         )
     }.stateIn(
         scope = viewModelScope,
@@ -100,10 +103,11 @@ class ChannelDetailViewModel @AssistedInject constructor(
     }
 
     fun loadMore() {
+        if (_searchQuery.value.isNotBlank()) return // M5: no pagination/quota use during search
         val token = nextPageToken
         if (token == null || _controlState.value.isLoadingMore) return
 
-        _controlState.value = _controlState.value.copy(isLoadingMore = true)
+        _controlState.value = _controlState.value.copy(isLoadingMore = true, loadMoreFailed = false)
         viewModelScope.launch {
             val playlistId = uploadsPlaylistId ?: return@launch
             when (val result = youTubeApiRepository.getPlaylistItemsPage(playlistId, token)) {
@@ -113,17 +117,24 @@ class ChannelDetailViewModel @AssistedInject constructor(
                     nextPageToken = page.nextPageToken
                     _controlState.value = _controlState.value.copy(
                         isLoadingMore = false,
-                        hasMorePages = page.nextPageToken != null
+                        hasMorePages = page.nextPageToken != null,
+                        loadMoreFailed = false
                     )
                 }
                 is AppResult.Error -> {
                     _controlState.value = _controlState.value.copy(
                         isLoadingMore = false,
+                        loadMoreFailed = true,
                         error = result.message
                     )
                 }
             }
         }
+    }
+
+    fun retryLoadMore() {
+        _controlState.value = _controlState.value.copy(loadMoreFailed = false)
+        loadMore()
     }
 
     fun onSearchQueryChanged(query: String) {

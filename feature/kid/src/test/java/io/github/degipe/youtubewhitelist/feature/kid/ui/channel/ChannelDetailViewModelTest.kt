@@ -310,4 +310,45 @@ class ChannelDetailViewModelTest {
         assertThat(viewModel.uiState.value.error).isEqualTo("Network error")
         assertThat(viewModel.uiState.value.isLoadingMore).isFalse()
     }
+
+    @Test
+    fun `loadMore is ignored while a search query is active`() = runTest(testDispatcher) {
+        val page1Videos = listOf(makeVideo("v1", "Video 1", 0))
+        coEvery { youTubeApiRepository.getChannelById("UC123") } returns AppResult.Success(testChannel)
+        coEvery { youTubeApiRepository.getPlaylistItemsPage("UU123", null) } returns AppResult.Success(
+            PaginatedPlaylistResult(page1Videos, "PAGE2_TOKEN")
+        )
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onSearchQueryChanged("squid")
+        advanceTimeBy(301)
+        advanceUntilIdle()
+
+        viewModel.loadMore()
+        advanceUntilIdle()
+
+        // no API page fetch should happen for the next-page token while search is active
+        coVerify(exactly = 0) { youTubeApiRepository.getPlaylistItemsPage(any(), "PAGE2_TOKEN") }
+    }
+
+    @Test
+    fun `loadMore error sets loadMoreFailed true`() = runTest(testDispatcher) {
+        val page1Videos = listOf(makeVideo("v1", "Video 1", 0))
+        coEvery { youTubeApiRepository.getChannelById("UC123") } returns AppResult.Success(testChannel)
+        coEvery { youTubeApiRepository.getPlaylistItemsPage("UU123", null) } returns AppResult.Success(
+            PaginatedPlaylistResult(page1Videos, "PAGE2_TOKEN")
+        )
+        coEvery { youTubeApiRepository.getPlaylistItemsPage("UU123", "PAGE2_TOKEN") } returns AppResult.Error("Network error")
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.loadMore()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.loadMoreFailed).isTrue()
+        assertThat(viewModel.uiState.value.isLoadingMore).isFalse()
+    }
 }
