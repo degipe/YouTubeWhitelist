@@ -68,7 +68,9 @@ class WatchHistoryRepositoryImpl @Inject constructor(
         }
 
     override fun getTotalWatchedSecondsTodayFlow(profileId: String): Flow<Int> {
-        return watchHistoryDao.getTotalWatchedSecondsFlow(profileId, startOfToday())
+        // Day boundary is recomputed in SQL on every emission (see WatchHistoryDao) so the
+        // reported total rolls over at local midnight even for a Flow collected across midnight.
+        return watchHistoryDao.getTotalWatchedSecondsTodayFlow(profileId)
     }
 
     private fun startOfToday(): Long {

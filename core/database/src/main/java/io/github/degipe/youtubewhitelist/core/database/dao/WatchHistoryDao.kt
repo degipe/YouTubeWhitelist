@@ -42,4 +42,15 @@ interface WatchHistoryDao {
 
     @Query("SELECT COALESCE(SUM(watchedSeconds), 0) FROM watch_history WHERE kidProfileId = :profileId AND watchedAt >= :sinceTimestamp")
     fun getTotalWatchedSecondsFlow(profileId: String, sinceTimestamp: Long): Flow<Int>
+
+    // Day boundary is computed by SQLite on every emission (strftime('now', 'localtime', 'start of day'))
+    // rather than bound once at Flow creation, so the result rolls over at local midnight for
+    // long-lived collectors (e.g. a kid-mode session that spans midnight). 'localtime' aligns
+    // to the device's system timezone, matching the previous ZoneId.systemDefault() semantics.
+    @Query("""
+        SELECT COALESCE(SUM(watchedSeconds), 0) FROM watch_history
+        WHERE kidProfileId = :profileId
+          AND watchedAt >= (strftime('%s', 'now', 'localtime', 'start of day') * 1000)
+    """)
+    fun getTotalWatchedSecondsTodayFlow(profileId: String): Flow<Int>
 }
