@@ -47,10 +47,15 @@ interface WatchHistoryDao {
     // rather than bound once at Flow creation, so the result rolls over at local midnight for
     // long-lived collectors (e.g. a kid-mode session that spans midnight). 'localtime' aligns
     // to the device's system timezone, matching the previous ZoneId.systemDefault() semantics.
+    // The trailing 'utc' modifier converts the local-looking value back into a true UTC instant:
+    // without it, strftime('%s', ...) re-interprets the 'localtime'-shifted value AS IF it were
+    // already UTC, silently reintroducing the local UTC offset (SQLite's well-known 'localtime'
+    // round-trip trap). watchedAt is stored as a UTC epoch-millis timestamp, so the boundary must
+    // be a UTC epoch-millis timestamp too.
     @Query("""
         SELECT COALESCE(SUM(watchedSeconds), 0) FROM watch_history
         WHERE kidProfileId = :profileId
-          AND watchedAt >= (strftime('%s', 'now', 'localtime', 'start of day') * 1000)
+          AND watchedAt >= (strftime('%s', 'now', 'localtime', 'start of day', 'utc') * 1000)
     """)
     fun getTotalWatchedSecondsTodayFlow(profileId: String): Flow<Int>
 }

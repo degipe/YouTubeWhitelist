@@ -15,6 +15,8 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
@@ -58,12 +60,19 @@ class WatchHistoryDaoTest {
 
     @Test
     fun `getTotalWatchedSecondsTodayFlow excludes rows from before start of today`() = runTest {
-        val now = System.currentTimeMillis()
-        val yesterday = now - TimeUnit.HOURS.toMillis(30) // definitely yesterday, any timezone
-        val earlierToday = now - TimeUnit.HOURS.toMillis(1) // definitely still today
+        // Tight boundary fixtures anchored to ACTUAL local midnight. These deliberately sit only
+        // 30 minutes on either side of the boundary so that a local-UTC-offset bug (e.g. the
+        // SQLite 'localtime' round-trip trap that computes midnight shifted by the device's UTC
+        // offset) causes a visible test failure rather than being masked by wide margins.
+        val localMidnight = LocalDate.now(ZoneId.systemDefault())
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        val yesterday1130pm = localMidnight - TimeUnit.MINUTES.toMillis(30) // 23:30 yesterday
+        val today0030am = localMidnight + TimeUnit.MINUTES.toMillis(30) // 00:30 today
 
-        dao.insert(makeEntry(id = "old", watchedAt = yesterday, watchedSeconds = 500))
-        dao.insert(makeEntry(id = "recent", watchedAt = earlierToday, watchedSeconds = 120))
+        dao.insert(makeEntry(id = "old", watchedAt = yesterday1130pm, watchedSeconds = 500))
+        dao.insert(makeEntry(id = "recent", watchedAt = today0030am, watchedSeconds = 120))
 
         val result = dao.getTotalWatchedSecondsTodayFlow(profileId).first()
 
