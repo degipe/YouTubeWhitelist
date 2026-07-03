@@ -40,9 +40,6 @@ interface WatchHistoryDao {
     """)
     suspend fun getDailyWatchTime(profileId: String, sinceTimestamp: Long): List<DailyWatchAggregate>
 
-    @Query("SELECT COALESCE(SUM(watchedSeconds), 0) FROM watch_history WHERE kidProfileId = :profileId AND watchedAt >= :sinceTimestamp")
-    fun getTotalWatchedSecondsFlow(profileId: String, sinceTimestamp: Long): Flow<Int>
-
     // Day boundary is computed by SQLite on every emission (strftime('now', 'localtime', 'start of day'))
     // rather than bound once at Flow creation, so the result rolls over at local midnight for
     // long-lived collectors (e.g. a kid-mode session that spans midnight). 'localtime' aligns

@@ -91,16 +91,6 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
             ?: AppResult.Error("Failed to fetch playlist items from all sources")
     }
 
-    override suspend fun searchVideosInChannel(
-        channelId: String,
-        query: String
-    ): AppResult<List<PlaylistVideo>> = withContext(ioDispatcher) {
-        // Search was removed from kid mode; this is kept for API compatibility
-        // Only YouTube API supports search — no oEmbed/RSS/Invidious alternative
-        tryApiSearch(channelId, query)
-            ?: AppResult.Error("Search failed")
-    }
-
     // --- oEmbed ---
 
     private suspend fun tryOEmbedVideo(videoId: String): AppResult<YouTubeMetadata.Video>? {
@@ -280,29 +270,6 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
                 )
             }
             AppResult.Success(PaginatedPlaylistResult(videos = videos, nextPageToken = body.nextPageToken))
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private suspend fun tryApiSearch(channelId: String, query: String): AppResult<List<PlaylistVideo>>? {
-        return try {
-            val response = youTubeApiService.search(channelId = channelId, query = query, maxResults = 10)
-            response.closeOnError()
-            if (!response.isSuccessful) return null
-            val items = response.body()?.items.orEmpty()
-            val videos = items.mapNotNull { item ->
-                val videoId = item.id?.videoId ?: return@mapNotNull null
-                val snippet = item.snippet ?: return@mapNotNull null
-                PlaylistVideo(
-                    videoId = videoId,
-                    title = snippet.title,
-                    thumbnailUrl = snippet.thumbnails.bestUrl(),
-                    channelTitle = snippet.channelTitle,
-                    position = 0
-                )
-            }
-            AppResult.Success(videos)
         } catch (_: Exception) {
             null
         }
