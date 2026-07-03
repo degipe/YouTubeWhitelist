@@ -40,11 +40,14 @@ class InvidiousApiService(
 
     private fun fetchJson(url: String): String {
         val request = Request.Builder().url(url).build()
-        val response = okHttpClient.newCall(request).execute()
-        if (!response.isSuccessful) {
-            throw IOException("Invidious API error: ${response.code}")
+        // .use { } guarantees the response body is closed even when we throw on error,
+        // releasing the underlying connection back to OkHttp's pool.
+        okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Invidious API error: ${response.code}")
+            }
+            return response.body?.string() ?: throw IOException("Empty response body")
         }
-        return response.body?.string() ?: throw IOException("Empty response body")
     }
 
     @kotlinx.serialization.Serializable

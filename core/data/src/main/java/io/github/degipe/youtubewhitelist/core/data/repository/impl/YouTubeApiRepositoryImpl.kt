@@ -11,6 +11,7 @@ import io.github.degipe.youtubewhitelist.core.network.dto.ChannelDto
 import io.github.degipe.youtubewhitelist.core.network.dto.PlaylistDto
 import io.github.degipe.youtubewhitelist.core.network.dto.ThumbnailSet
 import io.github.degipe.youtubewhitelist.core.network.dto.VideoDto
+import io.github.degipe.youtubewhitelist.core.network.util.closeOnError
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -25,6 +26,7 @@ class YouTubeApiRepositoryImpl @Inject constructor(
         withContext(ioDispatcher) {
             safeApiCall {
                 val response = youTubeApiService.getChannels(id = channelId)
+                response.closeOnError()
                 if (!response.isSuccessful) {
                     return@safeApiCall AppResult.Error("API error: ${response.code()}")
                 }
@@ -38,6 +40,7 @@ class YouTubeApiRepositoryImpl @Inject constructor(
         withContext(ioDispatcher) {
             safeApiCall {
                 val response = youTubeApiService.getChannels(forHandle = handle)
+                response.closeOnError()
                 if (!response.isSuccessful) {
                     return@safeApiCall AppResult.Error("API error: ${response.code()}")
                 }
@@ -51,6 +54,7 @@ class YouTubeApiRepositoryImpl @Inject constructor(
         withContext(ioDispatcher) {
             safeApiCall {
                 val response = youTubeApiService.getVideos(id = videoId)
+                response.closeOnError()
                 if (!response.isSuccessful) {
                     return@safeApiCall AppResult.Error("API error: ${response.code()}")
                 }
@@ -64,6 +68,7 @@ class YouTubeApiRepositoryImpl @Inject constructor(
         withContext(ioDispatcher) {
             safeApiCall {
                 val response = youTubeApiService.getPlaylists(id = playlistId)
+                response.closeOnError()
                 if (!response.isSuccessful) {
                     return@safeApiCall AppResult.Error("API error: ${response.code()}")
                 }
@@ -77,6 +82,7 @@ class YouTubeApiRepositoryImpl @Inject constructor(
         withContext(ioDispatcher) {
             safeApiCall {
                 val response = youTubeApiService.getPlaylistItems(playlistId = playlistId)
+                response.closeOnError()
                 if (!response.isSuccessful) {
                     return@safeApiCall AppResult.Error("API error: ${response.code()}")
                 }
@@ -105,6 +111,7 @@ class YouTubeApiRepositoryImpl @Inject constructor(
                 playlistId = playlistId,
                 pageToken = pageToken
             )
+            response.closeOnError()
             if (!response.isSuccessful) {
                 return@safeApiCall AppResult.Error("API error: ${response.code()}")
             }
@@ -135,6 +142,7 @@ class YouTubeApiRepositoryImpl @Inject constructor(
                 query = query,
                 maxResults = 10
             )
+            response.closeOnError()
             if (!response.isSuccessful) {
                 return@safeApiCall AppResult.Error("API error: ${response.code()}")
             }

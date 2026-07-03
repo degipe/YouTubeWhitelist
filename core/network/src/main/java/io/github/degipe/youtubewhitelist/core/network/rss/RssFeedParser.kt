@@ -13,10 +13,13 @@ class RssFeedParser(private val okHttpClient: OkHttpClient) {
         val url = "https://www.youtube.com/feeds/videos.xml?channel_id=$channelId"
         return try {
             val request = Request.Builder().url(url).build()
-            val response = okHttpClient.newCall(request).execute()
-            if (!response.isSuccessful) return emptyList()
-            val body = response.body?.string() ?: return emptyList()
-            parseXml(body)
+            // .use { } guarantees the response body is closed even on error/exception,
+            // releasing the underlying connection back to OkHttp's pool.
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use emptyList()
+                val body = response.body?.string() ?: return@use emptyList()
+                parseXml(body)
+            }
         } catch (_: Exception) {
             emptyList()
         }
