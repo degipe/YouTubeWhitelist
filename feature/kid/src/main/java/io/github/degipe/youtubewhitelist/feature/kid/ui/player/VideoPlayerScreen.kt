@@ -507,6 +507,12 @@ private fun YouTubePlayer(
                     settings.domStorageEnabled = true
                     settings.cacheMode = WebSettings.LOAD_DEFAULT
 
+                    // Security hardening (mirrors WebViewBrowserScreen.kt parent browser settings)
+                    settings.allowFileAccess = false
+                    settings.allowContentAccess = false
+                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    settings.safeBrowsingEnabled = true
+
                     val cookieManager = CookieManager.getInstance()
                     cookieManager.setAcceptCookie(true)
                     cookieManager.setAcceptThirdPartyCookies(this, true)
