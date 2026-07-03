@@ -30,9 +30,9 @@ class GoogleSignInManagerImpl @Inject constructor(
     private var signedIn = false
 
     override suspend fun signIn(activityContext: Context): GoogleSignInResult {
-        val server = OAuthLoopbackServer()
+        val state = UUID.randomUUID().toString()
+        val server = OAuthLoopbackServer(expectedState = state)
         try {
-            val state = UUID.randomUUID().toString()
             val authUrl = OAuthConfig.buildAuthUrl(clientId, state, server.redirectUri)
 
             val customTabsIntent = CustomTabsIntent.Builder().build()

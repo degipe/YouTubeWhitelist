@@ -9,18 +9,30 @@ import java.net.URLDecoder
 /**
  * Lightweight loopback HTTP server for capturing OAuth 2.0 redirect callbacks.
  *
- * Starts a [ServerSocket] on a random available port, waits for the browser
- * to redirect to `http://localhost:{port}/callback?code=...`, extracts the
- * authorization code, sends a "you can close this tab" response, and returns
- * the result.
+ * Starts a [ServerSocket] on a random available port bound to the loopback
+ * address only (127.0.0.1), waits for the browser to redirect to
+ * `http://localhost:{port}/callback?code=...`, extracts the authorization
+ * code, sends a "you can close this tab" response, and returns the result.
+ *
+ * Binding to the loopback address (rather than the wildcard address) ensures
+ * the callback listener is not reachable from other devices on the same
+ * network during the (up to 5 minute) OAuth window.
+ *
+ * The [expectedState] value must match the `state` query parameter Google
+ * echoes back on the redirect. This defends against OAuth login CSRF: without
+ * this check, an attacker who can reach this listener (e.g. another device on
+ * the LAN, before the loopback binding fix) could complete the callback with
+ * their own authorization code and get the victim signed into the attacker's
+ * account.
  *
  * Per RFC 8252 §7.3, Google's authorization server allows any port for
  * loopback IP redirect URIs, so this works with the registered
  * `http://localhost/callback` redirect URI.
  */
-class OAuthLoopbackServer {
+class OAuthLoopbackServer(private val expectedState: String) {
 
-    private val serverSocket: ServerSocket = ServerSocket(0)
+    private val serverSocket: ServerSocket =
+        ServerSocket(0, 0, java.net.InetAddress.getLoopbackAddress())
 
     val port: Int = serverSocket.localPort
     val redirectUri: String = "http://localhost:$port/callback"
@@ -38,6 +50,7 @@ class OAuthLoopbackServer {
                 if (parts.size < 2) return@withContext OAuthCallbackResult.Error("Invalid HTTP request")
 
                 val params = parseQueryParams(parts[1])
+                val returnedState = params["state"]
                 val code = params["code"]
                 val error = params["error"]
 
@@ -53,6 +66,12 @@ class OAuthLoopbackServer {
                 }
                 socket.getOutputStream().write(response.toByteArray())
                 socket.getOutputStream().flush()
+
+                // State mismatch is a security failure and takes precedence over
+                // any code/error the request may also carry (CSRF defense).
+                if (returnedState != expectedState) {
+                    return@withContext OAuthCallbackResult.Error("State mismatch")
+                }
 
                 when {
                     code != null -> OAuthCallbackResult.Success(code)
