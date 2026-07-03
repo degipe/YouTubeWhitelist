@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertThat
 import io.github.degipe.youtubewhitelist.core.auth.google.GoogleSignInManager
 import io.github.degipe.youtubewhitelist.core.auth.google.GoogleSignInResult
 import io.github.degipe.youtubewhitelist.core.auth.token.TokenManager
+import io.github.degipe.youtubewhitelist.core.common.result.AppResult
 import io.github.degipe.youtubewhitelist.core.data.model.AuthState
 import io.github.degipe.youtubewhitelist.core.database.dao.ParentAccountDao
 import io.github.degipe.youtubewhitelist.core.database.entity.ParentAccountEntity
@@ -118,5 +119,39 @@ class AuthRepositoryImplTest {
     @Test
     fun `initial state is Loading`() {
         assertThat(repository.authState.value).isEqualTo(AuthState.Loading)
+    }
+
+    @Test
+    fun `continueWithoutGoogle inserts one local account when none exists`() = runTest(testDispatcher) {
+        coEvery { parentAccountDao.getParentAccountOnce() } returns null
+        val accountSlot = slot<ParentAccountEntity>()
+        coEvery { parentAccountDao.insert(capture(accountSlot)) } returns Unit
+
+        val result = repository.continueWithoutGoogle()
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 1) { parentAccountDao.insert(any()) }
+        assertThat(accountSlot.captured.googleAccountId).isEmpty()
+        assertThat(accountSlot.captured.email).isEmpty()
+        assertThat(accountSlot.captured.pinHash).isEmpty()
+        assertThat(repository.authState.value).isInstanceOf(AuthState.Authenticated::class.java)
+    }
+
+    @Test
+    fun `continueWithoutGoogle does not duplicate an existing account`() = runTest(testDispatcher) {
+        val existing = ParentAccountEntity(
+            id = "existing-id",
+            googleAccountId = "google-id",
+            email = "test@example.com",
+            pinHash = "salt:hash",
+            createdAt = 1000L
+        )
+        coEvery { parentAccountDao.getParentAccountOnce() } returns existing
+
+        val result = repository.continueWithoutGoogle()
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 0) { parentAccountDao.insert(any()) }
+        assertThat(repository.authState.value).isInstanceOf(AuthState.Authenticated::class.java)
     }
 }

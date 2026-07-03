@@ -3,6 +3,7 @@ package io.github.degipe.youtubewhitelist.ui.screen.auth
 import android.content.Context
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import io.github.degipe.youtubewhitelist.core.common.result.AppResult
 import io.github.degipe.youtubewhitelist.core.data.repository.AuthRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -71,5 +72,34 @@ class SignInViewModelTest {
         val state = viewModel.uiState.value
         assertThat(state).isInstanceOf(SignInUiState.Error::class.java)
         assertThat((state as SignInUiState.Error).message).isEqualTo("Network error")
+    }
+
+    @Test
+    fun `continueWithoutGoogle sets loading then success`() = runTest(testDispatcher) {
+        val gate = CompletableDeferred<AppResult<Unit>>()
+        coEvery { authRepository.continueWithoutGoogle() } coAnswers { gate.await() }
+
+        viewModel.uiState.test {
+            assertThat(awaitItem()).isEqualTo(SignInUiState.Idle)
+
+            viewModel.continueWithoutGoogle()
+            assertThat(awaitItem()).isEqualTo(SignInUiState.Loading)
+
+            gate.complete(AppResult.Success(Unit))
+            assertThat(awaitItem()).isEqualTo(SignInUiState.Success)
+        }
+        coVerify { authRepository.continueWithoutGoogle() }
+    }
+
+    @Test
+    fun `continueWithoutGoogle sets error on failure`() = runTest(testDispatcher) {
+        coEvery { authRepository.continueWithoutGoogle() } returns AppResult.Error("Local account creation failed")
+
+        viewModel.continueWithoutGoogle()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertThat(state).isInstanceOf(SignInUiState.Error::class.java)
+        assertThat((state as SignInUiState.Error).message).isEqualTo("Local account creation failed")
     }
 }

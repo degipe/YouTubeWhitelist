@@ -29,6 +29,14 @@ class GoogleSignInManagerImpl @Inject constructor(
     private var signedIn = false
 
     override suspend fun signIn(activityContext: Context): GoogleSignInResult {
+        // Fail fast when the OAuth client id is not configured (e.g. F-Droid builds without
+        // local.properties). Launching the auth URL with an empty client_id would only
+        // result in Google rejecting the request with invalid_request, with no way for the
+        // user to recover — so avoid it entirely and surface a clear error instead.
+        if (clientId.isBlank()) {
+            return GoogleSignInResult.Error("Google sign-in is not configured in this build")
+        }
+
         val state = UUID.randomUUID().toString()
         val pkcePair = PkceGenerator.generate()
         val server = OAuthLoopbackServer(expectedState = state)

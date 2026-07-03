@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.degipe.youtubewhitelist.core.common.result.AppResult
 import io.github.degipe.youtubewhitelist.core.data.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,16 @@ class SignInViewModel @Inject constructor(
                 _uiState.value = SignInUiState.Success
             } catch (e: Exception) {
                 _uiState.value = SignInUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun continueWithoutGoogle() {
+        viewModelScope.launch {
+            _uiState.value = SignInUiState.Loading
+            when (val result = authRepository.continueWithoutGoogle()) {
+                is AppResult.Success -> _uiState.value = SignInUiState.Success
+                is AppResult.Error -> _uiState.value = SignInUiState.Error(result.message)
             }
         }
     }
