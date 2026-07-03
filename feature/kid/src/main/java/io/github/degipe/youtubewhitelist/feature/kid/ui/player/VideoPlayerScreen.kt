@@ -384,6 +384,11 @@ private class VideoEndedBridge(
 
 internal fun buildYouTubePlayerHtml(videoId: String, origin: String, showControls: Boolean): String {
     val controls = if (showControls) 1 else 0
+    // B1 fix: never string-interpolate an untrusted id directly into a JS string literal.
+    // org.json.JSONObject.quote() JSON-encodes the value AND supplies the surrounding
+    // quotes, so a malicious id (e.g. "');alert(1)//") cannot break out of the literal -
+    // it ends up as inert text inside a properly escaped double-quoted JS string.
+    val safeVideoId = org.json.JSONObject.quote(videoId)
     return """
         <!DOCTYPE html>
         <html>
@@ -411,7 +416,7 @@ internal fun buildYouTubePlayerHtml(videoId: String, origin: String, showControl
                 player = new YT.Player('player', {
                     height: '100%',
                     width: '100%',
-                    videoId: '$videoId',
+                    videoId: $safeVideoId,
                     playerVars: {
                         autoplay: 1,
                         controls: $controls,

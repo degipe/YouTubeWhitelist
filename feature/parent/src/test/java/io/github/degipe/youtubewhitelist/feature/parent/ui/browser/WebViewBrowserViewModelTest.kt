@@ -66,7 +66,7 @@ class WebViewBrowserViewModelTest {
 
     @Test
     fun `onUrlChanged detects channel URL`() {
-        viewModel.onUrlChanged("https://www.youtube.com/channel/UC123456")
+        viewModel.onUrlChanged("https://www.youtube.com/channel/UC1234567890123456789012")
 
         val state = viewModel.uiState.value
         assertThat(state.detectedContent).isNotNull()
@@ -84,7 +84,7 @@ class WebViewBrowserViewModelTest {
 
     @Test
     fun `onUrlChanged detects playlist URL`() {
-        viewModel.onUrlChanged("https://www.youtube.com/playlist?list=PLtest123")
+        viewModel.onUrlChanged("https://www.youtube.com/playlist?list=PLtest123456")
 
         val state = viewModel.uiState.value
         assertThat(state.detectedContent).isNotNull()
@@ -93,7 +93,7 @@ class WebViewBrowserViewModelTest {
 
     @Test
     fun `onUrlChanged clears detection for non-youtube URL`() {
-        viewModel.onUrlChanged("https://www.youtube.com/watch?v=test")
+        viewModel.onUrlChanged("https://www.youtube.com/watch?v=test1234567")
         assertThat(viewModel.uiState.value.detectedContent).isNotNull()
 
         viewModel.onUrlChanged("https://www.google.com")
@@ -102,7 +102,7 @@ class WebViewBrowserViewModelTest {
 
     @Test
     fun `onUrlChanged clears detection for youtube homepage`() {
-        viewModel.onUrlChanged("https://www.youtube.com/watch?v=test")
+        viewModel.onUrlChanged("https://www.youtube.com/watch?v=test1234567")
         assertThat(viewModel.uiState.value.detectedContent).isNotNull()
 
         viewModel.onUrlChanged("https://www.youtube.com")
@@ -115,15 +115,15 @@ class WebViewBrowserViewModelTest {
     fun `addToWhitelist success sets result`() = runTest(testDispatcher) {
         val addedItem = WhitelistItem(
             id = "1", kidProfileId = profileId,
-            type = WhitelistItemType.VIDEO, youtubeId = "test123",
+            type = WhitelistItemType.VIDEO, youtubeId = "test1234567",
             title = "Test Video", thumbnailUrl = "https://img.youtube.com/1.jpg",
             channelTitle = "Test Channel", addedAt = 1000L
         )
         coEvery {
-            whitelistRepository.addItemFromUrl(profileId, "https://www.youtube.com/watch?v=test123")
+            whitelistRepository.addItemFromUrl(profileId, "https://www.youtube.com/watch?v=test1234567")
         } returns AppResult.Success(addedItem)
 
-        viewModel.onUrlChanged("https://www.youtube.com/watch?v=test123")
+        viewModel.onUrlChanged("https://www.youtube.com/watch?v=test1234567")
         viewModel.addToWhitelist(profileId)
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -140,7 +140,7 @@ class WebViewBrowserViewModelTest {
             whitelistRepository.addItemFromUrl(any(), any())
         } returns AppResult.Success(mockk(relaxed = true))
 
-        viewModel.onUrlChanged("https://www.youtube.com/watch?v=test123")
+        viewModel.onUrlChanged("https://www.youtube.com/watch?v=test1234567")
         viewModel.addToWhitelist(profileId)
 
         assertThat(viewModel.uiState.value.isAdding).isTrue()
@@ -152,10 +152,10 @@ class WebViewBrowserViewModelTest {
     @Test
     fun `addToWhitelist error sets error result`() = runTest(testDispatcher) {
         coEvery {
-            whitelistRepository.addItemFromUrl(profileId, "https://www.youtube.com/watch?v=bad")
+            whitelistRepository.addItemFromUrl(profileId, "https://www.youtube.com/watch?v=bad12345678")
         } returns AppResult.Error("Not found")
 
-        viewModel.onUrlChanged("https://www.youtube.com/watch?v=bad")
+        viewModel.onUrlChanged("https://www.youtube.com/watch?v=bad12345678")
         viewModel.addToWhitelist(profileId)
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -181,7 +181,7 @@ class WebViewBrowserViewModelTest {
             whitelistRepository.addItemFromUrl(any(), any())
         } returns AppResult.Success(mockk(relaxed = true))
 
-        viewModel.onUrlChanged("https://www.youtube.com/watch?v=test")
+        viewModel.onUrlChanged("https://www.youtube.com/watch?v=test1234567")
         viewModel.addToWhitelist(profileId)
         testDispatcher.scheduler.advanceUntilIdle()
 

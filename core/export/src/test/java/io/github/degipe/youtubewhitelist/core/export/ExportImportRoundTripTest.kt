@@ -85,7 +85,7 @@ class ExportImportRoundTripTest {
                         whitelistItems = listOf(
                             ExportWhitelistItem(
                                 type = "CHANNEL",
-                                youtubeId = "UC123",
+                                youtubeId = "UC1234567890123456789012",
                                 title = "Channel One",
                                 thumbnailUrl = "https://thumb.jpg"
                             )
@@ -156,7 +156,7 @@ class ExportImportRoundTripTest {
                         whitelistItems = listOf(
                             ExportWhitelistItem(
                                 type = "PLAYLIST",
-                                youtubeId = "PL789",
+                                youtubeId = "PL1234567890",
                                 title = "My Playlist",
                                 thumbnailUrl = "https://thumb.jpg"
                             )
@@ -206,7 +206,7 @@ class ExportImportRoundTripTest {
                         whitelistItems = listOf(
                             ExportWhitelistItem(
                                 type = "CHANNEL",
-                                youtubeId = "UC123",
+                                youtubeId = "UC1234567890123456789012",
                                 title = "Channel One",
                                 thumbnailUrl = "https://thumb.jpg"
                             )
@@ -294,6 +294,51 @@ class ExportImportRoundTripTest {
         // Rollback must have restored the pre-delete state exactly - nothing destroyed.
         assertThat(afterProfiles).isEqualTo(originalProfiles)
         assertThat(afterItems).isEqualTo(originalItems)
+    }
+
+    @Test
+    fun `import rejects malicious youtubeId and does not persist it`() = runTest {
+        // B1 regression guard: a crafted backup .json with a JS-injection payload as the
+        // youtubeId must never reach the DB - if it did, it would later be string-
+        // interpolated into the kid player's WebView JavaScript and executed as script.
+        val maliciousJson = json.encodeToString(
+            ExportData.serializer(),
+            ExportData(
+                version = 1,
+                exportedAt = 1_000L,
+                profiles = listOf(
+                    ExportProfile(
+                        name = "Kid A",
+                        whitelistItems = listOf(
+                            ExportWhitelistItem(
+                                type = "VIDEO",
+                                youtubeId = "');alert(1)//",
+                                title = "Evil Video",
+                                thumbnailUrl = "https://thumb.jpg"
+                            ),
+                            ExportWhitelistItem(
+                                type = "CHANNEL",
+                                youtubeId = "UC1234567890123456789012",
+                                title = "Good Channel",
+                                thumbnailUrl = "https://thumb.jpg"
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = service.importFromJson(PARENT_ID, maliciousJson, ImportStrategy.MERGE)
+
+        val importResult = (result as AppResult.Success).data
+        assertThat(importResult.itemsImported).isEqualTo(1)
+        assertThat(importResult.itemsSkipped).isEqualTo(1)
+
+        val profile = db.kidProfileDao().getProfilesByParent(PARENT_ID).first().single()
+        val items = db.whitelistItemDao().getItemsByProfile(profile.id).first()
+        assertThat(items).hasSize(1)
+        assertThat(items.none { it.youtubeId == "');alert(1)//" }).isTrue()
+        assertThat(items.single().youtubeId).isEqualTo("UC1234567890123456789012")
     }
 
     companion object {

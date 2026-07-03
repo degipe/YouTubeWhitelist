@@ -46,6 +46,7 @@ object YouTubeUrlParser {
 
     private fun parseShortUrl(path: String): ParsedYouTubeUrl? {
         val videoId = path.trimStart('/').takeIf { it.isNotBlank() } ?: return null
+        if (!YouTubeId.isValidVideoId(videoId)) return null
         return ParsedYouTubeUrl(YouTubeContentType.VIDEO, videoId)
     }
 
@@ -58,6 +59,7 @@ object YouTubeUrlParser {
         if (listParam != null && listParam.isNotBlank()) {
             // /playlist?list= or /watch?v=...&list=
             if (segments.firstOrNull() == "playlist" || segments.firstOrNull() == "watch") {
+                if (!YouTubeId.isValidPlaylistId(listParam)) return null
                 return ParsedYouTubeUrl(YouTubeContentType.PLAYLIST, listParam)
             }
         }
@@ -67,18 +69,20 @@ object YouTubeUrlParser {
         return when (segments[0]) {
             "watch" -> {
                 val videoId = queryParams["v"]
-                if (videoId.isNullOrBlank()) null
+                if (videoId.isNullOrBlank() || !YouTubeId.isValidVideoId(videoId)) null
                 else ParsedYouTubeUrl(YouTubeContentType.VIDEO, videoId)
             }
             "shorts", "embed", "live" -> {
                 val videoId = segments.getOrNull(1)?.takeIf { it.isNotBlank() }
-                if (videoId != null) ParsedYouTubeUrl(YouTubeContentType.VIDEO, videoId)
-                else null
+                if (videoId != null && YouTubeId.isValidVideoId(videoId)) {
+                    ParsedYouTubeUrl(YouTubeContentType.VIDEO, videoId)
+                } else null
             }
             "channel" -> {
                 val channelId = segments.getOrNull(1)?.takeIf { it.isNotBlank() }
-                if (channelId != null) ParsedYouTubeUrl(YouTubeContentType.CHANNEL, channelId)
-                else null
+                if (channelId != null && YouTubeId.isValidChannelId(channelId)) {
+                    ParsedYouTubeUrl(YouTubeContentType.CHANNEL, channelId)
+                } else null
             }
             "c" -> {
                 val customName = segments.getOrNull(1)?.takeIf { it.isNotBlank() }

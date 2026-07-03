@@ -2,6 +2,7 @@ package io.github.degipe.youtubewhitelist.core.export
 
 import io.github.degipe.youtubewhitelist.core.common.result.AppResult
 import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
+import io.github.degipe.youtubewhitelist.core.common.youtube.YouTubeId
 import io.github.degipe.youtubewhitelist.core.database.YouTubeWhitelistDatabase
 import io.github.degipe.youtubewhitelist.core.database.dao.KidProfileDao
 import io.github.degipe.youtubewhitelist.core.database.dao.WhitelistItemDao
@@ -109,11 +110,31 @@ class ExportImportServiceImpl @Inject constructor(
                             itemsSkipped++
                             continue
                         }
+
+                        // WhitelistItemType.valueOf() may throw for an unknown type - that is
+                        // intentionally NOT caught here, it aborts the whole import (rolled back
+                        // by the surrounding transaction), matching the pre-existing behavior.
+                        val type = WhitelistItemType.valueOf(exportItem.type)
+
+                        // B1: reject IDs that don't match YouTube's known ID formats before they
+                        // can reach the DB. An unvalidated ID would later be string-interpolated
+                        // into the kid player's WebView JavaScript, allowing a crafted import
+                        // .json to break out of the JS string literal and execute arbitrary script.
+                        val isValidId = when (type) {
+                            WhitelistItemType.VIDEO -> YouTubeId.isValidVideoId(exportItem.youtubeId)
+                            WhitelistItemType.CHANNEL -> YouTubeId.isValidChannelId(exportItem.youtubeId)
+                            WhitelistItemType.PLAYLIST -> YouTubeId.isValidPlaylistId(exportItem.youtubeId)
+                        }
+                        if (!isValidId) {
+                            itemsSkipped++
+                            continue
+                        }
+
                         whitelistItemDao.insert(
                             WhitelistItemEntity(
                                 id = UUID.randomUUID().toString(),
                                 kidProfileId = profileId,
-                                type = WhitelistItemType.valueOf(exportItem.type),
+                                type = type,
                                 youtubeId = exportItem.youtubeId,
                                 title = exportItem.title,
                                 thumbnailUrl = exportItem.thumbnailUrl,
