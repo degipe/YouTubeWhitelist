@@ -53,6 +53,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -381,7 +382,7 @@ private class VideoEndedBridge(
     fun onReady() { }
 }
 
-private fun buildYouTubePlayerHtml(videoId: String, origin: String, showControls: Boolean): String {
+internal fun buildYouTubePlayerHtml(videoId: String, origin: String, showControls: Boolean): String {
     val controls = if (showControls) 1 else 0
     return """
         <!DOCTYPE html>
@@ -471,73 +472,80 @@ private fun YouTubePlayer(
         }
     }
 
-    DisposableEffect(youtubeId) {
-        onDispose {
-            webViewRef.value?.let { wv ->
-                wv.loadUrl("about:blank")
-                wv.stopLoading()
-                wv.clearHistory()
-                wv.destroy()
+    // key(youtubeId) forces the whole subtree (DisposableEffect + AndroidView node) to be
+    // torn down and recreated whenever youtubeId changes. Without this, AndroidView's
+    // factory only runs once and update() never pushes new content into the existing
+    // WebView, so Next/autoplay/embed-error-skip destroyed the old WebView but never
+    // loaded the new video (player went blank).
+    key(youtubeId) {
+        DisposableEffect(youtubeId) {
+            onDispose {
+                webViewRef.value?.let { wv ->
+                    wv.loadUrl("about:blank")
+                    wv.stopLoading()
+                    wv.clearHistory()
+                    wv.destroy()
+                }
+                webViewRef.value = null
             }
-            webViewRef.value = null
         }
-    }
 
-    AndroidView(
-        factory = { ctx ->
-            WebView(ctx).apply {
-                webViewRef.value = this
+        AndroidView(
+            factory = { ctx ->
+                WebView(ctx).apply {
+                    webViewRef.value = this
 
-                val origin = "https://${ctx.packageName}"
+                    val origin = "https://${ctx.packageName}"
 
-                settings.javaScriptEnabled = true
-                settings.mediaPlaybackRequiresUserGesture = false
-                settings.domStorageEnabled = true
-                settings.cacheMode = WebSettings.LOAD_DEFAULT
+                    settings.javaScriptEnabled = true
+                    settings.mediaPlaybackRequiresUserGesture = false
+                    settings.domStorageEnabled = true
+                    settings.cacheMode = WebSettings.LOAD_DEFAULT
 
-                val cookieManager = CookieManager.getInstance()
-                cookieManager.setAcceptCookie(true)
-                cookieManager.setAcceptThirdPartyCookies(this, true)
+                    val cookieManager = CookieManager.getInstance()
+                    cookieManager.setAcceptCookie(true)
+                    cookieManager.setAcceptThirdPartyCookies(this, true)
 
-                addJavascriptInterface(
-                    VideoEndedBridge(onVideoEnded, onEmbedError),
-                    "AndroidBridge"
-                )
+                    addJavascriptInterface(
+                        VideoEndedBridge(onVideoEnded, onEmbedError),
+                        "AndroidBridge"
+                    )
 
-                webChromeClient = object : WebChromeClient() {
-                    override fun getDefaultVideoPoster(): Bitmap? {
-                        return super.getDefaultVideoPoster()
-                            ?: Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565)
+                    webChromeClient = object : WebChromeClient() {
+                        override fun getDefaultVideoPoster(): Bitmap? {
+                            return super.getDefaultVideoPoster()
+                                ?: Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565)
+                        }
+
+                        override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                            if (view != null && callback != null) {
+                                onEnterFullscreen(view, callback)
+                            }
+                        }
+
+                        override fun onHideCustomView() {
+                            onExitFullscreen()
+                        }
                     }
-
-                    override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                        if (view != null && callback != null) {
-                            onEnterFullscreen(view, callback)
+                    webViewClient = object : WebViewClient() {
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView?,
+                            request: WebResourceRequest?
+                        ): Boolean {
+                            // Block all navigation to prevent kids from escaping the app
+                            // (e.g., "Watch on YouTube" links on embed-disabled videos)
+                            return true
                         }
                     }
 
-                    override fun onHideCustomView() {
-                        onExitFullscreen()
-                    }
+                    val html = buildYouTubePlayerHtml(youtubeId, origin, showControls = true)
+                    loadDataWithBaseURL(origin, html, "text/html", "utf-8", null)
                 }
-                webViewClient = object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView?,
-                        request: WebResourceRequest?
-                    ): Boolean {
-                        // Block all navigation to prevent kids from escaping the app
-                        // (e.g., "Watch on YouTube" links on embed-disabled videos)
-                        return true
-                    }
-                }
-
-                val html = buildYouTubePlayerHtml(youtubeId, origin, showControls = true)
-                loadDataWithBaseURL(origin, html, "text/html", "utf-8", null)
-            }
-        },
-        update = { /* Re-creation handled by DisposableEffect keyed on youtubeId */ },
-        modifier = modifier
-    )
+            },
+            update = { /* No-op: key(youtubeId) recreates the whole node on change, so factory always runs with the current youtubeId */ },
+            modifier = modifier
+        )
+    }
 }
 
 @Composable
