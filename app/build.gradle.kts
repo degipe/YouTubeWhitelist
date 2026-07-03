@@ -53,18 +53,13 @@ android {
             "\"$youtubeApiKey\""
         )
 
-        // Google OAuth 2.0 Client ID from local.properties
+        // Google OAuth 2.0 Client ID from local.properties.
+        // PKCE (RFC 7636) makes the app a public OAuth client — no client secret is
+        // embedded or required (see core:auth PkceGenerator / OAuthTokenExchanger).
         buildConfigField(
             "String",
             "GOOGLE_CLIENT_ID",
             "\"${localProperties.getProperty("GOOGLE_CLIENT_ID", "")}\""
-        )
-
-        // Google OAuth 2.0 Client Secret from local.properties
-        buildConfigField(
-            "String",
-            "GOOGLE_CLIENT_SECRET",
-            "\"${localProperties.getProperty("GOOGLE_CLIENT_SECRET", "")}\""
         )
     }
 

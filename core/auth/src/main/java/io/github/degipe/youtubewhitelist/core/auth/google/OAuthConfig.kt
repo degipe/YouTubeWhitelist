@@ -7,7 +7,7 @@ object OAuthConfig {
     const val TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
     const val SCOPES = "openid email profile"
 
-    fun buildAuthUrl(clientId: String, state: String, redirectUri: String): String {
+    fun buildAuthUrl(clientId: String, state: String, redirectUri: String, codeChallenge: String): String {
         return buildString {
             append(AUTH_ENDPOINT)
             append("?client_id=").append(encode(clientId))
@@ -17,6 +17,8 @@ object OAuthConfig {
             append("&state=").append(encode(state))
             append("&access_type=offline")
             append("&prompt=consent")
+            append("&code_challenge=").append(encode(codeChallenge))
+            append("&code_challenge_method=S256")
         }
     }
 

@@ -7,7 +7,12 @@ class OAuthConfigTest {
 
     @Test
     fun `buildAuthUrl contains required parameters`() {
-        val url = OAuthConfig.buildAuthUrl("test-client-id", "test-state", "http://localhost:12345/callback")
+        val url = OAuthConfig.buildAuthUrl(
+            "test-client-id",
+            "test-state",
+            "http://localhost:12345/callback",
+            "test-code-challenge"
+        )
 
         assertThat(url).contains("client_id=test-client-id")
         assertThat(url).contains("state=test-state")
@@ -16,12 +21,21 @@ class OAuthConfigTest {
         assertThat(url).contains("scope=openid")
         assertThat(url).contains("access_type=offline")
         assertThat(url).contains("prompt=consent")
+        assertThat(url).contains("code_challenge=test-code-challenge")
+        assertThat(url).contains("code_challenge_method=S256")
     }
 
     @Test
     fun `buildAuthUrl starts with Google auth endpoint`() {
-        val url = OAuthConfig.buildAuthUrl("client-id", "state", "http://localhost:8080/callback")
+        val url = OAuthConfig.buildAuthUrl("client-id", "state", "http://localhost:8080/callback", "challenge")
 
         assertThat(url).startsWith("https://accounts.google.com/o/oauth2/v2/auth?")
+    }
+
+    @Test
+    fun `buildAuthUrl does not leak a client secret parameter`() {
+        val url = OAuthConfig.buildAuthUrl("client-id", "state", "http://localhost:8080/callback", "challenge")
+
+        assertThat(url).doesNotContain("client_secret")
     }
 }
