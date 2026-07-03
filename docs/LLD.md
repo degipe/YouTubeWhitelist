@@ -588,7 +588,7 @@ Returns last 15 videos per channel. Namespace-aware XML parser with XXE protecti
 
 Dynamic base URL (round-robin instances). Full YouTube API equivalent without API key. Used as last-resort fallback.
 
-**InvidiousInstanceManager**: Round-robin rotation, health tracking (max 2 failures → skip, 5 min reset), thread-safe (`@Synchronized`). Instances: vid.puffyan.us, yewtu.be, invidious.namazso.eu, inv.nadeko.net.
+**InvidiousInstanceManager**: Round-robin rotation, health tracking (max 2 failures → skip, 5 min reset), thread-safe (`@Synchronized`). Instances: yewtu.be, inv.nadeko.net, iv.melmac.space (refreshed 2026-07-03; `vid.puffyan.us` and `invidious.namazso.eu` removed as dead).
 
 ### OkHttp Configuration
 
