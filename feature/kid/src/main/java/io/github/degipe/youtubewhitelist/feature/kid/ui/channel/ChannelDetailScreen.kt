@@ -212,7 +212,7 @@ fun ChannelDetailScreen(
                                 CircularProgressIndicator()
                             }
                         }
-                    } else if (uiState.loadMoreFailed && uiState.videos.isNotEmpty()) {
+                    } else if (uiState.loadMoreFailed && searchQuery.isBlank() && uiState.videos.isNotEmpty()) {
                         item(key = "load_more_retry") {
                             Row(
                                 modifier = Modifier
