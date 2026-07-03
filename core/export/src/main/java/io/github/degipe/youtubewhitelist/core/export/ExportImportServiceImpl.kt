@@ -2,6 +2,7 @@ package io.github.degipe.youtubewhitelist.core.export
 
 import io.github.degipe.youtubewhitelist.core.common.result.AppResult
 import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
+import io.github.degipe.youtubewhitelist.core.database.YouTubeWhitelistDatabase
 import io.github.degipe.youtubewhitelist.core.database.dao.KidProfileDao
 import io.github.degipe.youtubewhitelist.core.database.dao.WhitelistItemDao
 import io.github.degipe.youtubewhitelist.core.database.entity.KidProfileEntity
@@ -9,6 +10,7 @@ import io.github.degipe.youtubewhitelist.core.database.entity.WhitelistItemEntit
 import io.github.degipe.youtubewhitelist.core.export.model.ExportData
 import io.github.degipe.youtubewhitelist.core.export.model.ExportProfile
 import io.github.degipe.youtubewhitelist.core.export.model.ExportWhitelistItem
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import java.util.UUID
@@ -18,7 +20,8 @@ import javax.inject.Singleton
 @Singleton
 class ExportImportServiceImpl @Inject constructor(
     private val kidProfileDao: KidProfileDao,
-    private val whitelistItemDao: WhitelistItemDao
+    private val whitelistItemDao: WhitelistItemDao,
+    private val database: YouTubeWhitelistDatabase
 ) : ExportImportService {
 
     private val json = Json { prettyPrint = true }
@@ -64,59 +67,65 @@ class ExportImportServiceImpl @Inject constructor(
     ): AppResult<ImportResult> {
         return try {
             val exportData = Json.decodeFromString<ExportData>(jsonString)
+            var profilesImported = 0
+            var itemsImported = 0
+            var itemsSkipped = 0
 
-            if (strategy == ImportStrategy.OVERWRITE) {
-                val existingProfiles = kidProfileDao.getProfilesByParent(parentAccountId).first()
-                existingProfiles.forEach { kidProfileDao.delete(it) }
-            }
+            database.withTransaction {
+                if (strategy == ImportStrategy.OVERWRITE) {
+                    kidProfileDao.getProfilesByParent(parentAccountId).first()
+                        .forEach { kidProfileDao.delete(it) }
+                }
 
-            var totalProfilesImported = 0
-            var totalItemsImported = 0
-            var totalItemsSkipped = 0
+                val existingByName = kidProfileDao.getProfilesByParent(parentAccountId).first()
+                    .associateBy { it.name }
 
-            for (exportProfile in exportData.profiles) {
-                val newProfileId = UUID.randomUUID().toString()
-                val profileEntity = KidProfileEntity(
-                    id = newProfileId,
-                    parentAccountId = parentAccountId,
-                    name = exportProfile.name,
-                    avatarUrl = exportProfile.avatarUrl,
-                    dailyLimitMinutes = exportProfile.dailyLimitMinutes,
-                    sleepPlaylistId = exportProfile.sleepPlaylistId
-                )
-                kidProfileDao.insert(profileEntity)
-                totalProfilesImported++
-
-                for (exportItem in exportProfile.whitelistItems) {
-                    if (strategy == ImportStrategy.MERGE) {
-                        val existing = whitelistItemDao.findByYoutubeId(newProfileId, exportItem.youtubeId)
-                        if (existing != null) {
-                            totalItemsSkipped++
-                            continue
-                        }
+                for (exportProfile in exportData.profiles) {
+                    // MERGE reuses an existing same-named profile; OVERWRITE always creates new
+                    val targetProfileId = if (strategy == ImportStrategy.MERGE) {
+                        existingByName[exportProfile.name]?.id
+                    } else {
+                        null
                     }
 
-                    val itemEntity = WhitelistItemEntity(
-                        id = UUID.randomUUID().toString(),
-                        kidProfileId = newProfileId,
-                        type = WhitelistItemType.valueOf(exportItem.type),
-                        youtubeId = exportItem.youtubeId,
-                        title = exportItem.title,
-                        thumbnailUrl = exportItem.thumbnailUrl,
-                        channelTitle = exportItem.channelTitle
-                    )
-                    whitelistItemDao.insert(itemEntity)
-                    totalItemsImported++
+                    val profileId = targetProfileId ?: UUID.randomUUID().toString().also {
+                        kidProfileDao.insert(
+                            KidProfileEntity(
+                                id = it,
+                                parentAccountId = parentAccountId,
+                                name = exportProfile.name,
+                                avatarUrl = exportProfile.avatarUrl,
+                                dailyLimitMinutes = exportProfile.dailyLimitMinutes,
+                                sleepPlaylistId = exportProfile.sleepPlaylistId
+                            )
+                        )
+                        profilesImported++
+                    }
+
+                    for (exportItem in exportProfile.whitelistItems) {
+                        if (strategy == ImportStrategy.MERGE &&
+                            whitelistItemDao.findByYoutubeId(profileId, exportItem.youtubeId) != null
+                        ) {
+                            itemsSkipped++
+                            continue
+                        }
+                        whitelistItemDao.insert(
+                            WhitelistItemEntity(
+                                id = UUID.randomUUID().toString(),
+                                kidProfileId = profileId,
+                                type = WhitelistItemType.valueOf(exportItem.type),
+                                youtubeId = exportItem.youtubeId,
+                                title = exportItem.title,
+                                thumbnailUrl = exportItem.thumbnailUrl,
+                                channelTitle = exportItem.channelTitle
+                            )
+                        )
+                        itemsImported++
+                    }
                 }
             }
 
-            AppResult.Success(
-                ImportResult(
-                    profilesImported = totalProfilesImported,
-                    itemsImported = totalItemsImported,
-                    itemsSkipped = totalItemsSkipped
-                )
-            )
+            AppResult.Success(ImportResult(profilesImported, itemsImported, itemsSkipped))
         } catch (e: Exception) {
             AppResult.Error(e.message ?: "Import failed")
         }

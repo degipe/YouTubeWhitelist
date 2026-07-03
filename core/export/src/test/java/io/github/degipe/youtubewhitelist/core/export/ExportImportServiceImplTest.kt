@@ -3,14 +3,13 @@ package io.github.degipe.youtubewhitelist.core.export
 import com.google.common.truth.Truth.assertThat
 import io.github.degipe.youtubewhitelist.core.common.result.AppResult
 import io.github.degipe.youtubewhitelist.core.common.model.WhitelistItemType
+import io.github.degipe.youtubewhitelist.core.database.YouTubeWhitelistDatabase
 import io.github.degipe.youtubewhitelist.core.database.dao.KidProfileDao
 import io.github.degipe.youtubewhitelist.core.database.dao.WhitelistItemDao
 import io.github.degipe.youtubewhitelist.core.database.entity.KidProfileEntity
 import io.github.degipe.youtubewhitelist.core.database.entity.WhitelistItemEntity
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.mockk
-import io.mockk.slot
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -21,6 +20,7 @@ class ExportImportServiceImplTest {
 
     private lateinit var kidProfileDao: KidProfileDao
     private lateinit var whitelistItemDao: WhitelistItemDao
+    private lateinit var database: YouTubeWhitelistDatabase
     private lateinit var service: ExportImportServiceImpl
 
     private val parentId = "parent-1"
@@ -59,7 +59,8 @@ class ExportImportServiceImplTest {
     fun setUp() {
         kidProfileDao = mockk(relaxed = true)
         whitelistItemDao = mockk(relaxed = true)
-        service = ExportImportServiceImpl(kidProfileDao, whitelistItemDao)
+        database = mockk(relaxed = true)
+        service = ExportImportServiceImpl(kidProfileDao, whitelistItemDao, database)
     }
 
     // ===== EXPORT TESTS =====
@@ -150,129 +151,17 @@ class ExportImportServiceImplTest {
         assertThat(exportData.exportedAt).isGreaterThan(0)
     }
 
-    // ===== IMPORT MERGE TESTS =====
-
-    @Test
-    fun `import merge creates new profiles with new IDs`() = runTest {
-        val json = createExportJson(
-            listOf(
-                createExportProfile("Bence", items = listOf(
-                    createExportItem("CHANNEL", "UC123", "Channel One")
-                ))
-            )
-        )
-
-        val profileSlot = slot<KidProfileEntity>()
-        coEvery { kidProfileDao.insert(capture(profileSlot)) } returns Unit
-
-        coEvery { whitelistItemDao.findByYoutubeId(any(), any()) } returns null
-        val itemSlot = mutableListOf<WhitelistItemEntity>()
-        coEvery { whitelistItemDao.insert(capture(itemSlot)) } returns Unit
-
-        val result = service.importFromJson(parentId, json, ImportStrategy.MERGE)
-
-        assertThat(result).isInstanceOf(AppResult.Success::class.java)
-        val importResult = (result as AppResult.Success).data
-        assertThat(importResult.profilesImported).isEqualTo(1)
-        assertThat(importResult.itemsImported).isEqualTo(1)
-
-        // New UUID generated (not from export)
-        assertThat(profileSlot.captured.id).isNotEmpty()
-        assertThat(profileSlot.captured.parentAccountId).isEqualTo(parentId)
-        assertThat(profileSlot.captured.name).isEqualTo("Bence")
-    }
-
-    @Test
-    fun `import merge skips duplicate items by youtubeId`() = runTest {
-        val json = createExportJson(
-            listOf(
-                createExportProfile("Bence", items = listOf(
-                    createExportItem("CHANNEL", "UC123", "Channel One"),
-                    createExportItem("VIDEO", "vid456", "Cool Video")
-                ))
-            )
-        )
-
-        val profileSlot = slot<KidProfileEntity>()
-        coEvery { kidProfileDao.insert(capture(profileSlot)) } returns Unit
-
-        // First item already exists, second doesn't
-        coEvery { whitelistItemDao.findByYoutubeId(any(), "UC123") } returns item1
-        coEvery { whitelistItemDao.findByYoutubeId(any(), "vid456") } returns null
-        coEvery { whitelistItemDao.insert(any()) } returns Unit
-
-        val result = service.importFromJson(parentId, json, ImportStrategy.MERGE)
-
-        val importResult = (result as AppResult.Success).data
-        assertThat(importResult.itemsImported).isEqualTo(1)
-        assertThat(importResult.itemsSkipped).isEqualTo(1)
-    }
-
-    @Test
-    fun `import merge multiple profiles`() = runTest {
-        val json = createExportJson(
-            listOf(
-                createExportProfile("Bence", items = listOf()),
-                createExportProfile("Emma", items = listOf())
-            )
-        )
-
-        coEvery { kidProfileDao.insert(any()) } returns Unit
-
-        val result = service.importFromJson(parentId, json, ImportStrategy.MERGE)
-
-        val importResult = (result as AppResult.Success).data
-        assertThat(importResult.profilesImported).isEqualTo(2)
-
-        coVerify(exactly = 2) { kidProfileDao.insert(any()) }
-    }
-
-    // ===== IMPORT OVERWRITE TESTS =====
-
-    @Test
-    fun `import overwrite deletes existing profiles first`() = runTest {
-        val json = createExportJson(
-            listOf(
-                createExportProfile("Bence", items = listOf())
-            )
-        )
-
-        coEvery { kidProfileDao.getProfilesByParent(parentId) } returns flowOf(listOf(profile1, profile2))
-        coEvery { kidProfileDao.delete(any()) } returns Unit
-        coEvery { kidProfileDao.insert(any()) } returns Unit
-
-        val result = service.importFromJson(parentId, json, ImportStrategy.OVERWRITE)
-
-        assertThat(result).isInstanceOf(AppResult.Success::class.java)
-        coVerify { kidProfileDao.delete(profile1) }
-        coVerify { kidProfileDao.delete(profile2) }
-    }
-
-    @Test
-    fun `import overwrite does not skip duplicates`() = runTest {
-        val json = createExportJson(
-            listOf(
-                createExportProfile("Bence", items = listOf(
-                    createExportItem("CHANNEL", "UC123", "Channel One")
-                ))
-            )
-        )
-
-        coEvery { kidProfileDao.getProfilesByParent(parentId) } returns flowOf(emptyList())
-        coEvery { kidProfileDao.insert(any()) } returns Unit
-        coEvery { whitelistItemDao.insert(any()) } returns Unit
-
-        val result = service.importFromJson(parentId, json, ImportStrategy.OVERWRITE)
-
-        val importResult = (result as AppResult.Success).data
-        assertThat(importResult.itemsImported).isEqualTo(1)
-        assertThat(importResult.itemsSkipped).isEqualTo(0)
-
-        // No duplicate check for overwrite
-        coVerify(exactly = 0) { whitelistItemDao.findByYoutubeId(any(), any()) }
-    }
-
-    // ===== ERROR TESTS =====
+    // ===== IMPORT ERROR TESTS =====
+    //
+    // NOTE: All other import behavior (MERGE dedup-by-name, OVERWRITE delete-then-insert,
+    // duplicate item skipping, optional field / type mapping, and transactional rollback) is
+    // now covered by ExportImportRoundTripTest, which exercises a real in-memory Room database.
+    // Those cases used to live here as mockk-based tests, but mocking `KidProfileDao` /
+    // `WhitelistItemDao` in isolation could not exercise the real dedup query or the
+    // `database.withTransaction` wrapper added in this fix - worse, the old mocks (e.g.
+    // `findByYoutubeId(any(), "UC123")` matching regardless of profile id) masked the very bug
+    // being fixed here (MERGE always minted a fresh, empty profile id, so the dedup query could
+    // never find a real match). Import tests belong against a real DB from here on.
 
     @Test
     fun `import invalid json returns error`() = runTest {
@@ -280,91 +169,4 @@ class ExportImportServiceImplTest {
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
     }
-
-    @Test
-    fun `import preserves profile optional fields`() = runTest {
-        val json = createExportJson(
-            listOf(
-                createExportProfile(
-                    "Bence",
-                    avatarUrl = "https://avatar.jpg",
-                    dailyLimitMinutes = 90,
-                    sleepPlaylistId = "PLsleep",
-                    items = listOf()
-                )
-            )
-        )
-
-        val profileSlot = slot<KidProfileEntity>()
-        coEvery { kidProfileDao.insert(capture(profileSlot)) } returns Unit
-
-        service.importFromJson(parentId, json, ImportStrategy.MERGE)
-
-        with(profileSlot.captured) {
-            assertThat(avatarUrl).isEqualTo("https://avatar.jpg")
-            assertThat(dailyLimitMinutes).isEqualTo(90)
-            assertThat(sleepPlaylistId).isEqualTo("PLsleep")
-        }
-    }
-
-    @Test
-    fun `import item maps type correctly`() = runTest {
-        val json = createExportJson(
-            listOf(
-                createExportProfile("Bence", items = listOf(
-                    createExportItem("PLAYLIST", "PL789", "My Playlist")
-                ))
-            )
-        )
-
-        coEvery { kidProfileDao.insert(any()) } returns Unit
-        coEvery { whitelistItemDao.findByYoutubeId(any(), any()) } returns null
-        val itemSlot = slot<WhitelistItemEntity>()
-        coEvery { whitelistItemDao.insert(capture(itemSlot)) } returns Unit
-
-        service.importFromJson(parentId, json, ImportStrategy.MERGE)
-
-        assertThat(itemSlot.captured.type).isEqualTo(WhitelistItemType.PLAYLIST)
-    }
-
-    // ===== HELPERS =====
-
-    private fun createExportJson(
-        profiles: List<io.github.degipe.youtubewhitelist.core.export.model.ExportProfile>
-    ): String {
-        val exportData = io.github.degipe.youtubewhitelist.core.export.model.ExportData(
-            version = 1,
-            exportedAt = System.currentTimeMillis(),
-            profiles = profiles
-        )
-        return Json.encodeToString(io.github.degipe.youtubewhitelist.core.export.model.ExportData.serializer(), exportData)
-    }
-
-    private fun createExportProfile(
-        name: String,
-        avatarUrl: String? = null,
-        dailyLimitMinutes: Int? = null,
-        sleepPlaylistId: String? = null,
-        items: List<io.github.degipe.youtubewhitelist.core.export.model.ExportWhitelistItem>
-    ) = io.github.degipe.youtubewhitelist.core.export.model.ExportProfile(
-        name = name,
-        avatarUrl = avatarUrl,
-        dailyLimitMinutes = dailyLimitMinutes,
-        sleepPlaylistId = sleepPlaylistId,
-        whitelistItems = items
-    )
-
-    private fun createExportItem(
-        type: String,
-        youtubeId: String,
-        title: String,
-        thumbnailUrl: String = "https://thumb.jpg",
-        channelTitle: String? = null
-    ) = io.github.degipe.youtubewhitelist.core.export.model.ExportWhitelistItem(
-        type = type,
-        youtubeId = youtubeId,
-        title = title,
-        thumbnailUrl = thumbnailUrl,
-        channelTitle = channelTitle
-    )
 }
