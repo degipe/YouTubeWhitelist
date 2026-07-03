@@ -81,13 +81,10 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
         playlistId: String,
         pageToken: String?
     ): AppResult<PaginatedPlaylistResult> = withContext(ioDispatcher) {
-        // pageToken != null means continuation — skip RSS (no pagination support)
-        if (pageToken == null) {
-            val channelId = extractChannelIdFromUploadsPlaylist(playlistId)
-            val rssResult = if (channelId != null) tryRssFeedPaginated(channelId) else null
-            if (rssResult != null) return@withContext rssResult
-        }
-
+        // RSS is intentionally NOT used here: the Atom feed caps at ~15 videos and never
+        // provides a nextPageToken, which would make hasMorePages false after the first
+        // page and strand channels with >15 uploads. Always start from the API so a real
+        // nextPageToken flows through the fallback chain.
         tryApiPlaylistItemsPage(playlistId, pageToken)
             ?: tryInvidiousPlaylistItemsPage(playlistId)
             ?: AppResult.Error("Failed to fetch playlist items from all sources")
@@ -138,18 +135,6 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
             val entries = rssFeedParser.fetchChannelVideos(channelId)
             if (entries.isNotEmpty()) {
                 AppResult.Success(entries.mapIndexed { index, entry -> entry.toPlaylistVideo(index) })
-            } else null
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private suspend fun tryRssFeedPaginated(channelId: String): AppResult<PaginatedPlaylistResult>? {
-        return try {
-            val entries = rssFeedParser.fetchChannelVideos(channelId)
-            if (entries.isNotEmpty()) {
-                val videos = entries.mapIndexed { index, entry -> entry.toPlaylistVideo(index) }
-                AppResult.Success(PaginatedPlaylistResult(videos = videos, nextPageToken = null))
             } else null
         } catch (_: Exception) {
             null
