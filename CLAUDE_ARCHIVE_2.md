@@ -198,3 +198,94 @@
 **Files Modified**: NetworkModule, DataModule, build.gradle.kts, proguard-rules.pro
 
 **Test Stats**: 413 tests, all green
+
+### Session 20 - 2026-02-10: Channel Video Lazy Loading + Room Cache + Search
+
+**Objectives**: Implement infinite scroll (lazy loading) for channel detail, Room cache as single source of truth, local search in cached videos (0 API quota).
+
+**Completed**:
+- **Phase 1: Database Layer** (core:database):
+  - `CachedChannelVideoEntity` — Room entity with composite PK `(channelId, videoId)`, index on channelId
+  - `CachedChannelVideoDao` — getVideosByChannel (Flow), searchVideosInChannel (LIKE query, Flow), upsertAll, deleteByChannel, getMaxPosition
+  - Room DB version 2→3 (`fallbackToDestructiveMigration()`)
+  - DatabaseModule updated with DAO provider
+  - 5 Robolectric DAO tests (insert+get, search match, search no match, delete, upsert duplicate)
+
+- **Phase 2: Repository Layer** (core:data):
+  - `PaginatedPlaylistResult` data class (videos + nextPageToken)
+  - `YouTubeApiRepository.getPlaylistItemsPage()` — new interface method
+  - `HybridYouTubeRepositoryImpl.getPlaylistItemsPage()` — RSS (first page only) → YouTube API (pageToken) → Invidious fallback
+  - `ChannelVideoCacheRepository` interface + `ChannelVideoCacheRepositoryImpl` — maps Entity↔PlaylistVideo
+  - `YouTubeApiRepositoryImpl.getPlaylistItemsPage()` implementation
+  - DataModule binding for ChannelVideoCacheRepository
+  - 5 HybridYouTubeRepositoryImpl pagination tests
+
+- **Phase 3: ViewModel Rewrite** (feature:kid):
+  - `ChannelDetailViewModel` fully rewritten:
+    - Room cache as Single Source of Truth (UI reads from Room Flow, API writes to Room)
+    - `_searchQuery` MutableStateFlow + `debounce(300)` + `flatMapLatest` → Room query switching
+    - `_controlState` for loading/error/hasMorePages (separate from videos)
+    - `combine(videosFlow, _controlState)` → `stateIn(Eagerly)` for uiState
+    - `loadMore()` — fetches next page → caches → Room Flow auto-updates
+    - `onSearchQueryChanged()`, `onClearSearch()` for search bar
+  - 13 ViewModel tests (9 rewritten + 4 new: hasMorePages, loadMore, search, clear search, loadMore error)
+
+- **Phase 4: UI Update** (feature:kid):
+  - `ChannelDetailScreen` — search bar toggle in TopAppBar (TextField + FocusRequester + keyboard control)
+  - Back button: exits search mode when active, navigates back otherwise
+  - Clear button in search mode when query non-empty
+  - Infinite scroll: `LaunchedEffect(Unit)` in trailing `item{}` when `hasMorePages = true`
+  - Loading spinner at list bottom during page fetch
+  - Empty state: "No videos found" (search) vs "No videos in this channel yet" (no videos)
+  - Error state: only shows full-screen error when no videos loaded (loadMore error preserves existing videos)
+
+**Architecture**:
+```
+ChannelDetailViewModel
+  ├── YouTubeApiRepository.getPlaylistItemsPage(playlistId, pageToken)
+  │     └── HybridYouTubeRepositoryImpl (RSS → YouTube API → Invidious)
+  └── ChannelVideoCacheRepository (Room cache)
+        └── CachedChannelVideoDao → cached_channel_videos table
+
+UI observes: Room Flow → auto-updates on cache changes
+API writes: fetch page → cacheVideos() → Room Flow emits → UI updates
+Search: Room SQL LIKE query (0 API quota)
+```
+
+**Decisions Made**:
+- Composite PK `(channelId, videoId)` instead of auto-generated ID — required for `@Upsert` to work correctly
+- Room cache cleared on each channel open (fresh data per visit)
+- RSS only for first page (no pagination support), YouTube API for continuation pages
+- Error state shows inline only if existing videos are loaded (loadMore error doesn't clear list)
+- `Dispatchers.resetMain()` must be LAST in `tearDown()` — StateFlow.setValue after resetMain throws IllegalStateException
+
+**Files Created** (5 source + 1 test):
+- `core/database/.../entity/CachedChannelVideoEntity.kt`
+- `core/database/.../dao/CachedChannelVideoDao.kt`
+- `core/data/.../model/PaginatedPlaylistResult.kt`
+- `core/data/.../repository/ChannelVideoCacheRepository.kt`
+- `core/data/.../repository/impl/ChannelVideoCacheRepositoryImpl.kt`
+- `core/database/src/test/.../dao/CachedChannelVideoDaoTest.kt` (5 tests)
+
+**Files Modified** (8 source + 2 test):
+- `core/database/.../YouTubeWhitelistDatabase.kt` (entity + version 3 + DAO getter)
+- `core/database/.../di/DatabaseModule.kt` (DAO provider)
+- `core/database/build.gradle.kts` (androidx-test-core dep)
+- `gradle/libs.versions.toml` (androidx-test-core entry)
+- `core/data/.../repository/YouTubeApiRepository.kt` (+getPlaylistItemsPage)
+- `core/data/.../repository/impl/HybridYouTubeRepositoryImpl.kt` (+paginated methods)
+- `core/data/.../repository/impl/YouTubeApiRepositoryImpl.kt` (+getPlaylistItemsPage)
+- `core/data/.../di/DataModule.kt` (+ChannelVideoCacheRepository binding)
+- `feature/kid/.../channel/ChannelDetailViewModel.kt` (full rewrite)
+- `feature/kid/.../channel/ChannelDetailScreen.kt` (search bar + infinite scroll)
+- `core/data/src/test/.../HybridYouTubeRepositoryImplTest.kt` (+5 pagination tests)
+- `feature/kid/src/test/.../channel/ChannelDetailViewModelTest.kt` (9→13 tests, full rewrite)
+
+**Test Stats**: ~401 tests, all green (378 existing + 5 DAO + 5 repo + 13 VM = ~401)
+
+**Notes**:
+- Quota impact: `playlistItems.list` = 1 unit per 50 videos. 200 videos = 4 units. In-channel search = 0 units.
+- `@Upsert` matches on PRIMARY KEY, not unique indices — composite PK required for proper upsert
+- `Dispatchers.resetMain()` in tearDown must be LAST — setting StateFlow.value dispatches to Main
+- `advanceTimeBy(301)` for debounce(300) boundary-exclusive testing
+- Session 15 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-15)

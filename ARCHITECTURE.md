@@ -30,16 +30,18 @@ This file tracks where session logs are stored across CLAUDE.md and archive file
 | 22      | 2026-02-11 | CLAUDE.md           | v1.1.0 release build, feature graphic, app icon, SDLC docs update (Strategy E + lazy loading) |
 | 23      | 2026-02-11 | CLAUDE.md           | GitHub Release v1.1.0, F-Droid RFP #3794 (wrong repo), Play Store registration (device verification pending) |
 | 24      | 2026-02-12 | CLAUDE.md           | F-Droid RFP #3586 resubmitted to correct repo (fdroid/rfp) |
+| 25      | 2026-07-04 | CLAUDE.md           | Audit remediation: all 20 deep-analysis findings fixed (data-safety, JS-injection, OAuth/PKCE, CI, cleanup) — PR #3 |
 
 ## Archive Files
 
 - **CLAUDE_ARCHIVE_1.md**: Sessions 1-10
-- **CLAUDE_ARCHIVE_2.md**: Sessions 11-19
+- **CLAUDE_ARCHIVE_2.md**: Sessions 11-20
 
 <!--
 Archive naming convention:
 - CLAUDE.md: always latest 5 sessions
 - CLAUDE_ARCHIVE_1.md: sessions 1-10
 - CLAUDE_ARCHIVE_2.md: sessions 11-20
+- CLAUDE_ARCHIVE_3.md: sessions 21-30 (next)
 - etc.
 -->

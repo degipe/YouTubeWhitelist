@@ -68,97 +68,6 @@ Full PRD: `docs/PRD.md` (English translation from original Hungarian docx)
 
 ## Session Logs
 
-### Session 20 - 2026-02-10: Channel Video Lazy Loading + Room Cache + Search
-
-**Objectives**: Implement infinite scroll (lazy loading) for channel detail, Room cache as single source of truth, local search in cached videos (0 API quota).
-
-**Completed**:
-- **Phase 1: Database Layer** (core:database):
-  - `CachedChannelVideoEntity` — Room entity with composite PK `(channelId, videoId)`, index on channelId
-  - `CachedChannelVideoDao` — getVideosByChannel (Flow), searchVideosInChannel (LIKE query, Flow), upsertAll, deleteByChannel, getMaxPosition
-  - Room DB version 2→3 (`fallbackToDestructiveMigration()`)
-  - DatabaseModule updated with DAO provider
-  - 5 Robolectric DAO tests (insert+get, search match, search no match, delete, upsert duplicate)
-
-- **Phase 2: Repository Layer** (core:data):
-  - `PaginatedPlaylistResult` data class (videos + nextPageToken)
-  - `YouTubeApiRepository.getPlaylistItemsPage()` — new interface method
-  - `HybridYouTubeRepositoryImpl.getPlaylistItemsPage()` — RSS (first page only) → YouTube API (pageToken) → Invidious fallback
-  - `ChannelVideoCacheRepository` interface + `ChannelVideoCacheRepositoryImpl` — maps Entity↔PlaylistVideo
-  - `YouTubeApiRepositoryImpl.getPlaylistItemsPage()` implementation
-  - DataModule binding for ChannelVideoCacheRepository
-  - 5 HybridYouTubeRepositoryImpl pagination tests
-
-- **Phase 3: ViewModel Rewrite** (feature:kid):
-  - `ChannelDetailViewModel` fully rewritten:
-    - Room cache as Single Source of Truth (UI reads from Room Flow, API writes to Room)
-    - `_searchQuery` MutableStateFlow + `debounce(300)` + `flatMapLatest` → Room query switching
-    - `_controlState` for loading/error/hasMorePages (separate from videos)
-    - `combine(videosFlow, _controlState)` → `stateIn(Eagerly)` for uiState
-    - `loadMore()` — fetches next page → caches → Room Flow auto-updates
-    - `onSearchQueryChanged()`, `onClearSearch()` for search bar
-  - 13 ViewModel tests (9 rewritten + 4 new: hasMorePages, loadMore, search, clear search, loadMore error)
-
-- **Phase 4: UI Update** (feature:kid):
-  - `ChannelDetailScreen` — search bar toggle in TopAppBar (TextField + FocusRequester + keyboard control)
-  - Back button: exits search mode when active, navigates back otherwise
-  - Clear button in search mode when query non-empty
-  - Infinite scroll: `LaunchedEffect(Unit)` in trailing `item{}` when `hasMorePages = true`
-  - Loading spinner at list bottom during page fetch
-  - Empty state: "No videos found" (search) vs "No videos in this channel yet" (no videos)
-  - Error state: only shows full-screen error when no videos loaded (loadMore error preserves existing videos)
-
-**Architecture**:
-```
-ChannelDetailViewModel
-  ├── YouTubeApiRepository.getPlaylistItemsPage(playlistId, pageToken)
-  │     └── HybridYouTubeRepositoryImpl (RSS → YouTube API → Invidious)
-  └── ChannelVideoCacheRepository (Room cache)
-        └── CachedChannelVideoDao → cached_channel_videos table
-
-UI observes: Room Flow → auto-updates on cache changes
-API writes: fetch page → cacheVideos() → Room Flow emits → UI updates
-Search: Room SQL LIKE query (0 API quota)
-```
-
-**Decisions Made**:
-- Composite PK `(channelId, videoId)` instead of auto-generated ID — required for `@Upsert` to work correctly
-- Room cache cleared on each channel open (fresh data per visit)
-- RSS only for first page (no pagination support), YouTube API for continuation pages
-- Error state shows inline only if existing videos are loaded (loadMore error doesn't clear list)
-- `Dispatchers.resetMain()` must be LAST in `tearDown()` — StateFlow.setValue after resetMain throws IllegalStateException
-
-**Files Created** (5 source + 1 test):
-- `core/database/.../entity/CachedChannelVideoEntity.kt`
-- `core/database/.../dao/CachedChannelVideoDao.kt`
-- `core/data/.../model/PaginatedPlaylistResult.kt`
-- `core/data/.../repository/ChannelVideoCacheRepository.kt`
-- `core/data/.../repository/impl/ChannelVideoCacheRepositoryImpl.kt`
-- `core/database/src/test/.../dao/CachedChannelVideoDaoTest.kt` (5 tests)
-
-**Files Modified** (8 source + 2 test):
-- `core/database/.../YouTubeWhitelistDatabase.kt` (entity + version 3 + DAO getter)
-- `core/database/.../di/DatabaseModule.kt` (DAO provider)
-- `core/database/build.gradle.kts` (androidx-test-core dep)
-- `gradle/libs.versions.toml` (androidx-test-core entry)
-- `core/data/.../repository/YouTubeApiRepository.kt` (+getPlaylistItemsPage)
-- `core/data/.../repository/impl/HybridYouTubeRepositoryImpl.kt` (+paginated methods)
-- `core/data/.../repository/impl/YouTubeApiRepositoryImpl.kt` (+getPlaylistItemsPage)
-- `core/data/.../di/DataModule.kt` (+ChannelVideoCacheRepository binding)
-- `feature/kid/.../channel/ChannelDetailViewModel.kt` (full rewrite)
-- `feature/kid/.../channel/ChannelDetailScreen.kt` (search bar + infinite scroll)
-- `core/data/src/test/.../HybridYouTubeRepositoryImplTest.kt` (+5 pagination tests)
-- `feature/kid/src/test/.../channel/ChannelDetailViewModelTest.kt` (9→13 tests, full rewrite)
-
-**Test Stats**: ~401 tests, all green (378 existing + 5 DAO + 5 repo + 13 VM = ~401)
-
-**Notes**:
-- Quota impact: `playlistItems.list` = 1 unit per 50 videos. 200 videos = 4 units. In-channel search = 0 units.
-- `@Upsert` matches on PRIMARY KEY, not unique indices — composite PK required for proper upsert
-- `Dispatchers.resetMain()` in tearDown must be LAST — setting StateFlow.value dispatches to Main
-- `advanceTimeBy(301)` for debounce(300) boundary-exclusive testing
-- Session 15 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-15)
-
 ### Session 21 - 2026-02-10: Emulator Testing - Lazy Loading + Search Verification
 
 **Objectives**: Verify lazy loading (infinite scroll) and local search on emulator with real YouTube content (MrBeast channel).
@@ -354,3 +263,48 @@ Search: Room SQL LIKE query (0 API quota)
 - F-Droid RFP correct repo: `gitlab.com/fdroid/rfp` (NOT `fdroid/fdroiddata`)
 - Old issue #3794 on fdroiddata is closed — new issue #3586 on rfp is the active one
 - Lesson learned: F-Droid has separate repos: `fdroiddata` (build recipes), `rfp` (packaging requests)
+
+### Session 25 - 2026-07-04: Audit Remediation — All 20 Deep-Analysis Findings Fixed
+
+**Objectives**: Deep analysis of the entire codebase + SDLC specs (4 parallel review agents), then fix every finding (4 critical, 6 high, plus security/quality/docs) using subagent-driven TDD.
+
+**Process**: Full remediation plan at `docs/superpowers/plans/2026-07-03-audit-remediation.md` (5 sessions, 20 tasks). Executed subagent-driven: fresh implementer per task (TDD, RED→GREEN), two-stage review (spec + quality) per task, fix-loops where reviews caught issues, final whole-branch review (verdict: READY TO MERGE). All work on branch `audit-remediation` → **PR #3**. Progress ledger at `.superpowers/sdd/progress.md`.
+
+**Completed** (by theme):
+- **Critical data-safety + broken player**:
+  - Kid player WebView now reloads on video change via `key(youtubeId)` — fixes Next / autoplay / embed-error (101/150) auto-skip going blank.
+  - Export/import MERGE now truly dedups by profile name (no duplicates on re-import); whole import wrapped in a single `database.withTransaction {}` (no data loss on mid-import failure).
+  - Room schema export (`room.schemaLocation`) + `Migrations.ALL` container + committed `3.json` baseline + instrumented `MigrationTest` template; `fallbackToDestructiveMigration()` retained only as a safety net. Migration rule documented in Development Principles.
+- **Kid-mode correctness + content safety**:
+  - `YouTubeId` validator + gating in `YouTubeUrlParser` + import validation + `JSONObject.quote` in player HTML → closes a JS-injection hole in the kid player (defense in depth: parse + import + render).
+  - API-first channel pagination (removed RSS ~15-video cap; `tryRssFeedPaginated` deleted).
+  - `loadMoreFailed` flag + retry affordance; infinite-scroll gated on search (no API-quota waste during search).
+  - Daily time-limit midnight rollover computed in SQL (`strftime('%s','now','localtime','start of day','utc')*1000`) — the `'utc'` modifier was a review-caught correctness fix (the plan's original SQL was off by the UTC offset in every non-UTC zone).
+- **Auth / security hardening**:
+  - OAuth loopback bound to `getLoopbackAddress()` + `state` CSRF validation (checked before code use).
+  - PKCE (S256) via `PkceGenerator`; embedded client secret fully removed (buildConfig field + `@GoogleClientSecret` qualifier + DI provider all deleted).
+  - Kid player WebView hardening flags (allowFileAccess/allowContentAccess=false, MIXED_CONTENT_NEVER_ALLOW, safeBrowsing); `allowBackup=false`.
+  - "Continue without Google account" onboarding (`continueWithoutGoogle()` creates a local ParentAccount, same PinSetup destination) + blank-clientId fail-fast guard → unblocks F-Droid onboarding.
+- **Network robustness + cleanup**:
+  - `closeOnError()` helper — response bodies closed on all 16 Retrofit error paths + 2 raw OkHttp sites (`.use{}`) → connection-leak fix.
+  - Invidious list refreshed to curl-verified-live instances (`yewtu.be`, `inv.nadeko.net`, `iv.melmac.space`; removed dead `vid.puffyan.us`, `invidious.namazso.eu`).
+  - Dead code removed (~1000+ lines): unbound `YouTubeApiRepositoryImpl`, API `searchVideosInChannel`, unused DAO method. Unused deps removed (WorkManager, biometric) + `USE_BIOMETRIC` permission + dead version-catalog entries.
+- **CI + hygiene + docs**:
+  - GitHub Actions CI (`.github/workflows/ci.yml`): unit tests + lint + debug build on push/PR.
+  - Gradle heap 4g + `-XX:+UseParallelGC` + local build cache.
+  - Docs truth-up: Invidious disclosure in both privacy files, OAuth/PKCE wording (CHANGELOG/CLAUDE.md), deferred-feature flags (biometric/WorkManager in PRD), removed stale `GOOGLE_CLIENT_SECRET` refs from HLD/LLD/DEVELOPER_ONBOARDING, README API-key marked optional.
+
+**Decisions Made**:
+- Subagent-driven TDD with per-task two-stage review; Sessions 5.2/5.3 done inline by controller after an API session limit interrupted subagent dispatch.
+- No-account onboarding path chosen over baked client ID (investigation confirmed the app functions with a local ParentAccount — whitelist/kid features are auth-decoupled).
+- API key rotation + Console OAuth client creation left as documented USER steps (`docs/SESSION3_MANUAL_STEPS.md`), per user's "code + guide" preference.
+
+**Manual steps pending (USER)**: see `docs/SESSION3_MANUAL_STEPS.md` — create Desktop/PKCE OAuth client + bake fallback ID; restrict+rotate YouTube API key; emulator verification (player reload, large-channel scroll, OAuth sign-in, no-account onboarding, hardened-WebView playback).
+
+**Follow-ups (non-blocking)**: `getDailyWatchTime` (stats) uses UTC day-bucketing vs local-midnight enforcement (can disagree near midnight); dead `YouTubeApiService.search`; minor test-robustness notes (in `.superpowers/sdd/progress.md`).
+
+**Test Stats**: full suite green (886 tests). Final whole-branch review: READY TO MERGE.
+
+**Notes**:
+- The review loop caught a real bug the plan introduced (the midnight-rollover SQL) — evidence that adversarial per-task review earns its keep.
+- Session 20 archived to CLAUDE_ARCHIVE_2.md (now contains sessions 11-20).
