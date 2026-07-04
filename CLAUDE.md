@@ -11,7 +11,7 @@ Whitelist-based YouTube client for kids. Android app (Kotlin + Jetpack Compose) 
 - **Database**: Room (SQLite)
 - **Network**: Retrofit + OkHttp (YouTube Data API v3)
 - **Video**: YouTube IFrame Player API
-- **Auth**: WebView OAuth 2.0 (F-Droid compatible, no Google Play Services SDK)
+- **Auth**: Chrome Custom Tabs OAuth 2.0 with loopback redirect + PKCE, no client secret (F-Droid compatible, no Google Play Services SDK); plus a "continue without Google account" local-account path
 - **Serialization**: Kotlinx Serialization
 - **Background**: WorkManager
 - **Testing**: JUnit, MockK, Truth, Turbine, Espresso, Compose Testing, Robolectric

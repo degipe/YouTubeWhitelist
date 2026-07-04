@@ -101,7 +101,7 @@ YOUTUBE_API_KEY=your_youtube_api_key_here
 # Must be "Web application" type, NOT "Android" type
 # Redirect URI: http://localhost/callback
 GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your_client_secret
+# GOOGLE_CLIENT_SECRET is no longer used — OAuth uses PKCE (no client secret).
 
 # Release signing (optional, only needed for release builds)
 RELEASE_KEYSTORE_PATH=release-keystore.jks
@@ -561,7 +561,7 @@ ParentAccount (1) ──→ (N) KidProfile (1) ──→ (N) WhitelistItem
 ```kotlin
 @Qualifier annotation class YouTubeApiKey      // YouTube Data API v3 key
 @Qualifier annotation class GoogleClientId     // OAuth client ID
-@Qualifier annotation class GoogleClientSecret // OAuth client secret
+// (removed) @GoogleClientSecret qualifier — OAuth now uses PKCE, no client secret
 ```
 
 ### Binding Pattern

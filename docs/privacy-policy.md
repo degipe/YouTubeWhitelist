@@ -7,7 +7,7 @@ permalink: /privacy-policy/
 # Privacy Policy
 
 **YouTubeWhitelist**
-**Last updated: February 10, 2026**
+**Last updated: July 4, 2026**
 
 ## Overview
 
@@ -46,6 +46,10 @@ If you choose to sign in with your Google account (optional, used for accessing 
 ### YouTube Video Playback
 
 Videos are played using the YouTube IFrame Player API within a WebView. YouTube may collect data during video playback according to their own privacy policy.
+
+### Invidious Fallback Instances
+
+When the YouTube Data API is unavailable (for example, quota exhaustion or network errors), the app may fall back to public [Invidious](https://invidious.io/) instances to fetch the same public metadata (titles, thumbnails, video/channel/playlist IDs). In that case the requested video, channel, or playlist ID is sent to a third-party Invidious instance. The instances currently used are `yewtu.be`, `inv.nadeko.net`, and `iv.melmac.space`; this list may change as instance availability changes. These are independent third-party services with their own privacy policies. No account data or personal information is sent — only the public content identifiers being looked up.
 
 ## Children's Privacy
 

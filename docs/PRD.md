@@ -160,7 +160,7 @@ YouTube Kids' algorithm creates paradoxical situations: genuinely valuable conte
 
 - **FR-02:** PIN code setup (4-6 digits) at first launch. Can be changed later in parent mode.
 
-- **FR-03:** Optional biometric authentication (fingerprint / face) alongside the PIN code.
+- **FR-03:** Optional biometric authentication (fingerprint / face) alongside the PIN code. _(Deferred — not implemented as of v1.1.0. Only a `biometricEnabled` preference flag exists; no `BiometricPrompt` integration. The biometric dependency was removed until this is built.)_
 
 - **FR-04:** Multiple kid profile support, each with its own whitelist, icon, and name.
 
@@ -227,7 +227,7 @@ YouTube Kids' algorithm creates paradoxical situations: genuinely valuable conte
 | **NFR-03** | Scalability | Max 500 whitelisted items / profile, max 10 profiles / device. |
 | **NFR-04** | Compatibility | Android 8.0 (API 26) and above. Support: phone and tablet. |
 | **NFR-05** | Accessibility | Large buttons (min 48dp), high-contrast colors, TalkBack compatibility. |
-| **NFR-06** | Data Privacy | The app sends no data to any server. Everything is stored locally. |
+| **NFR-06** | Data Privacy | The app sends no data to any first-party or analytics server; all user data is stored locally. Public content lookups are made directly to YouTube's API (and, as a fallback, to public Invidious instances) — only public content identifiers, never personal data. |
 | **NFR-07** | Localization | MVP: Hungarian and English. Expandable with community translations. |
 | **NFR-08** | Server Independence | The app is 100% client-side. No backend, no account system, no telemetry. |
 
@@ -281,7 +281,7 @@ The application is 100% client-side. There is no backend server, no cloud databa
 | **Video Playback** | YouTube IFrame Player API | Official embed player, Premium compatible |
 | **API Client** | Retrofit + OkHttp | For YouTube Data API v3 calls |
 | **Authentication** | Google Sign-In SDK | OAuth 2.0 token management |
-| **Background Work** | WorkManager | Channel refresh, new video checking |
+| **Background Work** | WorkManager _(deferred)_ | Planned for channel refresh / new-video checking; not implemented as of v1.1.0 — the WorkManager dependency was removed until this feature is built |
 | **DI** | Hilt | Dependency injection |
 | **Export/Import** | Kotlinx Serialization | JSON serialization / deserialization |
 
@@ -421,7 +421,7 @@ Video playback is done through the YouTube IFrame Player API. This is the offici
 
 - **SEC-06:** The export file does not contain sensitive data (PIN, token). Only whitelisted items and settings.
 
-- **SEC-07:** The app sends no data to any third-party server. No analytics, no server-side crash reporting.
+- **SEC-07:** The app has no first-party backend and sends no analytics or server-side crash reports. It does contact third-party services for public metadata only: YouTube's Data API, and — as a fallback when the API is unavailable — public Invidious instances. Only public content identifiers (video/channel/playlist IDs) are sent; never user or personal data. OAuth tokens are stored locally in encrypted storage.
 
 ---
 
