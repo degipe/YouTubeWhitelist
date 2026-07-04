@@ -101,7 +101,7 @@ YOUTUBE_API_KEY=your_youtube_api_key_here
 # Must be "Web application" type, NOT "Android" type
 # Redirect URI: http://localhost/callback
 GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your_client_secret
+# GOOGLE_CLIENT_SECRET is no longer used — OAuth uses PKCE (no client secret).
 
 # Release signing (optional, only needed for release builds)
 RELEASE_KEYSTORE_PATH=release-keystore.jks
@@ -403,7 +403,9 @@ Room database layer:
 - Type converters for enums
 - Composite indices for performance
 - `CachedChannelVideoEntity` — composite PK `(channelId, videoId)` for lazy loading cache
-- `fallbackToDestructiveMigration` (appropriate for pre-production)
+- Schema export enabled (`room.schemaLocation` → `core/database/schemas/`), `3.json` committed as migration baseline
+- `migration/Migrations.kt` — `Migrations.ALL` array, wired via `.addMigrations(*Migrations.ALL)` before `.fallbackToDestructiveMigration()`
+- **Migration rule: any `@Database version` bump REQUIRES a real `Migration` added to `Migrations.ALL` + a migration test in `androidTest/.../migration/MigrationTest.kt`. `fallbackToDestructiveMigration()` is kept only as a crash-prevention safety net, not a migration strategy — relying on it wipes all user data (whitelists, profiles, watch history).**
 
 ### core:network
 
@@ -536,7 +538,7 @@ ParentAccount (1) ──→ (N) KidProfile (1) ──→ (N) WhitelistItem
 - **Composite unique index** on `(kidProfileId, youtubeId)` in whitelist items prevents duplicates at DB level
 - **CASCADE delete** on foreign keys: deleting a profile removes all its whitelist items and watch history
 - **UUID primary keys**: Generated via `java.util.UUID.randomUUID().toString()`
-- **Version 2** with `fallbackToDestructiveMigration()` — acceptable for pre-production
+- **Version 3**, schema exported to `core/database/schemas/`; real `Migration`s go in `Migrations.ALL`, `fallbackToDestructiveMigration()` retained only as a last-resort safety net (see §core:database above)
 
 ---
 
@@ -559,7 +561,7 @@ ParentAccount (1) ──→ (N) KidProfile (1) ──→ (N) WhitelistItem
 ```kotlin
 @Qualifier annotation class YouTubeApiKey      // YouTube Data API v3 key
 @Qualifier annotation class GoogleClientId     // OAuth client ID
-@Qualifier annotation class GoogleClientSecret // OAuth client secret
+// (removed) @GoogleClientSecret qualifier — OAuth now uses PKCE, no client secret
 ```
 
 ### Binding Pattern

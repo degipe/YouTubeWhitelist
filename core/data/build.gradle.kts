@@ -39,9 +39,6 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
-    // WorkManager
-    implementation(libs.work.runtime)
-
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.truth)

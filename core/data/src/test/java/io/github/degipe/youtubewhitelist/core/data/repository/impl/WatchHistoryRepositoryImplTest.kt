@@ -184,7 +184,7 @@ class WatchHistoryRepositoryImplTest {
 
     @Test
     fun `getTotalWatchedSecondsTodayFlow emits reactive value`() = runTest(testDispatcher) {
-        every { watchHistoryDao.getTotalWatchedSecondsFlow("profile-1", any()) } returns flowOf(900)
+        every { watchHistoryDao.getTotalWatchedSecondsTodayFlow("profile-1") } returns flowOf(900)
 
         val result = repository.getTotalWatchedSecondsTodayFlow("profile-1").first()
 
@@ -192,14 +192,14 @@ class WatchHistoryRepositoryImplTest {
     }
 
     @Test
-    fun `getTotalWatchedSecondsTodayFlow delegates to DAO with start of today`() = runTest(testDispatcher) {
-        every { watchHistoryDao.getTotalWatchedSecondsFlow(any(), any()) } returns flowOf(0)
+    fun `getTotalWatchedSecondsTodayFlow delegates to the SQL day-boundary DAO query`() = runTest(testDispatcher) {
+        // The DAO query recomputes "start of today" in SQL on every emission (see
+        // WatchHistoryDao#getTotalWatchedSecondsTodayFlow), so the repository must delegate
+        // to it directly rather than binding a fixed timestamp computed once in Kotlin.
+        every { watchHistoryDao.getTotalWatchedSecondsTodayFlow("profile-1") } returns flowOf(0)
 
         repository.getTotalWatchedSecondsTodayFlow("profile-1").first()
 
-        // Verify it was called with a timestamp that is start of today (midnight)
-        // The exact value depends on current time, but it should be <= current time
-        // and should be a multiple of day milliseconds approximately
-        io.mockk.verify { watchHistoryDao.getTotalWatchedSecondsFlow("profile-1", any()) }
+        io.mockk.verify { watchHistoryDao.getTotalWatchedSecondsTodayFlow("profile-1") }
     }
 }

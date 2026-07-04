@@ -15,6 +15,7 @@ import io.github.degipe.youtubewhitelist.core.network.invidious.InvidiousInstanc
 import io.github.degipe.youtubewhitelist.core.network.oembed.OEmbedService
 import io.github.degipe.youtubewhitelist.core.network.rss.RssFeedParser
 import io.github.degipe.youtubewhitelist.core.network.rss.RssVideoEntry
+import io.github.degipe.youtubewhitelist.core.network.util.closeOnError
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -81,26 +82,13 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
         playlistId: String,
         pageToken: String?
     ): AppResult<PaginatedPlaylistResult> = withContext(ioDispatcher) {
-        // pageToken != null means continuation — skip RSS (no pagination support)
-        if (pageToken == null) {
-            val channelId = extractChannelIdFromUploadsPlaylist(playlistId)
-            val rssResult = if (channelId != null) tryRssFeedPaginated(channelId) else null
-            if (rssResult != null) return@withContext rssResult
-        }
-
+        // RSS is intentionally NOT used here: the Atom feed caps at ~15 videos and never
+        // provides a nextPageToken, which would make hasMorePages false after the first
+        // page and strand channels with >15 uploads. Always start from the API so a real
+        // nextPageToken flows through the fallback chain.
         tryApiPlaylistItemsPage(playlistId, pageToken)
             ?: tryInvidiousPlaylistItemsPage(playlistId)
             ?: AppResult.Error("Failed to fetch playlist items from all sources")
-    }
-
-    override suspend fun searchVideosInChannel(
-        channelId: String,
-        query: String
-    ): AppResult<List<PlaylistVideo>> = withContext(ioDispatcher) {
-        // Search was removed from kid mode; this is kept for API compatibility
-        // Only YouTube API supports search — no oEmbed/RSS/Invidious alternative
-        tryApiSearch(channelId, query)
-            ?: AppResult.Error("Search failed")
     }
 
     // --- oEmbed ---
@@ -109,6 +97,7 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
         return try {
             val url = "https://www.youtube.com/watch?v=$videoId"
             val response = oEmbedService.getOEmbed(url)
+            response.closeOnError()
             if (response.isSuccessful) {
                 val body = response.body() ?: return null
                 AppResult.Success(OEmbedMapper.toVideo(videoId, body))
@@ -122,6 +111,7 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
         return try {
             val url = "https://www.youtube.com/playlist?list=$playlistId"
             val response = oEmbedService.getOEmbed(url)
+            response.closeOnError()
             if (response.isSuccessful) {
                 val body = response.body() ?: return null
                 AppResult.Success(OEmbedMapper.toPlaylist(playlistId, body))
@@ -144,23 +134,12 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun tryRssFeedPaginated(channelId: String): AppResult<PaginatedPlaylistResult>? {
-        return try {
-            val entries = rssFeedParser.fetchChannelVideos(channelId)
-            if (entries.isNotEmpty()) {
-                val videos = entries.mapIndexed { index, entry -> entry.toPlaylistVideo(index) }
-                AppResult.Success(PaginatedPlaylistResult(videos = videos, nextPageToken = null))
-            } else null
-        } catch (_: Exception) {
-            null
-        }
-    }
-
     // --- YouTube API ---
 
     private suspend fun tryApiVideo(videoId: String): AppResult<YouTubeMetadata.Video>? {
         return try {
             val response = youTubeApiService.getVideos(id = videoId)
+            response.closeOnError()
             if (!response.isSuccessful) return null
             val video = response.body()?.items?.firstOrNull() ?: return null
             AppResult.Success(
@@ -182,6 +161,7 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
     private suspend fun tryApiPlaylist(playlistId: String): AppResult<YouTubeMetadata.Playlist>? {
         return try {
             val response = youTubeApiService.getPlaylists(id = playlistId)
+            response.closeOnError()
             if (!response.isSuccessful) return null
             val playlist = response.body()?.items?.firstOrNull() ?: return null
             AppResult.Success(
@@ -202,6 +182,7 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
     private suspend fun tryApiChannel(channelId: String): AppResult<YouTubeMetadata.Channel>? {
         return try {
             val response = youTubeApiService.getChannels(id = channelId)
+            response.closeOnError()
             if (!response.isSuccessful) return null
             val channel = response.body()?.items?.firstOrNull() ?: return null
             AppResult.Success(
@@ -223,6 +204,7 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
     private suspend fun tryApiChannelByHandle(handle: String): AppResult<YouTubeMetadata.Channel>? {
         return try {
             val response = youTubeApiService.getChannels(forHandle = handle)
+            response.closeOnError()
             if (!response.isSuccessful) return null
             val channel = response.body()?.items?.firstOrNull() ?: return null
             AppResult.Success(
@@ -244,6 +226,7 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
     private suspend fun tryApiPlaylistItems(playlistId: String): AppResult<List<PlaylistVideo>>? {
         return try {
             val response = youTubeApiService.getPlaylistItems(playlistId = playlistId)
+            response.closeOnError()
             if (!response.isSuccessful) return null
             val items = response.body()?.items.orEmpty()
             val videos = items.mapNotNull { item ->
@@ -272,6 +255,7 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
                 playlistId = playlistId,
                 pageToken = pageToken
             )
+            response.closeOnError()
             if (!response.isSuccessful) return null
             val body = response.body() ?: return null
             val videos = body.items.mapNotNull { item ->
@@ -286,28 +270,6 @@ class HybridYouTubeRepositoryImpl @Inject constructor(
                 )
             }
             AppResult.Success(PaginatedPlaylistResult(videos = videos, nextPageToken = body.nextPageToken))
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private suspend fun tryApiSearch(channelId: String, query: String): AppResult<List<PlaylistVideo>>? {
-        return try {
-            val response = youTubeApiService.search(channelId = channelId, query = query, maxResults = 10)
-            if (!response.isSuccessful) return null
-            val items = response.body()?.items.orEmpty()
-            val videos = items.mapNotNull { item ->
-                val videoId = item.id?.videoId ?: return@mapNotNull null
-                val snippet = item.snippet ?: return@mapNotNull null
-                PlaylistVideo(
-                    videoId = videoId,
-                    title = snippet.title,
-                    thumbnailUrl = snippet.thumbnails.bestUrl(),
-                    channelTitle = snippet.channelTitle,
-                    position = 0
-                )
-            }
-            AppResult.Success(videos)
         } catch (_: Exception) {
             null
         }

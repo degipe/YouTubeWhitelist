@@ -11,6 +11,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,9 +75,13 @@ fun SignInScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 SignInButton(onClick = { viewModel.signIn(context) })
+                Spacer(modifier = Modifier.height(8.dp))
+                ContinueWithoutGoogleButton(onClick = { viewModel.continueWithoutGoogle() })
             }
             else -> {
                 SignInButton(onClick = { viewModel.signIn(context) })
+                Spacer(modifier = Modifier.height(8.dp))
+                ContinueWithoutGoogleButton(onClick = { viewModel.continueWithoutGoogle() })
             }
         }
     }
@@ -89,5 +94,15 @@ private fun SignInButton(onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(text = stringResource(R.string.sign_in_button))
+    }
+}
+
+@Composable
+private fun ContinueWithoutGoogleButton(onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(text = stringResource(R.string.sign_in_continue_without_google))
     }
 }

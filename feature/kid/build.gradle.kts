@@ -56,6 +56,7 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.turbine)
+    testImplementation(libs.robolectric)
     androidTestImplementation(libs.junit.ext)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test)

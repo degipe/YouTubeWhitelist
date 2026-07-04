@@ -35,12 +35,17 @@ A free, open-source Android app that lets parents whitelist specific YouTube cha
    cd YouTubeWhitelist
    ```
 
-2. Create `local.properties` in the project root (if not already present) and add your YouTube API key:
+2. (Optional) Provide your own YouTube API key. The app ships with a built-in
+   fallback key, so the debug build works without any setup. To avoid sharing the
+   default key's daily quota, add your own to `local.properties`:
    ```properties
    YOUTUBE_API_KEY=your_api_key_here
    ```
+   Google sign-in is also optional — the app offers a "continue without Google
+   account" path, and a fallback OAuth client ID can be baked in the same way as
+   the API key (see [GOOGLE_SETUP.md](GOOGLE_SETUP.md)).
 
-3. Build the project:
+3. Build the project (no `local.properties` required for a debug build):
    ```bash
    ./gradlew assembleDebug
    ```

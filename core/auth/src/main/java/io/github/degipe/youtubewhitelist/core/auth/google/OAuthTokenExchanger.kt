@@ -23,6 +23,27 @@ data class GoogleUserInfo(
     val name: String?
 )
 
+/**
+ * Builds the `application/x-www-form-urlencoded` body for the PKCE authorization_code
+ * token exchange. Deliberately has no `client_secret` field: PKCE (RFC 7636) lets the app
+ * act as a public client, so no secret needs to be embedded in the APK.
+ *
+ * Extracted as a standalone, internal function so it can be unit-tested without making a
+ * real network call.
+ */
+internal fun buildTokenRequestBody(
+    code: String,
+    clientId: String,
+    codeVerifier: String,
+    redirectUri: String
+): String = buildString {
+    append("code=").append(code)
+    append("&client_id=").append(clientId)
+    append("&code_verifier=").append(codeVerifier)
+    append("&redirect_uri=").append(redirectUri)
+    append("&grant_type=authorization_code")
+}
+
 class OAuthTokenExchanger @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -30,7 +51,7 @@ class OAuthTokenExchanger @Inject constructor(
     suspend fun exchangeCodeForTokens(
         code: String,
         clientId: String,
-        clientSecret: String,
+        codeVerifier: String,
         redirectUri: String
     ): OAuthTokenResponse = withContext(ioDispatcher) {
         val url = URL(OAuthConfig.TOKEN_ENDPOINT)
@@ -40,13 +61,7 @@ class OAuthTokenExchanger @Inject constructor(
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
 
-            val body = buildString {
-                append("code=").append(code)
-                append("&client_id=").append(clientId)
-                append("&client_secret=").append(clientSecret)
-                append("&redirect_uri=").append(redirectUri)
-                append("&grant_type=authorization_code")
-            }
+            val body = buildTokenRequestBody(code, clientId, codeVerifier, redirectUri)
 
             connection.outputStream.use { it.write(body.toByteArray()) }
 

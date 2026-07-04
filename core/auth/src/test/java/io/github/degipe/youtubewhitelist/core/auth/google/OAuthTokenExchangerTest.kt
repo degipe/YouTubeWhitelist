@@ -45,4 +45,20 @@ class OAuthTokenExchangerTest {
     fun `parseIdToken throws for invalid JWT format`() {
         exchanger.parseIdToken("not-a-jwt")
     }
+
+    @Test
+    fun `token request body includes code_verifier and omits client_secret`() {
+        val body = buildTokenRequestBody(
+            code = "auth-code",
+            clientId = "client-id",
+            codeVerifier = "test-verifier",
+            redirectUri = "http://localhost:12345/callback"
+        )
+
+        assertThat(body).contains("code_verifier=test-verifier")
+        assertThat(body).contains("code=auth-code")
+        assertThat(body).contains("client_id=client-id")
+        assertThat(body).contains("grant_type=authorization_code")
+        assertThat(body).doesNotContain("client_secret")
+    }
 }

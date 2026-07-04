@@ -32,6 +32,10 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
+    // Room (needed for RoomDatabase type + withTransaction on YouTubeWhitelistDatabase)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
@@ -41,4 +45,6 @@ dependencies {
     testImplementation(libs.truth)
     testImplementation(libs.mockk)
     testImplementation(libs.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }

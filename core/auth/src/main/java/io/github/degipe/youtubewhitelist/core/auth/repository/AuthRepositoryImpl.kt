@@ -6,6 +6,7 @@ import io.github.degipe.youtubewhitelist.core.auth.google.GoogleSignInResult
 import io.github.degipe.youtubewhitelist.core.auth.repository.ParentAccountRepositoryImpl.Companion.toDomain
 import io.github.degipe.youtubewhitelist.core.auth.token.TokenManager
 import io.github.degipe.youtubewhitelist.core.common.di.IoDispatcher
+import io.github.degipe.youtubewhitelist.core.common.result.AppResult
 import io.github.degipe.youtubewhitelist.core.data.model.AuthState
 import io.github.degipe.youtubewhitelist.core.data.repository.AuthRepository
 import io.github.degipe.youtubewhitelist.core.database.dao.ParentAccountDao
@@ -71,6 +72,25 @@ class AuthRepositoryImpl @Inject constructor(
         googleSignInManager.signOut()
         parentAccountDao.deleteAll()
         _authState.value = AuthState.Unauthenticated
+    }
+
+    override suspend fun continueWithoutGoogle(): AppResult<Unit> = withContext(ioDispatcher) {
+        try {
+            // Reuse existing account if present, to avoid cascade deletion of kid profiles
+            // and to avoid clobbering a previously-created (Google or local) account.
+            val existingAccount = parentAccountDao.getParentAccountOnce()
+            val account = existingAccount ?: ParentAccountEntity(
+                id = UUID.randomUUID().toString(),
+                googleAccountId = "",
+                email = "",
+                pinHash = "",
+                createdAt = System.currentTimeMillis()
+            ).also { parentAccountDao.insert(it) }
+            _authState.value = AuthState.Authenticated(account.toDomain())
+            AppResult.Success(Unit)
+        } catch (e: Exception) {
+            AppResult.Error(e.message ?: "Failed to create local account", e)
+        }
     }
 
     override suspend fun checkAuthState() = withContext(ioDispatcher) {

@@ -34,7 +34,6 @@ dependencies {
 
     // Security
     implementation(libs.security.crypto)
-    implementation(libs.biometric)
 
     // Hilt
     implementation(libs.hilt.android)

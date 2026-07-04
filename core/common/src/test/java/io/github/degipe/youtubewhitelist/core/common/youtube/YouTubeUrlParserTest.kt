@@ -228,4 +228,46 @@ class YouTubeUrlParserTest {
     fun `parse returns null for youtube feed url`() {
         assertThat(YouTubeUrlParser.parse("https://www.youtube.com/feed/trending")).isNull()
     }
+
+    // === B1: JS-injection hole - malformed IDs must be rejected, not passed through ===
+
+    @Test
+    fun `parse returns null for watch url with injection payload as video id`() {
+        assertThat(
+            YouTubeUrlParser.parse("https://www.youtube.com/watch?v=');alert(1)//")
+        ).isNull()
+    }
+
+    @Test
+    fun `parse returns null for shorts url with injection payload as video id`() {
+        assertThat(
+            YouTubeUrlParser.parse("https://www.youtube.com/shorts/');alert(1)//")
+        ).isNull()
+    }
+
+    @Test
+    fun `parse returns null for short url with injection payload as video id`() {
+        assertThat(
+            YouTubeUrlParser.parse("https://youtu.be/');alert(1)//")
+        ).isNull()
+    }
+
+    @Test
+    fun `parse returns null for channel url with injection payload as channel id`() {
+        assertThat(
+            YouTubeUrlParser.parse("https://www.youtube.com/channel/');alert(1)//")
+        ).isNull()
+    }
+
+    @Test
+    fun `parse returns null for playlist url with injection payload as playlist id`() {
+        assertThat(
+            YouTubeUrlParser.parse("https://www.youtube.com/playlist?list=');alert(1)//")
+        ).isNull()
+    }
+
+    @Test
+    fun `parse returns null for watch url with too-short video id`() {
+        assertThat(YouTubeUrlParser.parse("https://www.youtube.com/watch?v=short")).isNull()
+    }
 }

@@ -56,11 +56,12 @@ class InvidiousInstanceManager(
         private const val MAX_FAILURES = 2
         private const val HEALTH_RESET_MS = 5 * 60 * 1000L // 5 minutes
 
+        // Verified live via `curl -sS -m 10 -o /dev/null -w "%{http_code}" https://<host>/api/v1/stats`
+        // on 2026-07-03. Re-verify periodically — Invidious instance uptime is volatile.
         val DEFAULT_INSTANCES = listOf(
-            "vid.puffyan.us",
             "yewtu.be",
-            "invidious.namazso.eu",
-            "inv.nadeko.net"
+            "inv.nadeko.net",
+            "iv.melmac.space"
         )
     }
 }

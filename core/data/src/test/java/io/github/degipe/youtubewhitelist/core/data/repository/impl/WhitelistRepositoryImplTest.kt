@@ -97,10 +97,10 @@ class WhitelistRepositoryImplTest {
 
     @Test
     fun `addItemFromUrl parses channel url and fetches metadata`() = runTest(testDispatcher) {
-        coEvery { whitelistItemDao.findByYoutubeId("profile1", "UC123") } returns null
-        coEvery { youTubeApiRepository.getChannelById("UC123") } returns AppResult.Success(
+        coEvery { whitelistItemDao.findByYoutubeId("profile1", "UC1234567890123456789012") } returns null
+        coEvery { youTubeApiRepository.getChannelById("UC1234567890123456789012") } returns AppResult.Success(
             YouTubeMetadata.Channel(
-                youtubeId = "UC123",
+                youtubeId = "UC1234567890123456789012",
                 title = "Test Channel",
                 thumbnailUrl = "https://img/thumb.jpg",
                 description = "A test channel",
@@ -110,12 +110,15 @@ class WhitelistRepositoryImplTest {
             )
         )
 
-        val result = repository.addItemFromUrl("profile1", "https://www.youtube.com/channel/UC123")
+        val result = repository.addItemFromUrl(
+            "profile1",
+            "https://www.youtube.com/channel/UC1234567890123456789012"
+        )
 
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
         val item = (result as AppResult.Success).data
         assertThat(item.type).isEqualTo(WhitelistItemType.CHANNEL)
-        assertThat(item.youtubeId).isEqualTo("UC123")
+        assertThat(item.youtubeId).isEqualTo("UC1234567890123456789012")
     }
 
     // === addItemFromUrl - Channel handle ===
@@ -148,24 +151,27 @@ class WhitelistRepositoryImplTest {
 
     @Test
     fun `addItemFromUrl parses playlist url and fetches metadata`() = runTest(testDispatcher) {
-        coEvery { whitelistItemDao.findByYoutubeId("profile1", "PL123") } returns null
-        coEvery { youTubeApiRepository.getPlaylistById("PL123") } returns AppResult.Success(
+        coEvery { whitelistItemDao.findByYoutubeId("profile1", "PL1234567890") } returns null
+        coEvery { youTubeApiRepository.getPlaylistById("PL1234567890") } returns AppResult.Success(
             YouTubeMetadata.Playlist(
-                youtubeId = "PL123",
+                youtubeId = "PL1234567890",
                 title = "Test Playlist",
                 thumbnailUrl = "https://img/thumb.jpg",
-                channelId = "UC123",
+                channelId = "UC1234567890123456789012",
                 channelTitle = "Test Channel",
                 description = "A playlist"
             )
         )
 
-        val result = repository.addItemFromUrl("profile1", "https://www.youtube.com/playlist?list=PL123")
+        val result = repository.addItemFromUrl(
+            "profile1",
+            "https://www.youtube.com/playlist?list=PL1234567890"
+        )
 
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
         val item = (result as AppResult.Success).data
         assertThat(item.type).isEqualTo(WhitelistItemType.PLAYLIST)
-        assertThat(item.youtubeId).isEqualTo("PL123")
+        assertThat(item.youtubeId).isEqualTo("PL1234567890")
     }
 
     // === addItemFromUrl - Channel custom ===
@@ -226,11 +232,14 @@ class WhitelistRepositoryImplTest {
 
     @Test
     fun `addItemFromUrl returns error when API fails`() = runTest(testDispatcher) {
-        coEvery { whitelistItemDao.findByYoutubeId("profile1", "vid123") } returns null
-        coEvery { youTubeApiRepository.getVideoById("vid123") } returns
+        coEvery { whitelistItemDao.findByYoutubeId("profile1", "vid12345678") } returns null
+        coEvery { youTubeApiRepository.getVideoById("vid12345678") } returns
             AppResult.Error("Network error")
 
-        val result = repository.addItemFromUrl("profile1", "https://www.youtube.com/watch?v=vid123")
+        val result = repository.addItemFromUrl(
+            "profile1",
+            "https://www.youtube.com/watch?v=vid12345678"
+        )
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
     }

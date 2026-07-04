@@ -29,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -197,7 +198,7 @@ fun ChannelDetailScreen(
                             onClick = { onVideoClick(video.videoId, video.title, video.channelTitle) }
                         )
                     }
-                    if (uiState.hasMorePages) {
+                    if (uiState.hasMorePages && searchQuery.isBlank() && !uiState.loadMoreFailed) {
                         item(key = "load_more") {
                             LaunchedEffect(Unit) {
                                 viewModel.loadMore()
@@ -209,6 +210,26 @@ fun ChannelDetailScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 CircularProgressIndicator()
+                            }
+                        }
+                    } else if (uiState.loadMoreFailed && searchQuery.isBlank() && uiState.videos.isNotEmpty()) {
+                        item(key = "load_more_retry") {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Couldn't load more videos",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                TextButton(onClick = { viewModel.retryLoadMore() }) {
+                                    Text("Retry")
+                                }
                             }
                         }
                     }

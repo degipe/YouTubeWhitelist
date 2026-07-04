@@ -6,7 +6,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.degipe.youtubewhitelist.BuildConfig
 import io.github.degipe.youtubewhitelist.core.auth.di.GoogleClientId
-import io.github.degipe.youtubewhitelist.core.auth.di.GoogleClientSecret
 import io.github.degipe.youtubewhitelist.core.network.di.YouTubeApiKey
 
 @Module
@@ -20,8 +19,4 @@ object ApiKeyModule {
     @Provides
     @GoogleClientId
     fun provideGoogleClientId(): String = BuildConfig.GOOGLE_CLIENT_ID
-
-    @Provides
-    @GoogleClientSecret
-    fun provideGoogleClientSecret(): String = BuildConfig.GOOGLE_CLIENT_SECRET
 }

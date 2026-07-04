@@ -1,7 +1,19 @@
 package io.github.degipe.youtubewhitelist.core.network.rss
 
 import com.google.common.truth.Truth.assertThat
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.test.runTest
+import okhttp3.Call
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.ResponseBody
+import okio.Buffer
+import okio.BufferedSource
 import org.junit.Before
 import org.junit.Test
 
@@ -13,6 +25,48 @@ class RssFeedParserTest {
     fun setUp() {
         // OkHttpClient is only used for fetchChannelVideos (network), not parseXml
         parser = RssFeedParser(mockk())
+    }
+
+    @Test
+    fun `fetchChannelVideos returns empty list and closes response body on server error`() = runTest {
+        // Regression test for KM1: an unsuccessful response's body must always be
+        // consumed/closed, or OkHttp never releases the connection back to its pool.
+        val trackingBody = TrackingResponseBody("Internal Server Error")
+        val response = Response.Builder()
+            .request(Request.Builder().url("https://www.youtube.com/feeds/videos.xml?channel_id=UC123").build())
+            .protocol(Protocol.HTTP_1_1)
+            .code(500)
+            .message("Internal Server Error")
+            .body(trackingBody)
+            .build()
+
+        val call = mockk<Call>()
+        every { call.execute() } returns response
+        val client = mockk<OkHttpClient>()
+        every { client.newCall(any()) } returns call
+
+        val errorParser = RssFeedParser(client)
+
+        val result = errorParser.fetchChannelVideos("UC123")
+
+        assertThat(result).isEmpty()
+        assertThat(trackingBody.closed).isTrue()
+    }
+
+    /** A [ResponseBody] that records whether [close] was called, to assert no connection leak. */
+    private class TrackingResponseBody(content: String) : ResponseBody() {
+        private val buffer = Buffer().writeUtf8(content)
+
+        var closed = false
+            private set
+
+        override fun contentType(): MediaType? = "text/plain".toMediaTypeOrNull()
+        override fun contentLength(): Long = buffer.size
+        override fun source(): BufferedSource = buffer
+        override fun close() {
+            closed = true
+            super.close()
+        }
     }
 
     @Test

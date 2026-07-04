@@ -335,7 +335,6 @@ flowchart LR
     subgraph BC["BuildConfig<br/>(compile-time)"]
         K1[YOUTUBE_API_KEY]
         K2[GOOGLE_CLIENT_ID]
-        K3[GOOGLE_CLIENT_SECRET]
     end
 ```
 

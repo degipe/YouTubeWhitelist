@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Playlist Support**: Full playlist browsing with video list from YouTube API
 - **Export/Import**: JSON-based backup and restore of profiles and whitelists
 - **About Screen**: App info, license (GPLv3), GitHub link, Ko-fi donation support
-- **WebView OAuth 2.0**: F-Droid compatible Google Sign-In (no Google Play Services SDK)
+- **Chrome Custom Tabs OAuth 2.0**: F-Droid compatible Google Sign-In (no Google Play Services SDK), using a loopback redirect and PKCE (no embedded client secret)
 - **Image Loading**: Coil-based thumbnail loading with disk and memory caching
 - **Room Database**: Local SQLite storage with composite indices for performance
 - **Material Design 3**: Modern Android UI with Jetpack Compose

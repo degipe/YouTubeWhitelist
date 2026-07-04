@@ -588,7 +588,7 @@ Returns last 15 videos per channel. Namespace-aware XML parser with XXE protecti
 
 Dynamic base URL (round-robin instances). Full YouTube API equivalent without API key. Used as last-resort fallback.
 
-**InvidiousInstanceManager**: Round-robin rotation, health tracking (max 2 failures → skip, 5 min reset), thread-safe (`@Synchronized`). Instances: vid.puffyan.us, yewtu.be, invidious.namazso.eu, inv.nadeko.net.
+**InvidiousInstanceManager**: Round-robin rotation, health tracking (max 2 failures → skip, 5 min reset), thread-safe (`@Synchronized`). Instances: yewtu.be, inv.nadeko.net, iv.melmac.space (refreshed 2026-07-03; `vid.puffyan.us` and `invidious.namazso.eu` removed as dead).
 
 ### OkHttp Configuration
 
@@ -646,7 +646,7 @@ sequenceDiagram
     CCT->>Server: GET /callback?code=AUTH_CODE
     Server->>CCT: 200 OK "Sign-in complete"
     Server->>App: Return OAuthCallbackResult.Success(code)
-    App->>Google: POST /token (code, client_id, client_secret, redirect_uri)
+    App->>Google: POST /token (code, client_id, code_verifier, redirect_uri)
     Google->>App: {access_token, refresh_token, id_token}
     App->>App: Parse JWT id_token → GoogleUserInfo(sub, email, name)
     App->>App: Save tokens to EncryptedSharedPreferences
@@ -729,7 +729,7 @@ object DispatcherModule {
 object ApiKeyModule {
     @Provides @YouTubeApiKey      fun apiKey(): String = BuildConfig.YOUTUBE_API_KEY
     @Provides @GoogleClientId     fun clientId(): String = BuildConfig.GOOGLE_CLIENT_ID
-    @Provides @GoogleClientSecret fun clientSecret(): String = BuildConfig.GOOGLE_CLIENT_SECRET
+    // OAuth uses PKCE (code_verifier/code_challenge); no client secret is provided or embedded
 }
 ```
 
@@ -775,7 +775,6 @@ object ApiKeyModule {
 | `@MainDispatcher` | `core:common` | `CoroutineDispatcher` |
 | `@YouTubeApiKey` | `core:network` | `String` |
 | `@GoogleClientId` | `core:auth` | `String` |
-| `@GoogleClientSecret` | `core:auth` | `String` |
 | `@PlainOkHttp` | `core:network` | `OkHttpClient` |
 | `@YouTubeApiOkHttp` | `core:network` | `OkHttpClient` |
 

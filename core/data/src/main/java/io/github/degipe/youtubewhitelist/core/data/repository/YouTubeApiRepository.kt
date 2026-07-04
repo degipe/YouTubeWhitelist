@@ -12,5 +12,4 @@ interface YouTubeApiRepository {
     suspend fun getPlaylistById(playlistId: String): AppResult<YouTubeMetadata.Playlist>
     suspend fun getPlaylistItems(playlistId: String): AppResult<List<PlaylistVideo>>
     suspend fun getPlaylistItemsPage(playlistId: String, pageToken: String? = null): AppResult<PaginatedPlaylistResult>
-    suspend fun searchVideosInChannel(channelId: String, query: String): AppResult<List<PlaylistVideo>>
 }
